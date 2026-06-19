@@ -74,7 +74,6 @@ def main(argv: list[str] | None = None) -> int:
         from course_compiler.generation.lesson import LessonGenerator
         from course_compiler.generation.orchestrator import LessonOrchestrator
         from course_compiler.generation.themes import LLMThemeAssigner
-        from course_compiler.llm import create_provider
         from course_compiler.models import Word
 
         settings = Settings.load()

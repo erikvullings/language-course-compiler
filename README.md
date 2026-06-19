@@ -81,7 +81,7 @@ course import \
   --kaikki    data/nl/kaikki.org-dictionary-Dutch.jsonl \
   --wordnet   data/nl/odwn_orbn_gwg-LMF_1.3.xml \
   --frequency data/nl/large_nl.msgpack \
-  --nt2lex    data/nl/NT2Lex-main/resource/NT2Lex-CGN+ODWN-v01.tsv \
+  --nt2lex    data/nl/NT2Lex-extracted/NT2Lex-main/resource/NT2Lex-CGN+ODWN-v01.tsv \
   --out       courses/nl
 ```
 
