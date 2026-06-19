@@ -115,7 +115,12 @@ def _make_orchestrator(
     lemmatizer = _IdentityLemmatizer()
     generator = LessonGenerator(provider, lemmatizer)
     assigner = _StubThemeAssigner(theme_mapping)
-    return LessonOrchestrator(generator, assigner, words_per_lesson=words_per_lesson)
+    return LessonOrchestrator(
+        generator,
+        assigner,
+        words_per_lesson=words_per_lesson,
+        predefined_themes={},
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -202,7 +207,12 @@ def test_plan_uses_lesson_blueprints_when_available():
         {"misc": ["huis", "deur", "tafel"]},
         plans=[LessonThemePlan(theme="home", seed_lemmas=["huis", "deur"])],
     )
-    orc = LessonOrchestrator(generator, assigner, words_per_lesson=2)
+    orc = LessonOrchestrator(
+        generator,
+        assigner,
+        words_per_lesson=2,
+        predefined_themes={},
+    )
 
     plans = orc.plan(words, cefr="A1")
 
@@ -219,7 +229,12 @@ def test_plan_blueprints_still_cover_all_content_words():
         {"misc": ["huis", "deur", "tafel"]},
         plans=[LessonThemePlan(theme="home", seed_lemmas=["huis"])],
     )
-    orc = LessonOrchestrator(generator, assigner, words_per_lesson=2)
+    orc = LessonOrchestrator(
+        generator,
+        assigner,
+        words_per_lesson=2,
+        predefined_themes={},
+    )
 
     plans = orc.plan(words, cefr="A1")
 
@@ -324,7 +339,7 @@ def test_generate_verb_forms_exempt_from_validation():
     lemmatizer = _IdentityLemmatizer()
     generator = LessonGenerator(lemmatizer=lemmatizer, provider=_VerbFormProvider())
     assigner = _StubThemeAssigner({"misc": ["lopen"]})
-    orc = LessonOrchestrator(generator, assigner)
+    orc = LessonOrchestrator(generator, assigner, predefined_themes={})
     # Should not raise — verb forms are exempt via allowed_forms.
     lessons = orc.generate([], language="Dutch", cefr="A1", verbs=[verb], model="stub")
     assert lessons[0].content == "loop loopt lopen"
@@ -351,7 +366,28 @@ def test_generate_function_lemmas_passed_through():
     lemmatizer = _IdentityLemmatizer()
     generator = LessonGenerator(lemmatizer=lemmatizer, provider=_FixedProvider())
     assigner = _StubThemeAssigner({"home": ["huis"]})  # "de" filtered as function word
-    orc = LessonOrchestrator(generator, assigner)
+    orc = LessonOrchestrator(generator, assigner, predefined_themes={})
     # Should not raise — "de" passes because it's in function_lemmas derived from the article.
     lessons = orc.generate([article, noun], language="Dutch", cefr="A1", model="stub")
     assert lessons[0].content == "de huis"
+
+
+def test_plan_uses_predefined_themes_for_cefr_when_available():
+    words = [_word("huis", rank=1), _word("deur", rank=2), _word("tafel", rank=3)]
+    provider = _StubProvider()
+    lemmatizer = _IdentityLemmatizer()
+    generator = LessonGenerator(provider, lemmatizer)
+    assigner = _StubPlannerThemeAssigner(
+        {"misc": ["huis", "deur", "tafel"]},
+        plans=[LessonThemePlan(theme="llm-home", seed_lemmas=["huis", "deur"])],
+    )
+    orc = LessonOrchestrator(
+        generator,
+        assigner,
+        words_per_lesson=2,
+        predefined_themes={"A1": ["Configured Theme 1", "Configured Theme 2"]},
+    )
+
+    plans = orc.plan(words, cefr="A1")
+
+    assert [p.theme for p in plans] == ["Configured Theme 1", "Configured Theme 2"]

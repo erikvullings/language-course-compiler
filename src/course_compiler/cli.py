@@ -182,6 +182,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Disable LLM response caching (forces regeneration from scratch)",
     )
+    gen.add_argument(
+        "--themes-file",
+        default=None,
+        help="Path to predefined lesson themes YAML (overrides auto-discovery)",
+    )
 
     imp = sub.add_parser("import", help="Import lexical sources into canonical YAML")
     imp.add_argument("--language", default="nl", choices=["nl"], help="Source language")
@@ -249,8 +254,23 @@ def main(argv: list[str] | None = None) -> int:
 
         lemmatizer = create_lemmatizer(args.lang)
         generator = LessonGenerator(provider, lemmatizer, cache=cache)
+        if args.themes_file is not None:
+            predefined_themes_path = Path(args.themes_file)
+        else:
+            theme_candidates = [
+                Path("themes.yaml"),
+                Path(__file__).resolve().parents[2] / "themes.yaml",
+                Path(__file__).resolve().parent / "generation" / "themes.yaml",
+            ]
+            predefined_themes_path = next(
+                (candidate for candidate in theme_candidates if candidate.exists()),
+                None,
+            )
         orchestrator = LessonOrchestrator(
-            generator, assigner, words_per_lesson=args.words_per_lesson
+            generator,
+            assigner,
+            words_per_lesson=args.words_per_lesson,
+            predefined_themes_path=predefined_themes_path,
         )
 
         plans = orchestrator.plan(words, cefr=args.cefr)

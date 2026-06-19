@@ -7,6 +7,10 @@ a sequence of generated lessons for a target CEFR level.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
+import re
+
+import yaml
 
 from course_compiler.generation.lesson import GeneratedLesson, LessonGenerator
 from course_compiler.generation.themes import LessonThemePlan, ThemeAssigner
@@ -23,6 +27,51 @@ FUNCTION_POS: frozenset[PartOfSpeech] = frozenset(
         PartOfSpeech.DETERMINER,
     }
 )
+
+
+def _lesson_sort_key(lesson_id: str) -> tuple[int, str]:
+    """Sort keys like lesson001, lesson002, ... in numeric order."""
+    m = re.search(r"(\d+)$", lesson_id)
+    if m is None:
+        return (999_999, lesson_id)
+    return (int(m.group(1)), lesson_id)
+
+
+def _load_predefined_themes(path: Path) -> dict[str, list[str]]:
+    """Load {CEFR: [theme1, theme2, ...]} from a YAML catalog file."""
+    if not path.exists():
+        return {}
+
+    loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if not isinstance(loaded, dict):
+        return {}
+
+    result: dict[str, list[str]] = {}
+    for cefr_key, cefr_block in loaded.items():
+        if not isinstance(cefr_key, str) or not isinstance(cefr_block, dict):
+            continue
+
+        entries: list[tuple[str, str]] = []
+        for lesson_id, lesson_data in cefr_block.items():
+            if not isinstance(lesson_id, str):
+                continue
+
+            theme_name = ""
+            if isinstance(lesson_data, dict):
+                raw_theme = lesson_data.get("theme")
+                if isinstance(raw_theme, str):
+                    theme_name = raw_theme.strip()
+            elif isinstance(lesson_data, str):
+                theme_name = lesson_data.strip()
+
+            if theme_name:
+                entries.append((lesson_id, theme_name))
+
+        if entries:
+            entries.sort(key=lambda item: _lesson_sort_key(item[0]))
+            result[cefr_key.upper()] = [theme for _, theme in entries]
+
+    return result
 
 
 def _verb_surface_forms(verb: Verb) -> set[str]:
@@ -82,11 +131,21 @@ class LessonOrchestrator:
         *,
         words_per_lesson: int = 10,
         function_pos: frozenset[PartOfSpeech] = FUNCTION_POS,
+        predefined_themes_path: Path | None = None,
+        predefined_themes: dict[str, list[str]] | None = None,
     ) -> None:
         self._generator = generator
         self._assigner = theme_assigner
         self._words_per_lesson = words_per_lesson
         self._function_pos = function_pos
+        if predefined_themes is not None:
+            self._predefined_themes = {
+                key.upper(): list(value) for key, value in predefined_themes.items()
+            }
+        elif predefined_themes_path is not None:
+            self._predefined_themes = _load_predefined_themes(predefined_themes_path)
+        else:
+            self._predefined_themes = {}
 
     def _is_function(self, word: Word) -> bool:
         return word.part_of_speech in self._function_pos
@@ -177,6 +236,56 @@ class LessonOrchestrator:
 
         return plans
 
+    def _plan_with_theme_sequence(
+        self,
+        theme_sequence: list[str],
+        *,
+        all_content: list[Word],
+        function_lemmas: set[str],
+        verb_lookup: dict[str, Verb],
+    ) -> list[LessonPlan]:
+        """Use predefined lesson theme names in order and fill lessons sequentially."""
+        plans: list[LessonPlan] = []
+        accumulated: set[str] = set()
+        accumulated_forms: set[str] = set()
+
+        for index, start in enumerate(
+            range(0, len(all_content), self._words_per_lesson)
+        ):
+            batch = all_content[start : start + self._words_per_lesson]
+            if not batch:
+                continue
+
+            new_lemmas = {w.lemma for w in batch}
+            batch_verbs = [
+                verb_lookup[w.lemma] for w in batch if w.lemma in verb_lookup
+            ]
+            non_verb_batch = [w for w in batch if w.lemma not in verb_lookup]
+            new_forms: set[str] = set()
+            for verb in batch_verbs:
+                new_forms |= _verb_surface_forms(verb)
+
+            theme_name = (
+                theme_sequence[index].strip()
+                if index < len(theme_sequence) and theme_sequence[index].strip()
+                else "misc"
+            )
+            plans.append(
+                LessonPlan(
+                    lesson_id=f"lesson{index + 1:03d}",
+                    theme=theme_name,
+                    new_words=non_verb_batch,
+                    allowed_lemmas=accumulated | new_lemmas,
+                    function_lemmas=function_lemmas,
+                    new_verbs=batch_verbs,
+                    allowed_forms=accumulated_forms | new_forms,
+                )
+            )
+            accumulated |= new_lemmas
+            accumulated_forms |= new_forms
+
+        return plans
+
     def plan(
         self,
         words: list[Word],
@@ -212,6 +321,15 @@ class LessonOrchestrator:
 
         if not all_content:
             return []
+
+        predefined_themes = self._predefined_themes.get(cefr.upper(), [])
+        if predefined_themes:
+            return self._plan_with_theme_sequence(
+                predefined_themes,
+                all_content=all_content,
+                function_lemmas=function_lemmas,
+                verb_lookup=verb_lookup,
+            )
 
         planner = getattr(self._assigner, "plan_lessons", None)
         if callable(planner):

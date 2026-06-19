@@ -1,0 +1,1542 @@
+A1:
+  lesson001:
+    theme: Greetings
+    communicativeGoals:
+      - greet someone
+      - introduce yourself
+      - say goodbye
+
+  lesson002:
+    theme: Personal Information
+    communicativeGoals:
+      - say your name
+      - ask someone's name
+      - state your nationality
+
+  lesson003:
+    theme: Numbers
+    communicativeGoals:
+      - count from 1 to 20
+      - ask someone's age
+      - give your phone number
+
+  lesson004:
+    theme: Family
+    communicativeGoals:
+      - introduce family members
+      - describe relationships
+      - ask about family
+
+  lesson005:
+    theme: Home
+    communicativeGoals:
+      - describe your home
+      - name rooms
+      - describe where you live
+
+  lesson006:
+    theme: Furniture
+    communicativeGoals:
+      - identify furniture
+      - describe a room
+      - talk about possessions
+
+  lesson007:
+    theme: Daily Routine
+    communicativeGoals:
+      - describe your day
+      - tell what time you wake up
+      - talk about habits
+
+  lesson008:
+    theme: Time
+    communicativeGoals:
+      - tell the time
+      - ask the time
+      - discuss schedules
+
+  lesson009:
+    theme: Days and Months
+    communicativeGoals:
+      - name weekdays
+      - talk about dates
+      - mention birthdays
+
+  lesson010:
+    theme: Weather
+    communicativeGoals:
+      - describe the weather
+      - ask about today's weather
+      - choose suitable clothing
+
+  lesson011:
+    theme: Seasons
+    communicativeGoals:
+      - name the seasons
+      - describe seasonal activities
+      - express preferences
+
+  lesson012:
+    theme: Food
+    communicativeGoals:
+      - name common foods
+      - express likes and dislikes
+      - describe meals
+
+  lesson013:
+    theme: Drinks
+    communicativeGoals:
+      - order drinks
+      - offer someone a drink
+      - describe preferences
+
+  lesson014:
+    theme: Breakfast
+    communicativeGoals:
+      - describe breakfast
+      - prepare a meal
+      - ask for food
+
+  lesson015:
+    theme: Shopping
+    communicativeGoals:
+      - ask prices
+      - buy groceries
+      - pay at the checkout
+
+  lesson016:
+    theme: Clothes
+    communicativeGoals:
+      - describe clothing
+      - talk about sizes
+      - buy clothes
+
+  lesson017:
+    theme: Colours
+    communicativeGoals:
+      - identify colours
+      - describe objects
+      - express preferences
+
+  lesson018:
+    theme: The Body
+    communicativeGoals:
+      - name body parts
+      - describe appearance
+      - report simple pain
+
+  lesson019:
+    theme: Health
+    communicativeGoals:
+      - describe symptoms
+      - visit a doctor
+      - ask for medicine
+
+  lesson020:
+    theme: At the Pharmacy
+    communicativeGoals:
+      - buy medicine
+      - ask for advice
+      - understand instructions
+
+  lesson021:
+    theme: School
+    communicativeGoals:
+      - describe a classroom
+      - talk about subjects
+      - ask questions
+
+  lesson022:
+    theme: Work
+    communicativeGoals:
+      - describe your job
+      - introduce colleagues
+      - discuss working hours
+
+  lesson023:
+    theme: Office
+    communicativeGoals:
+      - identify office objects
+      - ask for assistance
+      - describe tasks
+
+  lesson024:
+    theme: Hobbies
+    communicativeGoals:
+      - describe hobbies
+      - ask about interests
+      - invite someone
+
+  lesson025:
+    theme: Sports
+    communicativeGoals:
+      - discuss sports
+      - describe activities
+      - express ability
+
+  lesson026:
+    theme: Music
+    communicativeGoals:
+      - discuss music
+      - describe preferences
+      - talk about concerts
+
+  lesson027:
+    theme: Reading
+    communicativeGoals:
+      - discuss books
+      - describe reading habits
+      - recommend a book
+
+  lesson028:
+    theme: Television
+    communicativeGoals:
+      - discuss programmes
+      - express opinions
+      - describe viewing habits
+
+  lesson029:
+    theme: Computers
+    communicativeGoals:
+      - describe devices
+      - use simple computer vocabulary
+      - ask for technical help
+
+  lesson030:
+    theme: Mobile Phones
+    communicativeGoals:
+      - make a phone call
+      - send messages
+      - discuss apps
+
+  lesson031:
+    theme: Friends
+    communicativeGoals:
+      - introduce friends
+      - describe personalities
+      - make plans
+
+  lesson032:
+    theme: Visiting Someone
+    communicativeGoals:
+      - accept invitations
+      - welcome guests
+      - offer refreshments
+
+  lesson033:
+    theme: At a Café
+    communicativeGoals:
+      - order food
+      - ask for the bill
+      - thank the waiter
+
+  lesson034:
+    theme: At a Restaurant
+    communicativeGoals:
+      - reserve a table
+      - order a meal
+      - express satisfaction
+
+  lesson035:
+    theme: Public Transport
+    communicativeGoals:
+      - buy tickets
+      - ask about departures
+      - understand announcements
+
+  lesson036:
+    theme: Cycling
+    communicativeGoals:
+      - rent a bicycle
+      - ask for directions
+      - describe a route
+
+  lesson037:
+    theme: Driving
+    communicativeGoals:
+      - discuss driving
+      - ask about parking
+      - describe traffic
+
+  lesson038:
+    theme: Walking
+    communicativeGoals:
+      - give directions
+      - ask for directions
+      - describe locations
+
+  lesson039:
+    theme: The City
+    communicativeGoals:
+      - describe a city
+      - locate buildings
+      - ask where something is
+
+  lesson040:
+    theme: The Village
+    communicativeGoals:
+      - describe a village
+      - compare places
+      - discuss local facilities
+
+  lesson041:
+    theme: Nature
+    communicativeGoals:
+      - describe nature
+      - identify landscapes
+      - discuss outdoor activities
+
+  lesson042:
+    theme: Animals
+    communicativeGoals:
+      - name animals
+      - describe pets
+      - talk about farms
+
+  lesson043:
+    theme: Holidays
+    communicativeGoals:
+      - discuss holiday plans
+      - describe vacations
+      - book accommodation
+
+  lesson044:
+    theme: Hotels
+    communicativeGoals:
+      - check in
+      - ask about facilities
+      - solve simple problems
+
+  lesson045:
+    theme: Airports
+    communicativeGoals:
+      - check in for a flight
+      - understand airport signs
+      - ask for information
+
+  lesson046:
+    theme: Trains
+    communicativeGoals:
+      - buy train tickets
+      - understand platforms
+      - ask about delays
+
+  lesson047:
+    theme: Directions
+    communicativeGoals:
+      - understand directions
+      - give directions
+      - locate landmarks
+
+  lesson048:
+    theme: Money
+    communicativeGoals:
+      - exchange money
+      - discuss prices
+      - pay by card
+
+  lesson049:
+    theme: Banking
+    communicativeGoals:
+      - withdraw cash
+      - ask for assistance
+      - understand banking terms
+
+  lesson050:
+    theme: Post Office
+    communicativeGoals:
+      - send a letter
+      - buy stamps
+      - ask about parcels
+
+  lesson051:
+    theme: Emergencies
+    communicativeGoals:
+      - ask for help
+      - call emergency services
+      - describe a problem
+
+  lesson052:
+    theme: Police
+    communicativeGoals:
+      - report theft
+      - describe an incident
+      - ask for assistance
+
+  lesson053:
+    theme: The Doctor
+    communicativeGoals:
+      - make an appointment
+      - describe symptoms
+      - understand advice
+
+  lesson054:
+    theme: The Dentist
+    communicativeGoals:
+      - describe tooth pain
+      - make an appointment
+      - understand treatment
+
+  lesson055:
+    theme: Weekend
+    communicativeGoals:
+      - discuss weekend plans
+      - invite friends
+      - describe activities
+
+  lesson056:
+    theme: Birthdays
+    communicativeGoals:
+      - congratulate someone
+      - give presents
+      - organize a party
+
+  lesson057:
+    theme: Celebrations
+    communicativeGoals:
+      - describe celebrations
+      - invite guests
+      - thank people
+
+  lesson058:
+    theme: Dutch Culture
+    communicativeGoals:
+      - discuss traditions
+      - compare cultures
+      - ask questions
+
+  lesson059:
+    theme: Simple Opinions
+    communicativeGoals:
+      - express agreement
+      - express disagreement
+      - explain preferences
+
+  lesson060:
+    theme: Future Plans
+    communicativeGoals:
+      - discuss tomorrow
+      - make appointments
+      - describe intentions
+
+  lesson061:
+    theme: Appearance
+    communicativeGoals:
+      - describe people
+      - compare appearances
+      - identify someone
+
+  lesson062:
+    theme: Personality
+    communicativeGoals:
+      - describe character
+      - compliment someone
+      - express opinions
+
+  lesson063:
+    theme: Household Tasks
+    communicativeGoals:
+      - describe chores
+      - divide tasks
+      - ask for help
+
+  lesson064:
+    theme: Gardening
+    communicativeGoals:
+      - identify plants
+      - describe gardens
+      - discuss outdoor work
+
+  lesson065:
+    theme: Cooking
+    communicativeGoals:
+      - follow recipes
+      - describe ingredients
+      - prepare meals
+
+  lesson066:
+    theme: Pets
+    communicativeGoals:
+      - describe pets
+      - discuss care
+      - visit a veterinarian
+
+  lesson067:
+    theme: Shopping for Clothes
+    communicativeGoals:
+      - try on clothes
+      - compare sizes
+      - make purchases
+
+  lesson068:
+    theme: Asking Permission
+    communicativeGoals:
+      - ask permission
+      - give permission
+      - refuse politely
+
+  lesson069:
+    theme: Invitations
+    communicativeGoals:
+      - invite someone
+      - accept invitations
+      - decline politely
+
+  lesson070:
+    theme: Simple Problems
+    communicativeGoals:
+      - explain a problem
+      - ask for help
+      - thank someone
+
+  lesson071:
+    theme: Renting a Home
+    communicativeGoals:
+      - ask about rent
+      - describe housing
+      - arrange a viewing
+
+  lesson072:
+    theme: Neighbours
+    communicativeGoals:
+      - introduce yourself
+      - discuss neighbourhoods
+      - ask for help
+
+  lesson073:
+    theme: Environment
+    communicativeGoals:
+      - discuss recycling
+      - describe nature
+      - express responsibility
+
+  lesson074:
+    theme: Internet
+    communicativeGoals:
+      - browse websites
+      - discuss online activities
+      - ask for Wi-Fi
+
+  lesson075:
+    theme: Social Media
+    communicativeGoals:
+      - describe online communication
+      - share information
+      - discuss preferences
+
+  lesson076:
+    theme: Festivals
+    communicativeGoals:
+      - discuss festivals
+      - make plans
+      - describe traditions
+
+  lesson077:
+    theme: Simple Stories
+    communicativeGoals:
+      - tell a short story
+      - describe events
+      - sequence actions
+
+  lesson078:
+    theme: Daily News
+    communicativeGoals:
+      - discuss simple news
+      - express opinions
+      - ask questions
+
+  lesson079:
+    theme: Review
+    communicativeGoals:
+      - review vocabulary
+      - review grammar
+      - improve fluency
+
+  lesson080:
+    theme: Final Integration
+    communicativeGoals:
+      - combine all A1 skills
+      - hold simple conversations
+      - prepare for A2
+
+A2:
+  lesson001:
+    theme: Getting Reacquainted
+    communicativeGoals:
+      - catch up with someone
+      - describe recent events
+      - ask follow-up questions
+
+  lesson002:
+    theme: Life History
+    communicativeGoals:
+      - describe your childhood
+      - talk about past experiences
+      - compare then and now
+
+  lesson003:
+    theme: Education
+    communicativeGoals:
+      - describe your education
+      - discuss qualifications
+      - talk about future studies
+
+  lesson004:
+    theme: Career
+    communicativeGoals:
+      - describe your profession
+      - discuss work experience
+      - explain responsibilities
+
+  lesson005:
+    theme: Looking for a Job
+    communicativeGoals:
+      - read job advertisements
+      - describe your skills
+      - ask about vacancies
+
+  lesson006:
+    theme: Job Interview
+    communicativeGoals:
+      - introduce yourself professionally
+      - answer interview questions
+      - discuss availability
+
+  lesson007:
+    theme: Workplace Communication
+    communicativeGoals:
+      - participate in meetings
+      - ask for clarification
+      - report progress
+
+  lesson008:
+    theme: Working from Home
+    communicativeGoals:
+      - describe your workspace
+      - discuss advantages
+      - solve technical problems
+
+  lesson009:
+    theme: Housing
+    communicativeGoals:
+      - compare homes
+      - discuss renting and buying
+      - describe neighbourhoods
+
+  lesson010:
+    theme: Moving House
+    communicativeGoals:
+      - arrange a move
+      - discuss utilities
+      - describe your new home
+
+  lesson011:
+    theme: Household Repairs
+    communicativeGoals:
+      - report problems
+      - arrange repairs
+      - explain what happened
+
+  lesson012:
+    theme: Shopping for Furniture
+    communicativeGoals:
+      - compare products
+      - discuss prices
+      - make purchasing decisions
+
+  lesson013:
+    theme: Healthy Living
+    communicativeGoals:
+      - discuss healthy habits
+      - give advice
+      - describe routines
+
+  lesson014:
+    theme: Visiting the Doctor
+    communicativeGoals:
+      - explain symptoms
+      - understand recommendations
+      - discuss treatment
+
+  lesson015:
+    theme: Sports and Exercise
+    communicativeGoals:
+      - describe activities
+      - discuss fitness
+      - compare sports
+
+  lesson016:
+    theme: Mental Well-being
+    communicativeGoals:
+      - express emotions
+      - discuss stress
+      - suggest solutions
+
+  lesson017:
+    theme: Cooking
+    communicativeGoals:
+      - explain recipes
+      - describe cooking methods
+      - discuss favourite dishes
+
+  lesson018:
+    theme: Restaurants
+    communicativeGoals:
+      - make reservations
+      - deal with problems
+      - recommend dishes
+
+  lesson019:
+    theme: Supermarkets
+    communicativeGoals:
+      - compare products
+      - discuss prices
+      - ask for recommendations
+
+  lesson020:
+    theme: Clothing and Fashion
+    communicativeGoals:
+      - describe clothing styles
+      - discuss preferences
+      - compare outfits
+
+  lesson021:
+    theme: Banking
+    communicativeGoals:
+      - open an account
+      - discuss payments
+      - solve banking issues
+
+  lesson022:
+    theme: Insurance
+    communicativeGoals:
+      - understand policies
+      - report damage
+      - ask for information
+
+  lesson023:
+    theme: Public Services
+    communicativeGoals:
+      - contact local authorities
+      - request documents
+      - ask for assistance
+
+  lesson024:
+    theme: Transportation
+    communicativeGoals:
+      - compare transport options
+      - discuss delays
+      - explain travel plans
+
+  lesson025:
+    theme: Driving
+    communicativeGoals:
+      - describe traffic situations
+      - report accidents
+      - ask for directions
+
+  lesson026:
+    theme: Cycling
+    communicativeGoals:
+      - discuss cycling routes
+      - explain road safety
+      - rent a bicycle
+
+  lesson027:
+    theme: Travel Planning
+    communicativeGoals:
+      - plan a holiday
+      - compare destinations
+      - book accommodation
+
+  lesson028:
+    theme: Hotels
+    communicativeGoals:
+      - solve accommodation issues
+      - ask about facilities
+      - make requests
+
+  lesson029:
+    theme: Airports
+    communicativeGoals:
+      - deal with travel problems
+      - understand announcements
+      - request assistance
+
+  lesson030:
+    theme: Holidays Abroad
+    communicativeGoals:
+      - describe experiences
+      - compare cultures
+      - discuss travel memories
+
+  lesson031:
+    theme: Family Life
+    communicativeGoals:
+      - discuss family relationships
+      - describe responsibilities
+      - give advice
+
+  lesson032:
+    theme: Raising Children
+    communicativeGoals:
+      - discuss education
+      - describe routines
+      - express opinions
+
+  lesson033:
+    theme: Friends
+    communicativeGoals:
+      - describe friendships
+      - discuss social activities
+      - resolve misunderstandings
+
+  lesson034:
+    theme: Celebrations
+    communicativeGoals:
+      - organize events
+      - invite guests
+      - describe traditions
+
+  lesson035:
+    theme: Culture
+    communicativeGoals:
+      - discuss customs
+      - compare traditions
+      - express opinions
+
+  lesson036:
+    theme: Museums
+    communicativeGoals:
+      - discuss exhibitions
+      - describe artwork
+      - recommend museums
+
+  lesson037:
+    theme: Cinema
+    communicativeGoals:
+      - describe films
+      - express opinions
+      - recommend movies
+
+  lesson038:
+    theme: Books
+    communicativeGoals:
+      - discuss books
+      - summarize stories
+      - recommend reading
+
+  lesson039:
+    theme: Music
+    communicativeGoals:
+      - discuss musical tastes
+      - describe concerts
+      - compare genres
+
+  lesson040:
+    theme: Television and Streaming
+    communicativeGoals:
+      - discuss programmes
+      - compare services
+      - recommend series
+
+  lesson041:
+    theme: Technology
+    communicativeGoals:
+      - describe devices
+      - solve technical issues
+      - explain usage
+
+  lesson042:
+    theme: Internet Safety
+    communicativeGoals:
+      - discuss online privacy
+      - recognize scams
+      - ask for technical help
+
+  lesson043:
+    theme: Social Media
+    communicativeGoals:
+      - discuss online behaviour
+      - express opinions
+      - compare platforms
+
+  lesson044:
+    theme: Nature
+    communicativeGoals:
+      - describe landscapes
+      - discuss outdoor activities
+      - express preferences
+
+  lesson045:
+    theme: Weather
+    communicativeGoals:
+      - describe forecasts
+      - discuss climate
+      - plan activities
+
+  lesson046:
+    theme: Environment
+    communicativeGoals:
+      - discuss recycling
+      - describe environmental problems
+      - suggest improvements
+
+  lesson047:
+    theme: Animals
+    communicativeGoals:
+      - describe wildlife
+      - discuss pets
+      - compare habitats
+
+  lesson048:
+    theme: Gardening
+    communicativeGoals:
+      - describe plants
+      - explain gardening tasks
+      - ask for advice
+
+  lesson049:
+    theme: Volunteering
+    communicativeGoals:
+      - describe volunteer work
+      - explain motivations
+      - encourage participation
+
+  lesson050:
+    theme: Community
+    communicativeGoals:
+      - discuss neighbourhood issues
+      - participate in local events
+      - suggest improvements
+
+  lesson051:
+    theme: Emergencies
+    communicativeGoals:
+      - describe incidents
+      - request assistance
+      - explain situations
+
+  lesson052:
+    theme: Police
+    communicativeGoals:
+      - report crimes
+      - describe suspects
+      - understand procedures
+
+  lesson053:
+    theme: Laws and Rules
+    communicativeGoals:
+      - understand regulations
+      - discuss responsibilities
+      - ask for clarification
+
+  lesson054:
+    theme: Money Management
+    communicativeGoals:
+      - discuss budgets
+      - compare expenses
+      - give financial advice
+
+  lesson055:
+    theme: Consumer Rights
+    communicativeGoals:
+      - return products
+      - make complaints
+      - request refunds
+
+  lesson056:
+    theme: Hobbies
+    communicativeGoals:
+      - describe hobbies
+      - compare activities
+      - invite participation
+
+  lesson057:
+    theme: Learning Languages
+    communicativeGoals:
+      - discuss learning methods
+      - describe progress
+      - ask for advice
+
+  lesson058:
+    theme: Giving Directions
+    communicativeGoals:
+      - explain routes
+      - understand instructions
+      - ask follow-up questions
+
+  lesson059:
+    theme: Making Plans
+    communicativeGoals:
+      - arrange appointments
+      - negotiate schedules
+      - confirm plans
+
+  lesson060:
+    theme: Solving Problems
+    communicativeGoals:
+      - explain difficulties
+      - propose solutions
+      - agree on actions
+
+  lesson061:
+    theme: Describing Experiences
+    communicativeGoals:
+      - tell stories
+      - describe memorable events
+      - sequence actions
+
+  lesson062:
+    theme: Giving Advice
+    communicativeGoals:
+      - recommend actions
+      - express concerns
+      - explain consequences
+
+  lesson063:
+    theme: Making Comparisons
+    communicativeGoals:
+      - compare people
+      - compare places
+      - compare experiences
+
+  lesson064:
+    theme: Expressing Opinions
+    communicativeGoals:
+      - agree politely
+      - disagree politely
+      - justify opinions
+
+  lesson065:
+    theme: Future Plans
+    communicativeGoals:
+      - discuss ambitions
+      - describe intentions
+      - make predictions
+
+  lesson066:
+    theme: Memories
+    communicativeGoals:
+      - describe past events
+      - express emotions
+      - compare experiences
+
+  lesson067:
+    theme: News
+    communicativeGoals:
+      - discuss current events
+      - summarize news
+      - express reactions
+
+  lesson068:
+    theme: Local History
+    communicativeGoals:
+      - describe historical events
+      - discuss traditions
+      - compare past and present
+
+  lesson069:
+    theme: Dutch Society
+    communicativeGoals:
+      - discuss daily life
+      - compare cultures
+      - describe customs
+
+  lesson070:
+    theme: Public Holidays
+    communicativeGoals:
+      - discuss traditions
+      - describe celebrations
+      - make plans
+
+  lesson071:
+    theme: Problem Solving at Work
+    communicativeGoals:
+      - explain issues
+      - suggest solutions
+      - report outcomes
+
+  lesson072:
+    theme: Telephone Conversations
+    communicativeGoals:
+      - make appointments
+      - leave messages
+      - clarify information
+
+  lesson073:
+    theme: Emails and Messages
+    communicativeGoals:
+      - write simple emails
+      - request information
+      - reply politely
+
+  lesson074:
+    theme: Customer Service
+    communicativeGoals:
+      - ask for support
+      - explain problems
+      - evaluate service
+
+  lesson075:
+    theme: Planning an Event
+    communicativeGoals:
+      - organize activities
+      - assign responsibilities
+      - confirm arrangements
+
+  lesson076:
+    theme: Dreams and Goals
+    communicativeGoals:
+      - discuss ambitions
+      - explain motivations
+      - encourage others
+
+  lesson077:
+    theme: Review of Daily Life
+    communicativeGoals:
+      - integrate vocabulary
+      - reinforce grammar
+      - improve fluency
+
+  lesson078:
+    theme: Review of Travel and Work
+    communicativeGoals:
+      - combine travel vocabulary
+      - combine workplace language
+      - practice conversations
+
+  lesson079:
+    theme: Integrated Communication
+    communicativeGoals:
+      - hold longer conversations
+      - express opinions confidently
+      - respond naturally
+
+  lesson080:
+    theme: Preparing for B1
+    communicativeGoals:
+      - consolidate A2 grammar
+      - use expanded vocabulary
+      - prepare for independent communication
+
+B1:
+  lesson001:
+    theme: New Beginnings
+    communicativeGoals:
+      - introduce yourself in detail
+      - describe your background
+      - explain personal goals
+
+  lesson002:
+    theme: Personal Development
+    communicativeGoals:
+      - describe strengths and weaknesses
+      - discuss personal growth
+      - set future goals
+
+  lesson003:
+    theme: Education and Lifelong Learning
+    communicativeGoals:
+      - discuss educational experiences
+      - compare learning methods
+      - explain future study plans
+
+  lesson004:
+    theme: Career Development
+    communicativeGoals:
+      - describe career ambitions
+      - discuss professional development
+      - evaluate work opportunities
+
+  lesson005:
+    theme: Workplace Communication
+    communicativeGoals:
+      - participate in meetings
+      - express agreement and disagreement
+      - summarize discussions
+
+  lesson006:
+    theme: Leadership and Teamwork
+    communicativeGoals:
+      - describe leadership styles
+      - discuss teamwork
+      - resolve conflicts
+
+  lesson007:
+    theme: Work-Life Balance
+    communicativeGoals:
+      - discuss priorities
+      - explain challenges
+      - suggest improvements
+
+  lesson008:
+    theme: Entrepreneurship
+    communicativeGoals:
+      - describe business ideas
+      - explain risks
+      - discuss opportunities
+
+  lesson009:
+    theme: Housing Choices
+    communicativeGoals:
+      - compare housing options
+      - discuss advantages and disadvantages
+      - explain preferences
+
+  lesson010:
+    theme: Sustainable Living
+    communicativeGoals:
+      - discuss sustainability
+      - describe eco-friendly habits
+      - propose improvements
+
+  lesson011:
+    theme: Family Relationships
+    communicativeGoals:
+      - discuss family dynamics
+      - describe responsibilities
+      - express opinions
+
+  lesson012:
+    theme: Friendships
+    communicativeGoals:
+      - describe meaningful friendships
+      - discuss trust
+      - resolve misunderstandings
+
+  lesson013:
+    theme: Raising Children
+    communicativeGoals:
+      - discuss parenting
+      - compare educational approaches
+      - give advice
+
+  lesson014:
+    theme: Healthy Lifestyle
+    communicativeGoals:
+      - discuss healthy habits
+      - evaluate diets
+      - explain routines
+
+  lesson015:
+    theme: Mental Health
+    communicativeGoals:
+      - describe emotions
+      - discuss stress management
+      - support others
+
+  lesson016:
+    theme: Healthcare
+    communicativeGoals:
+      - explain medical situations
+      - understand treatment options
+      - ask detailed questions
+
+  lesson017:
+    theme: Sports and Fitness
+    communicativeGoals:
+      - discuss exercise routines
+      - compare sports
+      - describe achievements
+
+  lesson018:
+    theme: Nutrition
+    communicativeGoals:
+      - discuss healthy eating
+      - compare diets
+      - explain food choices
+
+  lesson019:
+    theme: Cooking and Recipes
+    communicativeGoals:
+      - explain recipes
+      - describe cooking techniques
+      - recommend dishes
+
+  lesson020:
+    theme: Restaurants and Reviews
+    communicativeGoals:
+      - evaluate restaurants
+      - write reviews
+      - make recommendations
+
+  lesson021:
+    theme: Technology in Daily Life
+    communicativeGoals:
+      - discuss technology
+      - compare devices
+      - explain advantages and disadvantages
+
+  lesson022:
+    theme: Artificial Intelligence
+    communicativeGoals:
+      - explain AI applications
+      - discuss opportunities
+      - express concerns
+
+  lesson023:
+    theme: Social Media
+    communicativeGoals:
+      - discuss online behaviour
+      - express opinions
+      - evaluate social media
+
+  lesson024:
+    theme: Online Privacy
+    communicativeGoals:
+      - discuss digital privacy
+      - explain risks
+      - suggest precautions
+
+  lesson025:
+    theme: Shopping Habits
+    communicativeGoals:
+      - compare products
+      - discuss consumer behaviour
+      - justify choices
+
+  lesson026:
+    theme: Consumer Rights
+    communicativeGoals:
+      - make complaints
+      - negotiate solutions
+      - understand guarantees
+
+  lesson027:
+    theme: Money Management
+    communicativeGoals:
+      - discuss budgeting
+      - explain financial decisions
+      - compare saving strategies
+
+  lesson028:
+    theme: Banking and Finance
+    communicativeGoals:
+      - discuss investments
+      - explain financial products
+      - ask for advice
+
+  lesson029:
+    theme: Travel Experiences
+    communicativeGoals:
+      - describe memorable trips
+      - compare destinations
+      - recommend places
+
+  lesson030:
+    theme: International Travel
+    communicativeGoals:
+      - discuss cultural differences
+      - solve travel problems
+      - give travel advice
+
+  lesson031:
+    theme: Public Transport
+    communicativeGoals:
+      - discuss transportation systems
+      - compare alternatives
+      - explain preferences
+
+  lesson032:
+    theme: Mobility and Sustainability
+    communicativeGoals:
+      - discuss sustainable transport
+      - evaluate policies
+      - propose improvements
+
+  lesson033:
+    theme: Environment
+    communicativeGoals:
+      - discuss climate change
+      - explain environmental issues
+      - suggest solutions
+
+  lesson034:
+    theme: Nature and Wildlife
+    communicativeGoals:
+      - describe ecosystems
+      - discuss conservation
+      - express concerns
+
+  lesson035:
+    theme: Weather and Climate
+    communicativeGoals:
+      - discuss climate trends
+      - describe extreme weather
+      - compare regions
+
+  lesson036:
+    theme: Volunteering
+    communicativeGoals:
+      - explain volunteer work
+      - discuss motivations
+      - encourage participation
+
+  lesson037:
+    theme: Community Life
+    communicativeGoals:
+      - discuss neighbourhood issues
+      - propose initiatives
+      - evaluate community projects
+
+  lesson038:
+    theme: Culture and Traditions
+    communicativeGoals:
+      - compare traditions
+      - discuss cultural identity
+      - explain customs
+
+  lesson039:
+    theme: Museums and Heritage
+    communicativeGoals:
+      - describe historical sites
+      - evaluate exhibitions
+      - recommend visits
+
+  lesson040:
+    theme: Literature
+    communicativeGoals:
+      - summarize books
+      - discuss characters
+      - express opinions
+
+  lesson041:
+    theme: Film and Television
+    communicativeGoals:
+      - review films
+      - compare genres
+      - recommend productions
+
+  lesson042:
+    theme: Music and Performing Arts
+    communicativeGoals:
+      - discuss performances
+      - compare styles
+      - describe experiences
+
+  lesson043:
+    theme: News and Current Events
+    communicativeGoals:
+      - summarize news
+      - discuss events
+      - express opinions
+
+  lesson044:
+    theme: Politics and Society
+    communicativeGoals:
+      - discuss social issues
+      - explain viewpoints
+      - compare opinions
+
+  lesson045:
+    theme: Law and Justice
+    communicativeGoals:
+      - discuss laws
+      - explain rights
+      - describe legal situations
+
+  lesson046:
+    theme: Education Systems
+    communicativeGoals:
+      - compare schools
+      - evaluate teaching methods
+      - discuss reforms
+
+  lesson047:
+    theme: Science and Discovery
+    communicativeGoals:
+      - describe scientific developments
+      - explain discoveries
+      - discuss impacts
+
+  lesson048:
+    theme: Innovation
+    communicativeGoals:
+      - discuss inventions
+      - evaluate new ideas
+      - explain benefits
+
+  lesson049:
+    theme: Communication Skills
+    communicativeGoals:
+      - present ideas clearly
+      - persuade others
+      - summarize discussions
+
+  lesson050:
+    theme: Solving Problems
+    communicativeGoals:
+      - analyse situations
+      - propose solutions
+      - justify decisions
+
+  lesson051:
+    theme: Making Decisions
+    communicativeGoals:
+      - compare options
+      - explain choices
+      - negotiate outcomes
+
+  lesson052:
+    theme: Giving Presentations
+    communicativeGoals:
+      - structure information
+      - engage an audience
+      - answer questions
+
+  lesson053:
+    theme: Debating Opinions
+    communicativeGoals:
+      - defend viewpoints
+      - challenge arguments
+      - reach conclusions
+
+  lesson054:
+    theme: Planning Projects
+    communicativeGoals:
+      - organize tasks
+      - assign responsibilities
+      - monitor progress
+
+  lesson055:
+    theme: Dutch Society
+    communicativeGoals:
+      - discuss social issues
+      - compare cultures
+      - evaluate traditions
+
+  lesson056:
+    theme: International Perspectives
+    communicativeGoals:
+      - compare countries
+      - discuss globalization
+      - describe cultural experiences
+
+  lesson057:
+    theme: Future Challenges
+    communicativeGoals:
+      - discuss future trends
+      - make predictions
+      - evaluate possibilities
+
+  lesson058:
+    theme: Review of B1 Communication
+    communicativeGoals:
+      - integrate grammar
+      - strengthen vocabulary
+      - improve fluency
+
+  lesson059:
+    theme: Integrated Discussions
+    communicativeGoals:
+      - sustain conversations
+      - express nuanced opinions
+      - summarize viewpoints
+
+  lesson060:
+    theme: Preparing for B2
+    communicativeGoals:
+      - consolidate B1 skills
+      - increase confidence
+      - prepare for independent language use

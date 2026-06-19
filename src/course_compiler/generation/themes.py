@@ -31,11 +31,19 @@ _SYSTEM_PROMPT = (
 _LESSON_PLAN_SYSTEM_PROMPT = (
     "You are a language-course planner. "
     "You will receive CEFR level, vocabulary list, and words-per-lesson (n). "
+    "Design themes typically used in beginner language courses, centered on practical daily-life situations. "
+    "Prefer themes like: greetings and introductions, family and people, home and rooms, food and drink, shopping and money, "
+    "time and dates, school/work, travel and transport, weather and seasons, health and body, hobbies and sports, "
+    "city and directions, services and errands. "
+    "Each lesson must be semantically coherent and usable as a real beginner lesson unit. "
+    "Do not group by spelling, alphabetic order, or arbitrary word similarity. "
+    "Avoid mixed buckets that combine unrelated domains. "
     "First determine lesson_count = ceil(vocabulary_size / n). "
     "Then produce exactly lesson_count lesson plans, each with a concise English theme "
     "and seed_lemmas chosen from the provided vocabulary list only. "
     "Each lesson should include between n/2 and n seed lemmas (rounded down for n/2, min 1). "
     "Some seed lemmas may already be known to the learner; that is acceptable. "
+    "Use concrete theme names (no placeholders like 'theme-64'). "
     'Respond as JSON only with shape: {"lessons": [{"theme": str, "seed_lemmas": [str]}]}.'
 )
 
@@ -209,7 +217,6 @@ class LLMThemeAssigner:
 
         valid_lemmas = set(lemmas)
         lesson_count = math.ceil(len(lemmas) / words_per_lesson)
-        min_seed = max(1, words_per_lesson // 2)
         max_seed = max(1, words_per_lesson)
 
         lessons_raw = raw["lessons"]
@@ -231,31 +238,19 @@ class LLMThemeAssigner:
             if len(seeds) > max_seed:
                 seeds = seeds[:max_seed]
 
-            while len(seeds) < min_seed:
+            # Keep themes coherent: only force a seed when the lesson is empty,
+            # do not pad to n/2 with potentially unrelated leftovers.
+            if not seeds:
                 candidate = next(
                     (l for l in lemmas if l not in used and l not in seeds), None
                 )
                 if candidate is None:
                     candidate = next((l for l in lemmas if l not in seeds), None)
                 if candidate is None:
-                    break
+                    continue
                 seeds.append(candidate)
 
             used.update(seeds)
             lessons.append(LessonThemePlan(theme=theme, seed_lemmas=seeds))
-
-        remaining = [l for l in lemmas if l not in used]
-        if remaining and lessons:
-            cursor = 0
-            for lemma in remaining:
-                for _ in range(len(lessons)):
-                    bucket = lessons[cursor]
-                    if (
-                        len(bucket.seed_lemmas) < max_seed
-                        and lemma not in bucket.seed_lemmas
-                    ):
-                        bucket.seed_lemmas.append(lemma)
-                        break
-                    cursor = (cursor + 1) % len(lessons)
 
         return lessons

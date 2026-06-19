@@ -130,11 +130,16 @@ def test_plan_lessons_returns_sanitized_lesson_blueprints():
 
     # ceil(5/3) = 2 lessons
     assert len(plans) == 2
-    # For n=3, min seed is floor(n/2)=1 and max seed is 3.
+    # Sanitizer keeps plans valid without force-mixing unrelated leftovers.
     assert 1 <= len(plans[0].seed_lemmas) <= 3
     assert 1 <= len(plans[1].seed_lemmas) <= 3
-    all_seeded = {lemma for plan in plans for lemma in plan.seed_lemmas}
-    assert {"huis", "deur", "eten", "brood", "lopen"}.issubset(all_seeded)
+    assert plans[0].theme == "home"
+    assert plans[1].theme == "food"
+    assert set(plans[0].seed_lemmas).issubset({"huis", "deur", "eten", "brood", "lopen"})
+    assert set(plans[1].seed_lemmas).issubset({"huis", "deur", "eten", "brood", "lopen"})
+    # Unknown lemma from LLM output must be removed.
+    assert "x-unknown" not in plans[0].seed_lemmas
+    assert "x-unknown" not in plans[1].seed_lemmas
 
 
 def test_plan_lessons_returns_empty_on_provider_error():

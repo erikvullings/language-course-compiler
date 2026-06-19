@@ -121,6 +121,12 @@ To preview and then continue in one run:
 course generate-lessons --lang nl --cefr A1 --preview --approve
 ```
 
+To use a specific predefined theme catalog YAML:
+
+```bash
+course generate-lessons --lang nl --cefr A1 --themes-file themes.yaml
+```
+
 One lesson file per lesson is written to the output directory as
 `lesson001.json`, `lesson002.json`, … Run once per CEFR level to build a
 full A1 → B2 course. LLM responses (theme clustering and lesson text) are
@@ -168,6 +174,11 @@ provider = create_provider(Settings.load())   # picks Ollama or OpenAI from .env
 print(provider.complete("Translate 'huis' to English.").content)        # sync
 # result = await provider.acomplete("Translate 'huis' to English.")     # async
 ```
+
+## TODO
+
+- [ ] Download mp3 files from [Wiktionary](https://en.wiktionary.org/wiki/Wiktionary:Main_Page) and link them to the examples and words.
+- [ ] Download IPA examples from [https://en.wikipedia.org/wiki/Help:IPA/Dutch](https://en.wikipedia.org/wiki/Help:IPA/Dutch). See also [Seeing Speech](https://www.seeingspeech.ac.uk/ipa-charts/) and [IPA Chart](https://www.ipachart.com/) and generate a simple chart for it.
 
 ## License
 

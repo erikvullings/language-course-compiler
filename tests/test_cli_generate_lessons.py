@@ -105,6 +105,23 @@ def _write_minimal_lexicon_json(course_dir):
     )
 
 
+def _write_themes_file(path, a1_theme: str):
+    path.write_text(
+        yaml.safe_dump(
+            {
+                "A1": {
+                    "lesson001": {
+                        "theme": a1_theme,
+                        "communicativeGoals": ["goal1"],
+                    }
+                }
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+
 def test_generate_lessons_preview_prints_blueprint_only(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(
         "course_compiler.cli.create_provider",
@@ -133,7 +150,7 @@ def test_generate_lessons_preview_prints_blueprint_only(tmp_path, monkeypatch, c
     assert rc == 0
     rendered = json.loads(capsys.readouterr().out)
     assert rendered["lessonCount"] == 1
-    assert rendered["lessons"][0]["theme"] == "home"
+    assert rendered["lessons"][0]["theme"] == "Greetings"
     assert rendered["lessons"][0]["seedLemmas"] == ["huis", "deur"]
     assert not out_dir.exists()
 
@@ -206,3 +223,36 @@ def test_generate_lessons_preview_reads_words_json_layout(
     rendered = json.loads(capsys.readouterr().out)
     assert rendered["lessonCount"] == 1
     assert rendered["lessons"][0]["seedLemmas"] == ["huis", "deur"]
+
+
+def test_generate_lessons_preview_uses_themes_file_override(
+    tmp_path, monkeypatch, capsys
+):
+    monkeypatch.setattr(
+        "course_compiler.cli.create_provider",
+        lambda settings: _GenerateLessonsProvider(),
+    )
+
+    course_dir = tmp_path / "courses" / "nl"
+    _write_minimal_lexicon(course_dir)
+    themes_file = tmp_path / "custom-themes.yaml"
+    _write_themes_file(themes_file, "Custom A1 Theme")
+
+    rc = main(
+        [
+            "generate-lessons",
+            "--lang",
+            "nl",
+            "--cefr",
+            "A1",
+            "--lexicon",
+            str(course_dir),
+            "--themes-file",
+            str(themes_file),
+            "--preview",
+        ]
+    )
+
+    assert rc == 0
+    rendered = json.loads(capsys.readouterr().out)
+    assert rendered["lessons"][0]["theme"] == "Custom A1 Theme"
