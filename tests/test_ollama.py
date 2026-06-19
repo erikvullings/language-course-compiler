@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import httpx
+import httpcore
 import pytest
 
 from course_compiler.llm import LLMError, Message, OllamaProvider, Role
@@ -72,3 +73,19 @@ def test_malformed_response_raises_llm_error(make_clients):
     provider = OllamaProvider(**make_clients(handler))
     with pytest.raises(LLMError):
         provider.complete("hi")
+
+
+def test_complete_retries_read_timeout_then_succeeds(make_clients):
+    state = {"calls": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        state["calls"] += 1
+        if state["calls"] == 1:
+            raise httpcore.ReadTimeout("timed out")
+        return json_response({"model": "llama3", "message": {"content": "ok"}})
+
+    provider = OllamaProvider(max_retries=1, **make_clients(handler))
+    result = provider.complete("hi")
+
+    assert result.content == "ok"
+    assert state["calls"] == 2

@@ -73,3 +73,9 @@ def test_lemmatize_returns_none_for_unknown(monkeypatch):
     assert lem.lemmatize("huis") == "huis"
     assert lem.lemmatize("huizen") == "huis"
     assert lem.lemmatize("xyz") is None
+
+
+def test_default_nl_lemmatizer_is_registered():
+    lem = create_lemmatizer("nl")
+    assert lem.language == "nl"
+    assert lem.lemmatize("Huis") == "huis"

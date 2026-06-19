@@ -789,10 +789,9 @@ while remaining completely static, reproducible, version-controlled and suitable
 
 Instead of generating a single JSON output, generate a manifest plus multiple JSON bundles. For example:
 
-- manifest.json (course metadata and version)
-- words.json (all lexical entries)
-- verbs.json
-- grammar.json
-- lessons/lesson001.json, lesson002.json, …
-- exercises.json
-
+* manifest.json (course metadata and version)
+* words.json (all lexical entries)
+* verbs.json
+* grammar.json
+* lessons/lesson001.json, lesson002.json, …
+* exercises.json

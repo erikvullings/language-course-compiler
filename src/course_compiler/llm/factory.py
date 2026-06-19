@@ -46,6 +46,7 @@ def _build_ollama(settings: Settings) -> OllamaProvider:
         base_url=settings.ollama_base_url,
         temperature=settings.llm_temperature,
         timeout=settings.llm_timeout,
+        max_retries=settings.llm_max_retries,
     )
 
 

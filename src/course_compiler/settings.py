@@ -28,7 +28,8 @@ class Settings:
 
     llm_provider: str = "ollama"
     llm_temperature: float = 0.7
-    llm_timeout: float = 60.0
+    llm_timeout: float = 300.0
+    llm_max_retries: int = 2
 
     ollama_base_url: str = OLLAMA_BASE_URL
     ollama_model: str = OLLAMA_MODEL
@@ -61,6 +62,7 @@ class Settings:
             llm_provider=_get(env, "LLM_PROVIDER", cls.llm_provider).lower(),
             llm_temperature=float(_get(env, "LLM_TEMPERATURE", str(cls.llm_temperature))),
             llm_timeout=float(_get(env, "LLM_TIMEOUT", str(cls.llm_timeout))),
+            llm_max_retries=int(_get(env, "LLM_MAX_RETRIES", str(cls.llm_max_retries))),
             ollama_base_url=_get(env, "OLLAMA_BASE_URL", cls.ollama_base_url),
             ollama_model=_get(env, "OLLAMA_MODEL", cls.ollama_model),
             openai_api_key=_get(env, "OPENAI_API_KEY", cls.openai_api_key),

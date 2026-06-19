@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
+import time
+
 import httpx
+import httpcore
 
 from course_compiler.llm.base import (
     LLMError,
@@ -30,6 +34,7 @@ class OllamaProvider(LLMProvider):
         base_url: str = DEFAULT_BASE_URL,
         temperature: float = 0.7,
         timeout: float = 60.0,
+        max_retries: int = 2,
         client: httpx.Client | None = None,
         async_client: httpx.AsyncClient | None = None,
     ) -> None:
@@ -37,6 +42,7 @@ class OllamaProvider(LLMProvider):
         self.base_url = base_url.rstrip("/")
         self.temperature = temperature
         self.timeout = timeout
+        self.max_retries = max_retries
         self._client = client
         self._async_client = async_client
 
@@ -77,12 +83,16 @@ class OllamaProvider(LLMProvider):
     ) -> LLMResponse:
         client = self._client or httpx.Client(timeout=self.timeout)
         try:
-            resp = client.post(
-                f"{self.base_url}/api/chat",
-                json=self._payload(prompt, model, temperature, kwargs),
-            )
-            resp.raise_for_status()
-            return self._parse(resp.json())
+            payload = self._payload(prompt, model, temperature, kwargs)
+            for attempt in range(self.max_retries + 1):
+                try:
+                    resp = client.post(f"{self.base_url}/api/chat", json=payload)
+                    resp.raise_for_status()
+                    return self._parse(resp.json())
+                except (httpx.ReadTimeout, httpcore.ReadTimeout) as exc:
+                    if attempt >= self.max_retries:
+                        raise LLMError(f"Ollama request failed: {exc}") from exc
+                    time.sleep(0.5 * (attempt + 1))
         except httpx.HTTPError as exc:
             raise LLMError(f"Ollama request failed: {exc}") from exc
         finally:
@@ -99,12 +109,16 @@ class OllamaProvider(LLMProvider):
     ) -> LLMResponse:
         client = self._async_client or httpx.AsyncClient(timeout=self.timeout)
         try:
-            resp = await client.post(
-                f"{self.base_url}/api/chat",
-                json=self._payload(prompt, model, temperature, kwargs),
-            )
-            resp.raise_for_status()
-            return self._parse(resp.json())
+            payload = self._payload(prompt, model, temperature, kwargs)
+            for attempt in range(self.max_retries + 1):
+                try:
+                    resp = await client.post(f"{self.base_url}/api/chat", json=payload)
+                    resp.raise_for_status()
+                    return self._parse(resp.json())
+                except (httpx.ReadTimeout, httpcore.ReadTimeout) as exc:
+                    if attempt >= self.max_retries:
+                        raise LLMError(f"Ollama request failed: {exc}") from exc
+                    await asyncio.sleep(0.5 * (attempt + 1))
         except httpx.HTTPError as exc:
             raise LLMError(f"Ollama request failed: {exc}") from exc
         finally:

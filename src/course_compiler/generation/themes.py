@@ -12,7 +12,7 @@ import re
 from typing import Protocol
 
 from course_compiler.generation.cache import LLMCache
-from course_compiler.llm.base import LLMProvider, Message, Role
+from course_compiler.llm.base import LLMError, LLMProvider, Message, Role
 from course_compiler.models import Word
 
 _FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL)
@@ -87,12 +87,19 @@ class LLMThemeAssigner:
             Message(Role.SYSTEM, _SYSTEM_PROMPT),
             Message(Role.USER, json.dumps(lemmas, ensure_ascii=False)),
         ]
-        response = self._provider.complete(messages, model=self._model or None)
+
+        try:
+            response = self._provider.complete(messages, model=self._model or None)
+            parsed = self._parse(response.content, by_lemma)
+        except (LLMError, json.JSONDecodeError, TypeError, ValueError):
+            # Keep lesson generation moving even when theme clustering fails.
+            # The fallback is deterministic and includes all input words.
+            return {"misc": sorted(by_lemma.values(), key=lambda w: w.lemma)}
 
         if self._cache is not None:
             self._cache.put(self._model, raw_messages, response)
 
-        return self._parse(response.content, by_lemma)
+        return parsed
 
     def _parse(self, text: str, by_lemma: dict[str, Word]) -> dict[str, list[Word]]:
         raw = json.loads(_strip_fences(text))

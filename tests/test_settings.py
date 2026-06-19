@@ -11,6 +11,8 @@ def test_defaults_when_env_is_empty():
     assert settings.llm_provider == "ollama"
     assert settings.ollama_base_url == "http://localhost:11434"
     assert settings.openai_model == "gpt-4o-mini"
+    assert settings.llm_timeout == 300.0
+    assert settings.llm_max_retries == 2
 
 
 def test_env_values_override_defaults():

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 
 from course_compiler.generation.themes import LLMThemeAssigner
-from course_compiler.llm.base import LLMProvider, LLMResponse, PromptInput
+from course_compiler.llm.base import LLMError, LLMProvider, LLMResponse, PromptInput
 from course_compiler.models import PartOfSpeech, Word
 
 
@@ -80,3 +80,20 @@ def test_llm_json_wrapped_in_markdown_is_parsed():
     assigner = LLMThemeAssigner(provider, model="stub")
     themes = assigner.assign(words)
     assert "home" in themes
+
+
+def test_assign_falls_back_to_misc_on_provider_error():
+    class _FailingProvider(LLMProvider):
+        def complete(self, prompt: PromptInput, *, model=None, temperature=None, **kwargs) -> LLMResponse:
+            raise LLMError("timeout")
+
+        async def acomplete(self, prompt: PromptInput, *, model=None, temperature=None, **kwargs) -> LLMResponse:
+            raise LLMError("timeout")
+
+    words = [_word("huis"), _word("deur")]
+    assigner = LLMThemeAssigner(_FailingProvider(), model="stub")
+
+    themes = assigner.assign(words)
+
+    assert set(themes.keys()) == {"misc"}
+    assert [w.lemma for w in themes["misc"]] == ["deur", "huis"]

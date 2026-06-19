@@ -85,7 +85,8 @@ course import \
   --out       courses/nl
 ```
 
-This writes `courses/nl/words.json` (use `--limit N` for a quick smoke run).
+This writes canonical YAML entries into `courses/nl/words/` and `courses/nl/verbs/`
+(use `--limit N` for a quick smoke run).
 
 ### Generate lessons
 
@@ -111,6 +112,21 @@ One lesson file per lesson is written to the output directory as
 full A1 → B2 course. LLM responses (theme clustering and lesson text) are
 cached in `courses/nl/.llm_cache/` so subsequent runs are fast and
 byte-identical.
+
+### Export split JSON bundles
+
+```bash
+course export --lang nl --course-dir courses/nl --out courses/nl/export
+```
+
+This writes:
+
+- `manifest.json`
+- `words.json`
+- `verbs.json`
+- `grammar.json`
+- `exercises.json`
+- `lessons/lesson001.json`, `lessons/lesson002.json`, ...
 
 ## Using the LLM module directly
 
