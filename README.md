@@ -12,12 +12,21 @@ Italian and Spanish are just different configurations and input datasets. See
 
 ## Status
 
-Initial scaffold. Implemented so far:
+Implemented so far:
 
 - uv / ruff / pytest project setup
 - `.env`-based settings (`course_compiler.settings`)
-- A provider-agnostic LLM module (`course_compiler.llm`) with synchronous and
-  asynchronous calls, and built-in **Ollama** and **OpenAI** providers.
+- Provider-agnostic LLM module (`course_compiler.llm`) — Ollama and OpenAI, sync + async
+- Canonical, language-agnostic lexicon schema (`course_compiler.models`)
+- Dutch importer (`course_compiler.converters.dutch`) — kaikki.org, ODWN, wordfreq, NT2Lex
+- Lesson generation pipeline (`course_compiler.generation`):
+  - Pluggable `Lemmatizer` registry (mirrors the LLM factory pattern)
+  - Disk-based LLM response cache for reproducible, offline-safe generation
+  - `VocabularyValidator` — tokenize → lemmatize → reject unknown content words
+  - `LessonGenerator` — LLM call + validation + retry on vocabulary leakage
+  - `LLMThemeAssigner` — clusters vocabulary into semantic themes via LLM (cached)
+  - `LessonOrchestrator` — filters by CEFR, assigns themes, sequences lessons,
+    accumulates allowed vocabulary, derives function-word exemptions from POS
 
 ## Setup
 
@@ -44,25 +53,15 @@ uv run ruff check .           # lint
 uv run ruff format .          # format
 ```
 
-## Using the LLM module
+## CLI reference
 
-```python
-from course_compiler.llm import create_provider
-from course_compiler.settings import Settings
-
-provider = create_provider(Settings.load())   # picks Ollama or OpenAI from .env
-
-print(provider.complete("Translate 'huis' to English.").content)        # sync
-# result = await provider.acomplete("Translate 'huis' to English.")     # async
-```
-
-Or via the CLI:
+### Ask the LLM a question
 
 ```bash
 course ask "Translate 'huis' to English."
 ```
 
-## Importing a lexicon (Dutch)
+### Import a lexicon (Dutch)
 
 The canonical lexicon schema is defined as language-agnostic Pydantic models in
 `course_compiler.models`. Language-specific importers in
@@ -86,8 +85,37 @@ course import \
   --out       courses/nl
 ```
 
-This writes one YAML file per lemma under `courses/nl/words/` and
-`courses/nl/verbs/` (use `--limit N` for a quick smoke run).
+This writes `courses/nl/words.json` (use `--limit N` for a quick smoke run).
+
+### Generate lessons
+
+```bash
+course generate-lessons \
+  --lexicon      courses/nl \
+  --lang         nl \
+  --language-name Dutch \
+  --cefr         A1 \
+  --words-per-lesson 10 \
+  --out          courses/nl/lessons
+```
+
+One lesson file per lesson is written to the output directory as
+`lesson001.txt`, `lesson002.txt`, … Run once per CEFR level to build a
+full A1 → B2 course. LLM responses (theme clustering and lesson text) are
+cached in `courses/nl/.llm_cache/` so subsequent runs are fast and
+byte-identical.
+
+## Using the LLM module directly
+
+```python
+from course_compiler.llm import create_provider
+from course_compiler.settings import Settings
+
+provider = create_provider(Settings.load())   # picks Ollama or OpenAI from .env
+
+print(provider.complete("Translate 'huis' to English.").content)        # sync
+# result = await provider.acomplete("Translate 'huis' to English.")     # async
+```
 
 ## License
 

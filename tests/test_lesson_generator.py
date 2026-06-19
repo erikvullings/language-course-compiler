@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from course_compiler.generation.base import Lemmatizer
-from course_compiler.generation.lesson import LessonGenerator
+from course_compiler.generation.lesson import LessonGenerator, _target_length
 from course_compiler.llm.base import LLMProvider, LLMResponse, Message, PromptInput
 
 
@@ -47,6 +47,70 @@ def _lemmatizer(words: list[str]) -> _MapLemmatizer:
     return _MapLemmatizer({w: w for w in words})
 
 
+# ---------------------------------------------------------------------------
+# Target length scaling
+# ---------------------------------------------------------------------------
+
+def test_target_length_scales_with_word_count():
+    assert _target_length(10) == "150 words"
+    assert _target_length(5) == "75 words"
+    assert _target_length(1) == "30 words"   # floor at 30
+
+
+def test_target_length_floor():
+    assert _target_length(0) == "30 words"
+
+
+# ---------------------------------------------------------------------------
+# Prompt content
+# ---------------------------------------------------------------------------
+
+def test_generate_language_in_system_prompt():
+    mapping = {"huis": "huis"}
+    provider = _StubProvider(["huis"])
+    gen = LessonGenerator(provider, _MapLemmatizer(mapping))
+    gen.generate("lesson001", ["huis"], {"huis"}, language="Dutch", model="stub")
+    system_msg = provider._calls[0][0]
+    assert "Dutch" in system_msg.content
+
+
+def test_generate_cefr_in_user_prompt():
+    mapping = {"huis": "huis"}
+    provider = _StubProvider(["huis"])
+    gen = LessonGenerator(provider, _MapLemmatizer(mapping))
+    gen.generate("lesson001", ["huis"], {"huis"}, language="Dutch", cefr="A1", model="stub")
+    user_msg = provider._calls[0][1]
+    assert "A1" in user_msg.content
+
+
+def test_generate_theme_in_user_prompt():
+    mapping = {"huis": "huis"}
+    provider = _StubProvider(["huis"])
+    gen = LessonGenerator(provider, _MapLemmatizer(mapping))
+    gen.generate("lesson001", ["huis"], {"huis"}, language="Dutch", theme="home", model="stub")
+    user_msg = provider._calls[0][1]
+    assert "home" in user_msg.content
+
+
+def test_allowed_words_not_in_prompt():
+    """The full allowed-words list must not appear in the prompt (it's for the validator only)."""
+    mapping = {w: w for w in ["huis", "kat", "boom", "water"]}
+    provider = _StubProvider(["huis"])
+    gen = LessonGenerator(provider, _MapLemmatizer(mapping))
+    gen.generate(
+        "lesson001", ["huis"], {"huis", "kat", "boom", "water"}, language="Dutch", model="stub"
+    )
+    full_prompt = " ".join(m.content for m in provider._calls[0])
+    # "kat", "boom", "water" are allowed but should not appear in the prompt
+    assert "kat" not in full_prompt
+    assert "boom" not in full_prompt
+    assert "water" not in full_prompt
+
+
+# ---------------------------------------------------------------------------
+# Validation and retry
+# ---------------------------------------------------------------------------
+
 def test_generate_returns_content_when_valid():
     mapping = {"huis": "huis", "zijn": "zijn", "groot": "groot"}
     provider = _StubProvider(["huis zijn groot"])
@@ -62,25 +126,14 @@ def test_generate_returns_content_when_valid():
     assert result.lesson_id == "lesson001"
 
 
-def test_generate_language_appears_in_prompt():
-    """The system prompt must mention the target language."""
-    mapping = {"huis": "huis"}
-    provider = _StubProvider(["huis"])
-    gen = LessonGenerator(provider, _MapLemmatizer(mapping))
-    gen.generate("lesson001", ["huis"], {"huis"}, language="Dutch", model="stub")
-    system_msg = provider._calls[0][0]
-    assert "Dutch" in system_msg.content
-
-
 def test_generate_retries_on_vocabulary_leakage():
-    """First response has an unknown content word; second is clean."""
     mapping = {"huis": "huis", "zijn": "zijn", "snel": "snel"}
     provider = _StubProvider(["huis snel zijn", "huis zijn"])
     gen = LessonGenerator(provider, _MapLemmatizer(mapping))
     result = gen.generate(
         lesson_id="lesson002",
         new_words=["huis", "zijn"],
-        allowed_words={"huis", "zijn"},  # "snel" is NOT allowed
+        allowed_words={"huis", "zijn"},
         language="Dutch",
         model="stub",
     )
@@ -89,19 +142,13 @@ def test_generate_retries_on_vocabulary_leakage():
 
 
 def test_function_words_are_exempt():
-    """Tokens whose lemma is in function_lemmas pass without appearing in allowed_words."""
-    # "de" and "is" are function words; "huis" is a content word.
     mapping = {"de": "de", "huis": "huis", "is": "zijn"}
     provider = _StubProvider(["de huis is"])
-    gen = LessonGenerator(
-        provider,
-        _MapLemmatizer(mapping),
-        function_lemmas={"de", "zijn"},  # function words
-    )
+    gen = LessonGenerator(provider, _MapLemmatizer(mapping), function_lemmas={"de", "zijn"})
     result = gen.generate(
         lesson_id="lesson003",
         new_words=["huis"],
-        allowed_words={"huis"},  # only content word
+        allowed_words={"huis"},
         language="Dutch",
         model="stub",
     )
@@ -123,7 +170,6 @@ def test_generate_raises_after_max_retries():
 
 
 def test_generate_uses_cache(tmp_path):
-    """Second call with same inputs hits the cache, not the provider."""
     from course_compiler.generation.cache import LLMCache
 
     words = ["huis", "zijn"]

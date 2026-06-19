@@ -121,7 +121,6 @@ class LessonOrchestrator:
         cefr: str,
         model: str | None = None,
         temperature: float = 0.7,
-        target_length: str = "180 words",
     ) -> list[GeneratedLesson]:
         """Plan then generate all lessons, returning :class:`GeneratedLesson` objects."""
         plans = self.plan(words, cefr=cefr)
@@ -132,9 +131,10 @@ class LessonOrchestrator:
                 [w.lemma for w in plan.new_words],
                 plan.allowed_lemmas,
                 language=language,
+                cefr=cefr,
+                theme=plan.theme,
                 model=model,
                 temperature=temperature,
-                target_length=target_length,
                 function_lemmas=plan.function_lemmas,
             )
             lessons.append(lesson)

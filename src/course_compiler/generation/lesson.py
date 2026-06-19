@@ -9,6 +9,13 @@ from course_compiler.generation.cache import LLMCache
 from course_compiler.generation.validator import VocabularyValidator
 from course_compiler.llm.base import LLMProvider, Message, Role
 
+#: Words of lesson text generated per new content word introduced.
+WORDS_PER_NEW_WORD = 15
+
+
+def _target_length(new_word_count: int) -> str:
+    return f"{max(new_word_count * WORDS_PER_NEW_WORD, 30)} words"
+
 
 @dataclass(frozen=True)
 class GeneratedLesson:
@@ -20,10 +27,11 @@ class GeneratedLesson:
 def _system_prompt(language: str, target_length: str) -> str:
     return (
         f"You are a language-learning content writer. "
-        f"Write a lesson in {language}, approximately {target_length}. "
-        f"Use ONLY the content words (nouns, verbs, adjectives, adverbs) listed by the "
-        f"user — articles, prepositions, conjunctions, and common pronouns may be used freely. "
-        f"Respond with lesson text only — no explanations, no meta-commentary."
+        f"Write a short lesson in {language}, approximately {target_length}. "
+        f"Introduce each new word naturally in context. "
+        f"Keep the vocabulary at the stated CEFR level — do not use advanced words. "
+        f"Articles, prepositions, conjunctions, and common pronouns may be used freely. "
+        f"Respond with lesson text only — no headings, no word lists, no meta-commentary."
     )
 
 
@@ -55,15 +63,16 @@ class LessonGenerator:
         self,
         lesson_id: str,
         language: str,
+        cefr: str,
+        theme: str,
         target_length: str,
         new_words: list[str],
-        allowed_words: set[str],
     ) -> list[Message]:
-        word_list = ", ".join(sorted(allowed_words))
         user_content = (
             f"Lesson ID: {lesson_id}\n"
-            f"New content words introduced in this lesson: {', '.join(new_words)}\n"
-            f"Full allowed content vocabulary: {word_list}\n\n"
+            f"CEFR level: {cefr}\n"
+            f"Theme: {theme}\n"
+            f"New words to introduce: {', '.join(new_words)}\n\n"
             "Write the lesson now."
         )
         return [
@@ -78,9 +87,10 @@ class LessonGenerator:
         allowed_words: set[str],
         *,
         language: str,
+        cefr: str = "A1",
+        theme: str = "general",
         model: str | None = None,
         temperature: float = 0.7,
-        target_length: str = "180 words",
         function_lemmas: set[str] | None = None,
     ) -> GeneratedLesson:
         """Generate and validate lesson content, retrying on vocabulary leakage.
@@ -88,19 +98,23 @@ class LessonGenerator:
         Args:
             lesson_id: Unique identifier for this lesson (e.g. ``"lesson001"``).
             new_words: Content-word lemmas being introduced for the first time.
-            allowed_words: Full set of content-word lemmas the LLM may use
-                (all prior lessons + current lesson words).
+            allowed_words: Full set of content-word lemmas the validator accepts
+                (all prior lessons + current lesson words). Not sent to the LLM.
             language: Human-readable target language name (e.g. ``"Dutch"``).
-                Passed directly into the system prompt.
+            cefr: CEFR level string (e.g. ``"A1"``). Included in the prompt so
+                the LLM self-regulates vocabulary complexity.
+            theme: Semantic theme for this lesson (e.g. ``"home"``). Helps the
+                LLM write coherent, contextually consistent text.
             model: LLM model identifier; provider default used if omitted.
             temperature: Sampling temperature forwarded to the provider.
-            target_length: Length hint included in the system prompt
-                (e.g. ``"180 words"``).  Override to produce longer or shorter lessons.
+            function_lemmas: Extra lemmas exempt from validation for this call
+                (typically verb surface forms derived by the orchestrator).
 
         Raises:
             RuntimeError: If vocabulary leakage persists after ``max_retries``.
         """
-        messages = self._build_messages(lesson_id, language, target_length, new_words, allowed_words)
+        target_length = _target_length(len(new_words))
+        messages = self._build_messages(lesson_id, language, cefr, theme, target_length, new_words)
         raw_messages = [m.as_dict() for m in messages]
         resolved_model = model or ""
 
