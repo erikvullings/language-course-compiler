@@ -25,12 +25,22 @@ class GeneratedLesson:
     tolerated: frozenset[str] = frozenset()
 
 
-def _system_prompt(language: str, target_length: str) -> str:
+_LOW_CEFR: frozenset[str] = frozenset({"A1", "A2"})
+
+
+def _tense_guidance(cefr: str) -> str:
+    if cefr in _LOW_CEFR:
+        return "Use present tense only — avoid past tense and complex tenses. "
+    return ""
+
+
+def _system_prompt(language: str, target_length: str, cefr: str = "") -> str:
     return (
         f"You are a language-learning content writer. "
         f"Write a short lesson in {language}, approximately {target_length}. "
         f"Introduce each new word naturally in context. "
         f"Keep the vocabulary at the stated CEFR level — do not use advanced words. "
+        f"{_tense_guidance(cefr)}"
         f"Articles, prepositions, conjunctions, and common pronouns may be used freely. "
         f"Respond with lesson text only — no headings, no word lists, no meta-commentary."
     )
@@ -93,7 +103,7 @@ class LessonGenerator:
             "Write the lesson now."
         )
         return [
-            Message(Role.SYSTEM, _system_prompt(language, target_length)),
+            Message(Role.SYSTEM, _system_prompt(language, target_length, cefr)),
             Message(Role.USER, user_content),
         ]
 

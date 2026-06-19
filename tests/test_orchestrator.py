@@ -9,7 +9,7 @@ from course_compiler.generation.lesson import LessonGenerator
 from course_compiler.generation.orchestrator import LessonOrchestrator
 from course_compiler.generation.themes import ThemeAssigner
 from course_compiler.llm.base import LLMProvider, LLMResponse, PromptInput
-from course_compiler.models import Frequency, PartOfSpeech, Word
+from course_compiler.models import Frequency, PartOfSpeech, Verb, Word
 
 
 # ---------------------------------------------------------------------------
@@ -165,6 +165,88 @@ def test_generate_returns_one_lesson_per_plan():
     orc = _make_orchestrator({"home": ["huis", "deur"]})
     lessons = orc.generate(words, language="Dutch", cefr="A1", model="stub")
     assert len(lessons) == 1
+
+
+def _verb(infinitive: str, cefr: str = "A1", rank: int = 1, **forms: str) -> Verb:
+    present = forms or {"ik": f"{infinitive}t", "jij": f"{infinitive}t"}
+    return Verb(
+        id=infinitive,
+        language="nl",
+        lemma=infinitive,
+        infinitive=infinitive,
+        cefr=cefr,
+        frequency=Frequency(rank=rank),
+        present=present,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Tests: plan() with verbs
+# ---------------------------------------------------------------------------
+
+def test_plan_verbs_appear_as_new_word_lemmas():
+    """Verb infinitives must appear in the combined new-words list for a lesson."""
+    words = [_word("huis")]
+    verb = _verb("lopen", cefr="A1", rank=2)
+    orc = _make_orchestrator({"misc": ["huis", "lopen"]})
+    plans = orc.plan(words, cefr="A1", verbs=[verb])
+    all_lemmas = {w.lemma for p in plans for w in p.new_words}
+    verb_lemmas = {v.infinitive for p in plans for v in p.new_verbs}
+    assert "huis" in all_lemmas
+    assert "lopen" in verb_lemmas
+
+
+def test_plan_verb_surface_forms_in_allowed_forms():
+    """All conjugated forms of an introduced verb must appear in allowed_forms."""
+    verb = _verb("lopen", cefr="A1", **{"ik": "loop", "jij": "loopt"})
+    orc = _make_orchestrator({"misc": ["lopen"]})
+    plans = orc.plan([], cefr="A1", verbs=[verb])
+    assert len(plans) == 1
+    assert "loop" in plans[0].allowed_forms
+    assert "loopt" in plans[0].allowed_forms
+
+
+def test_plan_verb_cefr_filtering():
+    """Verbs with wrong CEFR level must be excluded."""
+    verb_a1 = _verb("lopen", cefr="A1")
+    verb_b1 = _verb("rennen", cefr="B1")
+    orc = _make_orchestrator({"misc": ["lopen", "rennen"]})
+    plans = orc.plan([], cefr="A1", verbs=[verb_a1, verb_b1])
+    verb_lemmas = {v.infinitive for p in plans for v in p.new_verbs}
+    assert "lopen" in verb_lemmas
+    assert "rennen" not in verb_lemmas
+
+
+def test_plan_verb_allowed_forms_accumulate_across_lessons():
+    """allowed_forms for lesson N must include forms from all prior lessons' verbs."""
+    verb1 = _verb("lopen", cefr="A1", rank=1, **{"ik": "loop"})
+    verb2 = _verb("rennen", cefr="A1", rank=2, **{"ik": "ren"})
+    orc = _make_orchestrator({"misc": ["lopen", "rennen"]}, words_per_lesson=1)
+    plans = orc.plan([], cefr="A1", verbs=[verb1, verb2])
+    assert len(plans) == 2
+    assert "loop" in plans[0].allowed_forms
+    assert "loop" in plans[1].allowed_forms  # accumulated
+    assert "ren" in plans[1].allowed_forms
+
+
+def test_generate_verb_forms_exempt_from_validation():
+    """Conjugated forms of introduced verbs must not trigger validation violations."""
+    verb = _verb("lopen", cefr="A1", **{"ik": "loop", "jij": "loopt"})
+
+    class _VerbFormProvider(LLMProvider):
+        def complete(self, prompt: PromptInput, *, model=None, temperature=None, **kwargs) -> LLMResponse:
+            return LLMResponse(content="loop loopt lopen", model=model or "stub", raw={})
+
+        async def acomplete(self, prompt: PromptInput, *, model=None, temperature=None, **kwargs) -> LLMResponse:
+            return self.complete(prompt, model=model, temperature=temperature)
+
+    lemmatizer = _IdentityLemmatizer()
+    generator = LessonGenerator(lemmatizer=lemmatizer, provider=_VerbFormProvider())
+    assigner = _StubThemeAssigner({"misc": ["lopen"]})
+    orc = LessonOrchestrator(generator, assigner)
+    # Should not raise — verb forms are exempt via allowed_forms.
+    lessons = orc.generate([], language="Dutch", cefr="A1", verbs=[verb], model="stub")
+    assert lessons[0].content == "loop loopt lopen"
 
 
 def test_generate_function_lemmas_passed_through():

@@ -1,9 +1,9 @@
 # 0009 Verb integration in orchestrator
 
-Status: open
+Status: done
 Priority: medium
 Owner: unassigned
-Agent: unassigned
+Agent: claude
 Area: generation
 Depends on: 0008
 
@@ -36,4 +36,7 @@ without triggering a retry.
   `verbs.json` is present alongside `words.json`.
 
 ## Agent Notes
-- Not started.
+- Implemented in `generation/orchestrator.py`: added `_verb_surface_forms()`, `_verb_as_word()`, extended `LessonPlan` with `new_verbs: list[Verb]` and `allowed_forms: set[str]`.
+- `plan()` now accepts `verbs: list[Verb] | None`; creates Word stubs for theme assignment, resolves back to Verb objects per batch, accumulates surface forms across lessons.
+- `generate()` now accepts `verbs`, merges verb infinitives into new-word lemmas for the LLM prompt, and passes `function_lemmas | allowed_forms` to the validator so conjugated forms are exempt.
+- 5 new tests added to `tests/test_orchestrator.py`; 95 tests total, all green.
