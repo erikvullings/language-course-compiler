@@ -171,15 +171,36 @@ Generates a cover illustration for every lesson by posting to a locally running
 default port 7860). Images are written to `courses/img/<LEVEL>/<LESSON>.png` and
 are language-independent, so one image set covers all target languages.
 
+#### Installing the image generation service
+
+Open the model file on Hugging Face at [Flux.1 schnell](https://huggingface.co/black-forest-labs/FLUX.1-schnell) and accept the conditions.
+
 ```bash
-course generate-images
+brew install python@3.11
+export HF_TOKEN=<YOUR_TOKEN> # Your Token from Hugging Face, should have Read access to all models
+
+huggingface-cli download black-forest-labs/FLUX.1-dev \
+    --local-dir ~/.cache/huggingface/hub/models--black-forest-labs--FLUX.1-dev
+
+git clone https://github.com/voipnuggets/flux-generator.git
+cd flux-generator
+chmod +x run_flux.sh
+
+# Run the setup script in local-only secure mode
+./run_flux.sh
+```
+
+Now you can use it
+
+```bash
+course generate-images --model dev
 ```
 
 Existing images are skipped. Use `--force` to regenerate them. Narrow the run
 with `--level` and/or `--lesson`:
 
 ```bash
-course generate-images --level A1 --lesson lesson001 --force
+course generate-images --level A1 --lesson lesson001  --model dev --force
 ```
 
 Override defaults:

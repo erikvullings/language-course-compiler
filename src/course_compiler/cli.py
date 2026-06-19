@@ -148,9 +148,17 @@ def _lesson_blueprint(plans: list[object]) -> dict[str, object]:
 
 
 _PROMPT_TEMPLATE = (
-    "A simple, clean 2D vector comic illustration style, flat colors, bold outlines, "
-    "educational language course graphic, minimalist, with the theme '{theme}' and "
-    "communicative goals: {goals}."
+    "A clean, modern flat-design illustration for an adult language-learning course, "
+    "minimal linework, sophisticated muted color palette, depicting a realistic everyday scene "
+    "where adults are {goals}. "
+    "No text, no letters, no words, no signs, no writing, no speech bubbles, no labels anywhere in the image. "
+    "Contemporary editorial illustration style, subtle gradients, professional and approachable."
+)
+
+_NEGATIVE_PROMPT = (
+    "text, letters, words, numbers, signs, labels, watermark, speech bubbles, captions, "
+    "writing, typography, font, logo, banner, childish, cartoon, cute, kawaii, pastel, "
+    "children, kids, toys, 3d, photo, dark, scary, violent"
 )
 
 
@@ -159,13 +167,32 @@ def _lesson_seed(level: str, lesson_id: str) -> int:
     return int(digest, 16) % (2**31)
 
 
+def _is_valid_theme_catalog(path: Path) -> bool:
+    """True when a YAML file looks like a non-empty CEFR lesson theme catalog."""
+    if not path.exists() or path.stat().st_size == 0:
+        return False
+
+    try:
+        loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except yaml.YAMLError:
+        return False
+
+    if not isinstance(loaded, dict) or not loaded:
+        return False
+
+    for _cefr, lessons in loaded.items():
+        if isinstance(lessons, dict) and lessons:
+            return True
+    return False
+
+
 def _audio_filename(word: str) -> str:
     """Sanitize a word key into a safe filename stem (spaces → underscores)."""
     return word.replace(" ", "_").replace("/", "_")
 
 
 def _cmd_generate_images(args) -> int:
-    themes_path: Path
+    themes_path: Path | None = None
     if args.themes_file:
         themes_path = Path(args.themes_file)
         if not themes_path.exists():
@@ -176,13 +203,22 @@ def _cmd_generate_images(args) -> int:
                 print(f"Error: themes file not found: {args.themes_file}", file=sys.stderr)
                 return 1
     else:
-        themes_path = Path(__file__).resolve().parent / "generation" / "themes.yaml"
+        candidates = [
+            Path(__file__).resolve().parents[2] / "themes.yaml",
+            Path(__file__).resolve().parent / "generation" / "themes.yaml",
+        ]
+        themes_path = next((p for p in candidates if p.exists()), None)
+        if themes_path is None:
+            print("Error: no themes.yaml found. Pass --themes-file explicitly.", file=sys.stderr)
+            return 1
 
     catalog: dict = yaml.safe_load(themes_path.read_text(encoding="utf-8"))
     out_root = Path(args.out)
 
+    steps = args.steps if args.steps is not None else (25 if args.model == "dev" else 4)
     generated = skipped = failed = 0
-    with httpx.Client(timeout=120.0) as client:
+    timeout = httpx.Timeout(connect=10.0, read=args.timeout, write=30.0, pool=5.0)
+    with httpx.Client(timeout=timeout) as client:
         for level, lessons in catalog.items():
             if args.level and level != args.level:
                 continue
@@ -203,12 +239,13 @@ def _cmd_generate_images(args) -> int:
                 print(f"  {level}/{lesson_id}: {theme}")
                 payload = {
                     "prompt": prompt,
+                    "negative_prompt": _NEGATIVE_PROMPT,
                     "width": args.width,
                     "height": args.height,
-                    "steps": args.steps,
+                    "steps": steps,
                     "cfg_scale": args.cfg_scale,
                     "seed": seed,
-                    "model": "schnell",
+                    "model": args.model,
                 }
                 try:
                     resp = client.post(args.api_url, json=payload)
@@ -243,7 +280,10 @@ def _cmd_download_audio(args) -> int:
         out_dir.mkdir(parents=True, exist_ok=True)
 
     downloaded = skipped = failed = 0
-    with httpx.Client(timeout=30.0, follow_redirects=True) as client:
+    headers = {
+        "User-Agent": "language-course-compiler/1.0 (https://github.com/erikvullings/language-course-compiler; educational use)"
+    }
+    with httpx.Client(timeout=30.0, follow_redirects=True, headers=headers) as client:
         for word, url in items:
             suffix = Path(url).suffix or ".mp3"
             filename = _audio_filename(word) + suffix
@@ -370,8 +410,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     img.add_argument("--width", type=int, default=1024)
     img.add_argument("--height", type=int, default=576)
-    img.add_argument("--steps", type=int, default=4)
+    img.add_argument("--steps", type=int, default=None, help="Inference steps (default: 4 for schnell, 25 for dev)")
     img.add_argument("--cfg-scale", type=float, default=4.0)
+    img.add_argument("--model", default="schnell", choices=["schnell", "dev"], help="Flux model (default: schnell)")
+    img.add_argument(
+        "--timeout",
+        type=float,
+        default=300.0,
+        help="Per-request timeout in seconds (default: 300)",
+    )
 
     dl = sub.add_parser(
         "download-audio", help="Download audio files listed in audio.json"
@@ -448,12 +495,16 @@ def main(argv: list[str] | None = None) -> int:
                 )
 
             predefined_themes_path = next(
-                (candidate for candidate in candidate_paths if candidate.exists()),
+                (
+                    candidate
+                    for candidate in candidate_paths
+                    if _is_valid_theme_catalog(candidate)
+                ),
                 None,
             )
             if predefined_themes_path is None:
                 print(
-                    f"Error: themes file not found: {args.themes_file}",
+                    f"Error: themes file not found or invalid: {args.themes_file}",
                     file=sys.stderr,
                 )
                 return 1
@@ -465,7 +516,11 @@ def main(argv: list[str] | None = None) -> int:
                 Path(__file__).resolve().parent / "generation" / "themes.yaml",
             ]
             predefined_themes_path = next(
-                (candidate for candidate in theme_candidates if candidate.exists()),
+                (
+                    candidate
+                    for candidate in theme_candidates
+                    if _is_valid_theme_catalog(candidate)
+                ),
                 None,
             )
             selected_theme_catalog = predefined_themes_path
