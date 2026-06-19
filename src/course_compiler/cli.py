@@ -44,7 +44,9 @@ def _load_words_from_lexicon(lexicon_dir: Path):
         return [Word.model_validate(entry) for entry in raw]
 
     if words_yaml_dir.is_dir():
-        word_files = sorted([*words_yaml_dir.glob("*.yaml"), *words_yaml_dir.glob("*.yml")])
+        word_files = sorted(
+            [*words_yaml_dir.glob("*.yaml"), *words_yaml_dir.glob("*.yml")]
+        )
         if not word_files:
             raise FileNotFoundError(f"no word entries found in {words_yaml_dir}")
         return [
@@ -57,7 +59,10 @@ def _load_words_from_lexicon(lexicon_dir: Path):
 
 def _write_json(path: Path, data: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
 
 
 def _load_entries_from_layout(lexicon_dir: Path, stem: str) -> dict[str, dict]:
@@ -67,7 +72,11 @@ def _load_entries_from_layout(lexicon_dir: Path, stem: str) -> dict[str, dict]:
     if json_file.exists():
         raw = json.loads(json_file.read_text(encoding="utf-8"))
         if isinstance(raw, list):
-            return {str(entry["id"]): entry for entry in raw if isinstance(entry, dict) and "id" in entry}
+            return {
+                str(entry["id"]): entry
+                for entry in raw
+                if isinstance(entry, dict) and "id" in entry
+            }
         if isinstance(raw, dict):
             return {str(k): v for k, v in raw.items() if isinstance(v, dict)}
         return {}
@@ -109,21 +118,65 @@ def _load_lessons_for_export(lessons_dir: Path) -> dict[str, dict]:
     return lessons
 
 
+def _lesson_blueprint(plans: list[object]) -> dict[str, object]:
+    lessons: list[dict[str, object]] = []
+    for plan in plans:
+        lesson_id = getattr(plan, "lesson_id", "")
+        theme = getattr(plan, "theme", "misc")
+        new_words = [w.lemma for w in getattr(plan, "new_words", [])]
+        new_verbs = [v.infinitive for v in getattr(plan, "new_verbs", [])]
+        seed_lemmas = new_words + new_verbs
+        lessons.append(
+            {
+                "lessonId": lesson_id,
+                "theme": theme,
+                "seedLemmas": seed_lemmas,
+            }
+        )
+    return {"lessonCount": len(lessons), "lessons": lessons}
+
+
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="course", description="Language Course Compiler")
-    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    parser = argparse.ArgumentParser(
+        prog="course", description="Language Course Compiler"
+    )
+    parser.add_argument(
+        "--version", action="version", version=f"%(prog)s {__version__}"
+    )
     sub = parser.add_subparsers(dest="command")
 
     ask = sub.add_parser("ask", help="Send a one-off prompt to the configured LLM")
     ask.add_argument("prompt", help="The prompt text")
 
-    gen = sub.add_parser("generate-lessons", help="Generate lessons from an imported lexicon")
+    gen = sub.add_parser(
+        "generate-lessons", help="Generate lessons from an imported lexicon"
+    )
     gen.add_argument("--lang", required=True, help="BCP-47 language code (e.g. nl)")
     gen.add_argument("--cefr", default="A1", help="Target CEFR level (A1, A2, B1, …)")
-    gen.add_argument("--lexicon", default=None, help="Lexicon directory (defaults to courses/<lang>)")
-    gen.add_argument("--language-name", default=None, help="LLM prompt name (defaults to known name for --lang)")
-    gen.add_argument("--words-per-lesson", type=int, default=10, help="New content words per lesson")
-    gen.add_argument("--out", default=None, help="Output directory (defaults to <lexicon>/lessons)")
+    gen.add_argument(
+        "--lexicon", default=None, help="Lexicon directory (defaults to courses/<lang>)"
+    )
+    gen.add_argument(
+        "--language-name",
+        default=None,
+        help="LLM prompt name (defaults to known name for --lang)",
+    )
+    gen.add_argument(
+        "--words-per-lesson", type=int, default=10, help="New content words per lesson"
+    )
+    gen.add_argument(
+        "--out", default=None, help="Output directory (defaults to <lexicon>/lessons)"
+    )
+    gen.add_argument(
+        "--preview",
+        action="store_true",
+        help="Print the computed lesson blueprint (count/themes/seed lemmas)",
+    )
+    gen.add_argument(
+        "--approve",
+        action="store_true",
+        help="When used with --preview, continue to generation after printing the blueprint",
+    )
 
     imp = sub.add_parser("import", help="Import lexical sources into canonical YAML")
     imp.add_argument("--language", default="nl", choices=["nl"], help="Source language")
@@ -136,9 +189,17 @@ def build_parser() -> argparse.ArgumentParser:
 
     exp = sub.add_parser("export", help="Export a course into split JSON bundles")
     exp.add_argument("--lang", required=True, help="BCP-47 language code (e.g. nl)")
-    exp.add_argument("--course-dir", default=None, help="Course directory (defaults to courses/<lang>)")
-    exp.add_argument("--out", default=None, help="Output directory (defaults to <course-dir>/export)")
-    exp.add_argument("--version", default="1.0", help="Course version for manifest.json")
+    exp.add_argument(
+        "--course-dir",
+        default=None,
+        help="Course directory (defaults to courses/<lang>)",
+    )
+    exp.add_argument(
+        "--out", default=None, help="Output directory (defaults to <course-dir>/export)"
+    )
+    exp.add_argument(
+        "--version", default="1.0", help="Course version for manifest.json"
+    )
 
     return parser
 
@@ -157,6 +218,7 @@ def main(argv: list[str] | None = None) -> int:
         from course_compiler.generation.lesson import LessonGenerator
         from course_compiler.generation.orchestrator import LessonOrchestrator
         from course_compiler.generation.themes import LLMThemeAssigner
+        from course_compiler.models import Lesson
 
         settings = Settings.load()
         provider = create_provider(settings)
@@ -182,7 +244,15 @@ def main(argv: list[str] | None = None) -> int:
 
         lemmatizer = create_lemmatizer(args.lang)
         generator = LessonGenerator(provider, lemmatizer, cache=cache)
-        orchestrator = LessonOrchestrator(generator, assigner, words_per_lesson=args.words_per_lesson)
+        orchestrator = LessonOrchestrator(
+            generator, assigner, words_per_lesson=args.words_per_lesson
+        )
+
+        plans = orchestrator.plan(words, cefr=args.cefr)
+        if args.preview:
+            print(json.dumps(_lesson_blueprint(plans), ensure_ascii=False, indent=2))
+            if not args.approve:
+                return 0
 
         lessons = orchestrator.generate(
             words,
@@ -193,7 +263,21 @@ def main(argv: list[str] | None = None) -> int:
         out_dir = Path(args.out) if args.out else lexicon_dir / "lessons"
         out_dir.mkdir(parents=True, exist_ok=True)
         for lesson in lessons:
-            (out_dir / f"{lesson.lesson_id}.txt").write_text(lesson.content, encoding="utf-8")
+            payload = Lesson(
+                id=lesson.lesson_id,
+                language=args.lang,
+                cefr=args.cefr,
+                title=lesson.title,
+                theme=lesson.theme,
+                new_words=sorted(lesson.new_words),
+                text=lesson.content,
+                attempts=lesson.attempts,
+                tolerated=sorted(lesson.tolerated),
+            )
+            _write_json(
+                out_dir / f"{lesson.lesson_id}.json",
+                payload.model_dump(by_alias=True, exclude_none=True, mode="json"),
+            )
 
         print(f"Generated {len(lessons)} lessons into {out_dir}")
         return 0
@@ -210,7 +294,9 @@ def main(argv: list[str] | None = None) -> int:
             nt2lex_path=args.nt2lex,
             limit=args.limit,
         )
-        print(f"Imported {counts['words']} words and {counts['verbs']} verbs into {args.out}")
+        print(
+            f"Imported {counts['words']} words and {counts['verbs']} verbs into {args.out}"
+        )
         return 0
 
     if args.command == "export":

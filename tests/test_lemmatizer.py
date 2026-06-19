@@ -67,7 +67,9 @@ def test_lemmatize_returns_none_for_unknown(monkeypatch):
     import course_compiler.generation.base as _mod
 
     monkeypatch.setattr(_mod, "_REGISTRY", {})
-    register_lemmatizer("nl", lambda lang: _DictLemmatizer(lang, {"huis": "huis", "huizen": "huis"}))
+    register_lemmatizer(
+        "nl", lambda lang: _DictLemmatizer(lang, {"huis": "huis", "huizen": "huis"})
+    )
 
     lem = create_lemmatizer("nl")
     assert lem.lemmatize("huis") == "huis"

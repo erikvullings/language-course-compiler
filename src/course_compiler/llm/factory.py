@@ -36,7 +36,9 @@ def create_provider(settings: Settings, name: str | None = None) -> LLMProvider:
         factory = _REGISTRY[key]
     except KeyError:
         known = ", ".join(sorted(_REGISTRY)) or "<none>"
-        raise LLMError(f"Unknown LLM provider {key!r}. Known providers: {known}") from None
+        raise LLMError(
+            f"Unknown LLM provider {key!r}. Known providers: {known}"
+        ) from None
     return factory(settings)
 
 
@@ -45,6 +47,7 @@ def _build_ollama(settings: Settings) -> OllamaProvider:
         model=settings.ollama_model,
         base_url=settings.ollama_base_url,
         temperature=settings.llm_temperature,
+        thinking=settings.llm_thinking,
         timeout=settings.llm_timeout,
         max_retries=settings.llm_max_retries,
     )

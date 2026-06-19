@@ -46,6 +46,11 @@ def test_import_writes_word_and_verb_yaml(tmp_path):
     verb = yaml.safe_load((out / "verbs" / "zijn.yaml").read_text())
     assert verb["perfect"]["participle"] == "geweest"
 
+    words_json = json.loads((out / "words.json").read_text(encoding="utf-8"))
+    verbs_json = json.loads((out / "verbs.json").read_text(encoding="utf-8"))
+    assert [entry["id"] for entry in words_json] == ["kat"]
+    assert [entry["id"] for entry in verbs_json] == ["zijn"]
+
 
 def test_lemmas_with_same_safe_stem_do_not_overwrite(tmp_path):
     # "a b" and "a.b" both sanitize to "a_b"; both must survive as files.

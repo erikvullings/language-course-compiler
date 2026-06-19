@@ -50,7 +50,17 @@ def test_export_writes_manifest_and_split_bundles(tmp_path):
     (lessons_dir / "lesson001.txt").write_text("Dit is les 1.", encoding="utf-8")
 
     out_dir = tmp_path / "dist"
-    rc = main(["export", "--lang", "nl", "--course-dir", str(course_dir), "--out", str(out_dir)])
+    rc = main(
+        [
+            "export",
+            "--lang",
+            "nl",
+            "--course-dir",
+            str(course_dir),
+            "--out",
+            str(out_dir),
+        ]
+    )
 
     assert rc == 0
 
@@ -71,5 +81,7 @@ def test_export_writes_manifest_and_split_bundles(tmp_path):
     exercises = json.loads((out_dir / "exercises.json").read_text(encoding="utf-8"))
     assert exercises == {}
 
-    lesson = json.loads((out_dir / "lessons" / "lesson001.json").read_text(encoding="utf-8"))
+    lesson = json.loads(
+        (out_dir / "lessons" / "lesson001.json").read_text(encoding="utf-8")
+    )
     assert lesson == {"id": "lesson001", "text": "Dit is les 1."}

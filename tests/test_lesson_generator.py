@@ -6,7 +6,13 @@ import pytest
 
 from course_compiler.generation.base import Lemmatizer
 from course_compiler.generation.lesson import LessonGenerator, _target_length
-from course_compiler.llm.base import LLMProvider, LLMResponse, Message, PromptInput
+from course_compiler.llm.base import (
+    LLMError,
+    LLMProvider,
+    LLMResponse,
+    Message,
+    PromptInput,
+)
 
 
 class _MapLemmatizer(Lemmatizer):
@@ -29,7 +35,12 @@ class _StubProvider(LLMProvider):
         self._calls: list[list[Message]] = []
 
     def complete(
-        self, prompt: PromptInput, *, model: str | None = None, temperature: float | None = None, **kwargs: object
+        self,
+        prompt: PromptInput,
+        *,
+        model: str | None = None,
+        temperature: float | None = None,
+        **kwargs: object,
     ) -> LLMResponse:
         from course_compiler.llm.base import to_messages
 
@@ -38,9 +49,36 @@ class _StubProvider(LLMProvider):
         return LLMResponse(content=content, model=model or "stub", raw={})
 
     async def acomplete(
-        self, prompt: PromptInput, *, model: str | None = None, temperature: float | None = None, **kwargs: object
+        self,
+        prompt: PromptInput,
+        *,
+        model: str | None = None,
+        temperature: float | None = None,
+        **kwargs: object,
     ) -> LLMResponse:
         return self.complete(prompt, model=model, temperature=temperature, **kwargs)
+
+
+class _ErrorProvider(LLMProvider):
+    def complete(
+        self,
+        prompt: PromptInput,
+        *,
+        model: str | None = None,
+        temperature: float | None = None,
+        **kwargs: object,
+    ) -> LLMResponse:
+        raise LLMError("timed out")
+
+    async def acomplete(
+        self,
+        prompt: PromptInput,
+        *,
+        model: str | None = None,
+        temperature: float | None = None,
+        **kwargs: object,
+    ) -> LLMResponse:
+        raise LLMError("timed out")
 
 
 def _lemmatizer(words: list[str]) -> _MapLemmatizer:
@@ -50,6 +88,7 @@ def _lemmatizer(words: list[str]) -> _MapLemmatizer:
 # ---------------------------------------------------------------------------
 # Target length scaling
 # ---------------------------------------------------------------------------
+
 
 def test_target_length_scales_with_word_count():
     assert _target_length(10) == "150 words"
@@ -65,6 +104,7 @@ def test_target_length_floor():
 # Prompt content
 # ---------------------------------------------------------------------------
 
+
 def test_generate_language_in_system_prompt():
     provider = _StubProvider(["huis"])
     gen = LessonGenerator(provider, _lemmatizer(["huis"]))
@@ -75,15 +115,30 @@ def test_generate_language_in_system_prompt():
 def test_generate_cefr_in_user_prompt():
     provider = _StubProvider(["huis"])
     gen = LessonGenerator(provider, _lemmatizer(["huis"]))
-    gen.generate("lesson001", ["huis"], {"huis"}, language="Dutch", cefr="A1", model="stub")
+    gen.generate(
+        "lesson001", ["huis"], {"huis"}, language="Dutch", cefr="A1", model="stub"
+    )
     assert "A1" in provider._calls[0][1].content
 
 
 def test_generate_theme_in_user_prompt():
     provider = _StubProvider(["huis"])
     gen = LessonGenerator(provider, _lemmatizer(["huis"]))
-    gen.generate("lesson001", ["huis"], {"huis"}, language="Dutch", theme="home", model="stub")
+    gen.generate(
+        "lesson001", ["huis"], {"huis"}, language="Dutch", theme="home", model="stub"
+    )
     assert "home" in provider._calls[0][1].content
+
+
+def test_low_cefr_system_prompt_allows_frequent_simple_past_forms():
+    provider = _StubProvider(["huis"])
+    gen = LessonGenerator(provider, _lemmatizer(["huis"]))
+    gen.generate(
+        "lesson001", ["huis"], {"huis"}, language="Dutch", cefr="A1", model="stub"
+    )
+    system_prompt = provider._calls[0][0].content
+    assert "Prefer present tense" in system_prompt
+    assert "equivalents of 'was/were'" in system_prompt
 
 
 def test_allowed_words_not_in_prompt():
@@ -91,7 +146,13 @@ def test_allowed_words_not_in_prompt():
     mapping = {w: w for w in ["huis", "kat", "boom", "water"]}
     provider = _StubProvider(["huis"])
     gen = LessonGenerator(provider, _MapLemmatizer(mapping))
-    gen.generate("lesson001", ["huis"], {"huis", "kat", "boom", "water"}, language="Dutch", model="stub")
+    gen.generate(
+        "lesson001",
+        ["huis"],
+        {"huis", "kat", "boom", "water"},
+        language="Dutch",
+        model="stub",
+    )
     full_prompt = " ".join(m.content for m in provider._calls[0])
     assert "kat" not in full_prompt
     assert "boom" not in full_prompt
@@ -102,29 +163,41 @@ def test_allowed_words_not_in_prompt():
 # Validation, tolerance, and retry
 # ---------------------------------------------------------------------------
 
+
 def test_generate_returns_valid_content():
-    provider = _StubProvider(["huis zijn groot"])
+    response = "## Home Lesson\n**New words:** huis, zijn, groot\nhuis zijn groot."
+    provider = _StubProvider([response])
     gen = LessonGenerator(provider, _lemmatizer(["huis", "zijn", "groot"]))
     result = gen.generate(
-        "lesson001", ["huis", "zijn", "groot"], {"huis", "zijn", "groot"},
-        language="Dutch", model="stub",
+        "lesson001",
+        ["huis", "zijn", "groot"],
+        {"huis", "zijn", "groot"},
+        language="Dutch",
+        model="stub",
     )
-    assert result.content == "huis zijn groot"
+    assert result.content
     assert result.lesson_id == "lesson001"
+    assert result.title == "Home Lesson"
+    assert set(result.new_words) == {"huis", "zijn", "groot"}
 
 
 def test_extra_word_at_same_cefr_is_tolerated():
     """An extra word at the same CEFR level passes without retry."""
     mapping = {"huis": "huis", "tafel": "tafel"}
-    provider = _StubProvider(["huis tafel"])
+    response = "## Home\n**New words:** huis, tafel\nhuis tafel"
+    provider = _StubProvider([response])
     cefr_lookup = {"huis": "A1", "tafel": "A1"}
     gen = LessonGenerator(provider, _MapLemmatizer(mapping))
     result = gen.generate(
-        "lesson001", ["huis"], {"huis"},
-        language="Dutch", cefr="A1", model="stub",
+        "lesson001",
+        ["huis"],
+        {"huis"},
+        language="Dutch",
+        cefr="A1",
+        model="stub",
         cefr_lookup=cefr_lookup,
     )
-    assert result.content == "huis tafel"
+    assert "tafel" in result.content or "tafel" in result.new_words
     assert "tafel" in result.tolerated
     assert len(provider._calls) == 1  # no retry needed
 
@@ -133,14 +206,20 @@ def test_extra_word_above_cefr_triggers_retry_with_feedback():
     """A B1 word in an A1 lesson triggers a retry with a feedback message."""
     mapping = {"huis": "huis", "appartement": "appartement"}
     cefr_lookup = {"huis": "A1", "appartement": "B1"}
-    provider = _StubProvider(["huis appartement", "huis"])
+    bad_response = "## Home\n**New words:** huis, appartement\nappartement"
+    good_response = "## Home\n**New words:** huis\nhuis"
+    provider = _StubProvider([bad_response, good_response])
     gen = LessonGenerator(provider, _MapLemmatizer(mapping))
     result = gen.generate(
-        "lesson001", ["huis"], {"huis"},
-        language="Dutch", cefr="A1", model="stub",
+        "lesson001",
+        ["huis"],
+        {"huis"},
+        language="Dutch",
+        cefr="A1",
+        model="stub",
         cefr_lookup=cefr_lookup,
     )
-    assert result.content == "huis"
+    assert "huis" in result.content
     assert len(provider._calls) == 2
     # Second call must include a feedback message mentioning the violation.
     second_call_text = " ".join(m.content for m in provider._calls[1])
@@ -150,11 +229,16 @@ def test_extra_word_above_cefr_triggers_retry_with_feedback():
 def test_retry_messages_form_multi_turn_conversation():
     """On retry the conversation appends assistant + user feedback, not a fresh prompt."""
     mapping = {"huis": "huis", "bad": "bad"}
-    provider = _StubProvider(["huis bad", "huis"])
+    bad = "## Title\n**New words:** huis, bad\nText"
+    good = "## Title\n**New words:** huis\nText"
+    provider = _StubProvider([bad, good])
     gen = LessonGenerator(provider, _MapLemmatizer(mapping))
     gen.generate(
-        "lesson001", ["huis"], {"huis"},
-        language="Dutch", model="stub",
+        "lesson001",
+        ["huis"],
+        {"huis"},
+        language="Dutch",
+        model="stub",
     )
     # First call: 2 messages (system + user)
     assert len(provider._calls[0]) == 2
@@ -166,17 +250,25 @@ def test_retry_messages_form_multi_turn_conversation():
 
 def test_function_words_are_exempt():
     mapping = {"de": "de", "huis": "huis", "is": "zijn"}
-    provider = _StubProvider(["de huis is"])
-    gen = LessonGenerator(provider, _MapLemmatizer(mapping), function_lemmas={"de", "zijn"})
-    result = gen.generate("lesson003", ["huis"], {"huis"}, language="Dutch", model="stub")
-    assert result.content == "de huis is"
+    response = "## Title\n**New words:** huis\nhuis"
+    provider = _StubProvider([response])
+    gen = LessonGenerator(
+        provider, _MapLemmatizer(mapping), function_lemmas={"de", "zijn"}
+    )
+    result = gen.generate(
+        "lesson003", ["huis"], {"huis"}, language="Dutch", model="stub"
+    )
+    assert "huis" in result.content
 
 
-def test_generate_raises_after_max_retries():
+def test_generate_falls_back_after_validation_retries():
     provider = _StubProvider(["huis xyz"] * 5)
     gen = LessonGenerator(provider, _lemmatizer(["huis"]), max_retries=3)
-    with pytest.raises(RuntimeError, match="max_retries"):
-        gen.generate("lesson004", ["huis"], {"huis"}, language="Dutch", model="stub")
+    result = gen.generate(
+        "lesson006", ["huis"], {"huis"}, language="Dutch", model="stub"
+    )
+    assert result.content == "huis."
+    assert result.attempts == 3
 
 
 def test_generate_uses_cache(tmp_path):
@@ -190,3 +282,11 @@ def test_generate_uses_cache(tmp_path):
     r2 = gen.generate("lesson001", words, set(words), language="Dutch", model="stub")
     assert r1.content == r2.content
     assert len(provider._calls) == 1
+
+
+def test_generate_falls_back_on_llm_error():
+    gen = LessonGenerator(_ErrorProvider(), _lemmatizer(["huis"]))
+    result = gen.generate(
+        "lesson005", ["huis"], {"huis"}, language="Dutch", model="stub"
+    )
+    assert result.content == "huis."

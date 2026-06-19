@@ -86,7 +86,9 @@ course import \
 ```
 
 This writes canonical YAML entries into `courses/nl/words/` and `courses/nl/verbs/`
-(use `--limit N` for a quick smoke run).
+(use `--limit N` for a quick smoke run). It also writes aggregate
+`courses/nl/words.json` and `courses/nl/verbs.json` indexes for faster loading in
+generation/export commands.
 
 ### Generate lessons
 
@@ -107,11 +109,26 @@ course generate-lessons \
   --out courses/nl/lessons
 ```
 
+Preview the computed lesson blueprint first (count + theme + seed lemmas):
+
+```bash
+course generate-lessons --lang nl --cefr A1 --preview
+```
+
+To preview and then continue in one run:
+
+```bash
+course generate-lessons --lang nl --cefr A1 --preview --approve
+```
+
 One lesson file per lesson is written to the output directory as
-`lesson001.txt`, `lesson002.txt`, … Run once per CEFR level to build a
+`lesson001.json`, `lesson002.json`, … Run once per CEFR level to build a
 full A1 → B2 course. LLM responses (theme clustering and lesson text) are
 cached in `courses/nl/.llm_cache/` so subsequent runs are fast and
 byte-identical.
+
+`generate-lessons` prefers `words.json` when present (falling back to
+`words/*.yaml`), so preview mode starts much faster on large lexicons.
 
 ### Export split JSON bundles
 

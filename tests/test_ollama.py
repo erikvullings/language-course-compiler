@@ -39,12 +39,30 @@ def test_complete_sends_chat_payload(make_clients):
         return json_response({"model": "llama3", "message": {"content": "x"}})
 
     provider = OllamaProvider(model="llama3", temperature=0.1, **make_clients(handler))
-    provider.complete([Message(Role.SYSTEM, "ctx"), Message(Role.USER, "hi")], temperature=0.9)
+    provider.complete(
+        [Message(Role.SYSTEM, "ctx"), Message(Role.USER, "hi")], temperature=0.9
+    )
 
     assert captured["body"]["model"] == "llama3"
     assert captured["body"]["stream"] is False
+    assert captured["body"]["think"] is False
     assert captured["body"]["options"]["temperature"] == 0.9
     assert captured["body"]["messages"][0] == {"role": "system", "content": "ctx"}
+
+
+def test_complete_allows_think_override(make_clients):
+    captured = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        import json
+
+        captured["body"] = json.loads(request.content)
+        return json_response({"model": "llama3", "message": {"content": "x"}})
+
+    provider = OllamaProvider(model="llama3", thinking=False, **make_clients(handler))
+    provider.complete("hi", think=True)
+
+    assert captured["body"]["think"] is True
 
 
 async def test_acomplete_returns_content(make_clients):

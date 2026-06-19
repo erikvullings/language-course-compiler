@@ -376,7 +376,7 @@ def convert(
     nt2lex_path: str | Path | None = None,
     limit: int | None = None,
 ) -> dict[str, int]:
-    """Convert the Dutch sources to ``words/`` and ``verbs/`` YAML files.
+    """Convert Dutch sources to YAML entries plus aggregate JSON indexes.
 
     Returns counts ``{"words": n, "verbs": m}``. ``limit`` caps the number of
     processed kaikki entries (useful for smoke tests).
@@ -395,6 +395,8 @@ def convert(
     counts = {"words": 0, "verbs": 0}
     seen_words: set[str] = set()
     seen_verbs: set[str] = set()
+    words_json: list[dict] = []
+    verbs_json: list[dict] = []
 
     for i, entry in enumerate(iter_kaikki(kaikki_path)):
         if limit is not None and i >= limit:
@@ -409,6 +411,7 @@ def convert(
                 continue
             seen_verbs.add(verb.id)
             (verbs_dir / f"{_safe_name(verb.id)}.yaml").write_text(to_yaml(verb), encoding="utf-8")
+            verbs_json.append(verb.model_dump(by_alias=True, exclude_none=True, mode="json"))
             counts["verbs"] += 1
         else:
             word = word_from_kaikki(entry, frequency=freq, cefr=level)
@@ -418,9 +421,21 @@ def convert(
                 word.synonyms = synonyms[key]
             seen_words.add(word.id)
             (words_dir / f"{_safe_name(word.id)}.yaml").write_text(to_yaml(word), encoding="utf-8")
+            words_json.append(word.model_dump(by_alias=True, exclude_none=True, mode="json"))
             counts["words"] += 1
 
+    _write_json_array(out / "words.json", words_json)
+    _write_json_array(out / "verbs.json", verbs_json)
+
     return counts
+
+
+def _write_json_array(path: Path, rows: list[dict]) -> None:
+    ordered = sorted(rows, key=lambda row: str(row.get("id", "")))
+    path.write_text(
+        json.dumps(ordered, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
 
 
 def _safe_name(value: str) -> str:

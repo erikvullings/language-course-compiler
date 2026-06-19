@@ -27,11 +27,15 @@ class _StubProvider(LLMProvider):
         self._response = response
         self.calls: int = 0
 
-    def complete(self, prompt: PromptInput, *, model=None, temperature=None, **kwargs) -> LLMResponse:
+    def complete(
+        self, prompt: PromptInput, *, model=None, temperature=None, **kwargs
+    ) -> LLMResponse:
         self.calls += 1
         return LLMResponse(content=self._response, model=model or "stub", raw={})
 
-    async def acomplete(self, prompt: PromptInput, *, model=None, temperature=None, **kwargs) -> LLMResponse:
+    async def acomplete(
+        self, prompt: PromptInput, *, model=None, temperature=None, **kwargs
+    ) -> LLMResponse:
         return self.complete(prompt, model=model, temperature=temperature)
 
 
@@ -84,10 +88,14 @@ def test_llm_json_wrapped_in_markdown_is_parsed():
 
 def test_assign_falls_back_to_misc_on_provider_error():
     class _FailingProvider(LLMProvider):
-        def complete(self, prompt: PromptInput, *, model=None, temperature=None, **kwargs) -> LLMResponse:
+        def complete(
+            self, prompt: PromptInput, *, model=None, temperature=None, **kwargs
+        ) -> LLMResponse:
             raise LLMError("timeout")
 
-        async def acomplete(self, prompt: PromptInput, *, model=None, temperature=None, **kwargs) -> LLMResponse:
+        async def acomplete(
+            self, prompt: PromptInput, *, model=None, temperature=None, **kwargs
+        ) -> LLMResponse:
             raise LLMError("timeout")
 
     words = [_word("huis"), _word("deur")]
@@ -97,3 +105,50 @@ def test_assign_falls_back_to_misc_on_provider_error():
 
     assert set(themes.keys()) == {"misc"}
     assert [w.lemma for w in themes["misc"]] == ["deur", "huis"]
+
+
+def test_plan_lessons_returns_sanitized_lesson_blueprints():
+    words = [
+        _word("huis"),
+        _word("deur"),
+        _word("eten"),
+        _word("brood"),
+        _word("lopen"),
+    ]
+    payload = json.dumps(
+        {
+            "lessons": [
+                {"theme": "home", "seed_lemmas": ["huis"]},
+                {"theme": "food", "seed_lemmas": ["eten", "brood", "x-unknown"]},
+            ]
+        }
+    )
+    provider = _StubProvider(payload)
+    assigner = LLMThemeAssigner(provider, model="stub")
+
+    plans = assigner.plan_lessons(words, cefr="A1", words_per_lesson=3)
+
+    # ceil(5/3) = 2 lessons
+    assert len(plans) == 2
+    # For n=3, min seed is floor(n/2)=1 and max seed is 3.
+    assert 1 <= len(plans[0].seed_lemmas) <= 3
+    assert 1 <= len(plans[1].seed_lemmas) <= 3
+    all_seeded = {lemma for plan in plans for lemma in plan.seed_lemmas}
+    assert {"huis", "deur", "eten", "brood", "lopen"}.issubset(all_seeded)
+
+
+def test_plan_lessons_returns_empty_on_provider_error():
+    class _FailingProvider(LLMProvider):
+        def complete(
+            self, prompt: PromptInput, *, model=None, temperature=None, **kwargs
+        ) -> LLMResponse:
+            raise LLMError("timeout")
+
+        async def acomplete(
+            self, prompt: PromptInput, *, model=None, temperature=None, **kwargs
+        ) -> LLMResponse:
+            raise LLMError("timeout")
+
+    words = [_word("huis"), _word("deur")]
+    assigner = LLMThemeAssigner(_FailingProvider(), model="stub")
+    assert assigner.plan_lessons(words, cefr="A1", words_per_lesson=2) == []

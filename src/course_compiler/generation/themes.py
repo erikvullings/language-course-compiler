@@ -6,9 +6,11 @@ implements it using an LLM call (with optional disk caching for reproducibility)
 
 from __future__ import annotations
 
+import math
 import hashlib
 import json
 import re
+from dataclasses import dataclass
 from typing import Protocol
 
 from course_compiler.generation.cache import LLMCache
@@ -26,6 +28,25 @@ _SYSTEM_PROMPT = (
     "Use concise English theme names. No explanation, only JSON."
 )
 
+_LESSON_PLAN_SYSTEM_PROMPT = (
+    "You are a language-course planner. "
+    "You will receive CEFR level, vocabulary list, and words-per-lesson (n). "
+    "First determine lesson_count = ceil(vocabulary_size / n). "
+    "Then produce exactly lesson_count lesson plans, each with a concise English theme "
+    "and seed_lemmas chosen from the provided vocabulary list only. "
+    "Each lesson should include between n/2 and n seed lemmas (rounded down for n/2, min 1). "
+    "Some seed lemmas may already be known to the learner; that is acceptable. "
+    'Respond as JSON only with shape: {"lessons": [{"theme": str, "seed_lemmas": [str]}]}.'
+)
+
+
+@dataclass(frozen=True)
+class LessonThemePlan:
+    """LLM-proposed lesson theme with seed lemmas for prompting the writer."""
+
+    theme: str
+    seed_lemmas: list[str]
+
 
 class ThemeAssigner(Protocol):
     """Assign a list of :class:`~course_compiler.models.Word` objects to themes.
@@ -35,8 +56,7 @@ class ThemeAssigner(Protocol):
     ``"misc"`` key.
     """
 
-    def assign(self, words: list[Word]) -> dict[str, list[Word]]:
-        ...
+    def assign(self, words: list[Word]) -> dict[str, list[Word]]: ...
 
 
 def _strip_fences(text: str) -> str:
@@ -101,6 +121,68 @@ class LLMThemeAssigner:
 
         return parsed
 
+    def plan_lessons(
+        self,
+        words: list[Word],
+        *,
+        cefr: str,
+        words_per_lesson: int,
+    ) -> list[LessonThemePlan]:
+        """Ask the LLM to plan lesson themes + seed lemmas from vocabulary size.
+
+        Returns an empty list when planning fails so callers can fall back to
+        deterministic non-LLM planning.
+        """
+        if not words or words_per_lesson < 1:
+            return []
+
+        lemmas = sorted({w.lemma for w in words})
+        lesson_count = math.ceil(len(lemmas) / words_per_lesson)
+        min_seed = max(1, words_per_lesson // 2)
+
+        user_payload = {
+            "cefr": cefr,
+            "vocabulary_size": len(lemmas),
+            "words_per_lesson": words_per_lesson,
+            "min_seed_lemmas": min_seed,
+            "max_seed_lemmas": words_per_lesson,
+            "lesson_count": lesson_count,
+            "lemmas": lemmas,
+        }
+        raw_messages = [
+            {"role": "system", "content": _LESSON_PLAN_SYSTEM_PROMPT},
+            {"role": "user", "content": json.dumps(user_payload, ensure_ascii=False)},
+        ]
+
+        if self._cache is not None:
+            cached = self._cache.get(self._model, raw_messages)
+            if cached is not None:
+                return self._parse_lesson_plan(
+                    cached.content,
+                    lemmas=lemmas,
+                    words_per_lesson=words_per_lesson,
+                )
+
+        messages = [
+            Message(Role.SYSTEM, _LESSON_PLAN_SYSTEM_PROMPT),
+            Message(Role.USER, json.dumps(user_payload, ensure_ascii=False)),
+        ]
+
+        try:
+            response = self._provider.complete(messages, model=self._model or None)
+            parsed = self._parse_lesson_plan(
+                response.content,
+                lemmas=lemmas,
+                words_per_lesson=words_per_lesson,
+            )
+        except (LLMError, json.JSONDecodeError, TypeError, ValueError):
+            return []
+
+        if self._cache is not None:
+            self._cache.put(self._model, raw_messages, response)
+
+        return parsed
+
     def _parse(self, text: str, by_lemma: dict[str, Word]) -> dict[str, list[Word]]:
         raw = json.loads(_strip_fences(text))
         result: dict[str, list[Word]] = {}
@@ -112,3 +194,68 @@ class LLMThemeAssigner:
         if leftover:
             result.setdefault("misc", []).extend(leftover)
         return result
+
+    def _parse_lesson_plan(
+        self,
+        text: str,
+        *,
+        lemmas: list[str],
+        words_per_lesson: int,
+    ) -> list[LessonThemePlan]:
+        """Parse and sanitize lesson plans to deterministic valid output."""
+        raw = json.loads(_strip_fences(text))
+        if not isinstance(raw, dict) or not isinstance(raw.get("lessons"), list):
+            raise ValueError("Invalid lesson plan response shape.")
+
+        valid_lemmas = set(lemmas)
+        lesson_count = math.ceil(len(lemmas) / words_per_lesson)
+        min_seed = max(1, words_per_lesson // 2)
+        max_seed = max(1, words_per_lesson)
+
+        lessons_raw = raw["lessons"]
+        lessons: list[LessonThemePlan] = []
+        used: set[str] = set()
+
+        for index in range(lesson_count):
+            entry = lessons_raw[index] if index < len(lessons_raw) else {}
+            theme = str(entry.get("theme") or f"theme-{index + 1:02d}")
+            seeds_raw = entry.get("seed_lemmas")
+            seeds: list[str] = []
+            if isinstance(seeds_raw, list):
+                for lemma in seeds_raw:
+                    if not isinstance(lemma, str):
+                        continue
+                    if lemma in valid_lemmas and lemma not in seeds:
+                        seeds.append(lemma)
+
+            if len(seeds) > max_seed:
+                seeds = seeds[:max_seed]
+
+            while len(seeds) < min_seed:
+                candidate = next(
+                    (l for l in lemmas if l not in used and l not in seeds), None
+                )
+                if candidate is None:
+                    candidate = next((l for l in lemmas if l not in seeds), None)
+                if candidate is None:
+                    break
+                seeds.append(candidate)
+
+            used.update(seeds)
+            lessons.append(LessonThemePlan(theme=theme, seed_lemmas=seeds))
+
+        remaining = [l for l in lemmas if l not in used]
+        if remaining and lessons:
+            cursor = 0
+            for lemma in remaining:
+                for _ in range(len(lessons)):
+                    bucket = lessons[cursor]
+                    if (
+                        len(bucket.seed_lemmas) < max_seed
+                        and lemma not in bucket.seed_lemmas
+                    ):
+                        bucket.seed_lemmas.append(lemma)
+                        break
+                    cursor = (cursor + 1) % len(lessons)
+
+        return lessons

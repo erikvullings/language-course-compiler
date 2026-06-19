@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import yaml
 
-from course_compiler.models import Gender, PartOfSpeech, Word, to_yaml
+from course_compiler.models import Gender, Lesson, PartOfSpeech, Word, to_yaml
 
 
 def _word(**overrides) -> Word:
@@ -40,3 +40,23 @@ def test_yaml_is_deterministic():
 def test_enum_values_serialize_as_plain_strings():
     out = yaml.safe_load(to_yaml(_word(gender=Gender.NEUTER)))
     assert out["gender"] == "n"
+
+
+def test_lesson_model_serializes_to_json_shape():
+    lesson = Lesson(
+        id="lesson001",
+        language="nl",
+        cefr="A1",
+        title="Home Lesson",
+        text="Dit is een huis.",
+        attempts=2,
+        tolerated=["de"],
+    )
+    out = lesson.model_dump(by_alias=True, mode="json")
+    assert out["id"] == "lesson001"
+    assert out["language"] == "nl"
+    assert out["cefr"] == "A1"
+    assert out["title"] == "Home Lesson"
+    assert out["text"] == "Dit is een huis."
+    assert out["attempts"] == 2
+    assert out["tolerated"] == ["de"]

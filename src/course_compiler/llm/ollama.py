@@ -5,8 +5,8 @@ from __future__ import annotations
 import asyncio
 import time
 
-import httpx
 import httpcore
+import httpx
 
 from course_compiler.llm.base import (
     LLMError,
@@ -33,6 +33,7 @@ class OllamaProvider(LLMProvider):
         model: str = DEFAULT_MODEL,
         base_url: str = DEFAULT_BASE_URL,
         temperature: float = 0.7,
+        thinking: bool = False,
         timeout: float = 60.0,
         max_retries: int = 2,
         client: httpx.Client | None = None,
@@ -41,6 +42,7 @@ class OllamaProvider(LLMProvider):
         self.model = model
         self.base_url = base_url.rstrip("/")
         self.temperature = temperature
+        self.thinking = thinking
         self.timeout = timeout
         self.max_retries = max_retries
         self._client = client
@@ -61,6 +63,7 @@ class OllamaProvider(LLMProvider):
             "model": model or self.model,
             "messages": messages,
             "stream": False,
+            "think": self.thinking,
             "options": options,
             **extra,
         }
@@ -80,7 +83,7 @@ class OllamaProvider(LLMProvider):
         model: str | None = None,
         temperature: float | None = None,
         **kwargs: object,
-    ) -> LLMResponse:
+    ) -> LLMResponse | None:
         client = self._client or httpx.Client(timeout=self.timeout)
         try:
             payload = self._payload(prompt, model, temperature, kwargs)
@@ -106,7 +109,7 @@ class OllamaProvider(LLMProvider):
         model: str | None = None,
         temperature: float | None = None,
         **kwargs: object,
-    ) -> LLMResponse:
+    ) -> LLMResponse | None:
         client = self._async_client or httpx.AsyncClient(timeout=self.timeout)
         try:
             payload = self._payload(prompt, model, temperature, kwargs)

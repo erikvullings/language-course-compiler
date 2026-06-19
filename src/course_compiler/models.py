@@ -131,6 +131,18 @@ class Verb(_Model):
     tags: list[str] = []
 
 
+class Lesson(_Model):
+    id: str
+    language: str
+    cefr: str
+    title: str
+    theme: str = ""
+    new_words: list[str] = []
+    text: str
+    attempts: int = 1
+    tolerated: list[str] = []
+
+
 def to_yaml(model: BaseModel) -> str:
     """Serialize a model to deterministic YAML using camelCase keys.
 

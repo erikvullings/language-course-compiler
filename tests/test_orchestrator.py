@@ -7,19 +7,27 @@ import pytest
 from course_compiler.generation.base import Lemmatizer
 from course_compiler.generation.lesson import LessonGenerator
 from course_compiler.generation.orchestrator import LessonOrchestrator
-from course_compiler.generation.themes import ThemeAssigner
+from course_compiler.generation.themes import LessonThemePlan, ThemeAssigner
 from course_compiler.llm.base import LLMProvider, LLMResponse, PromptInput
 from course_compiler.models import Frequency, PartOfSpeech, Verb, Word
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-_FUNCTION_POS = {PartOfSpeech.ARTICLE, PartOfSpeech.CONJUNCTION, PartOfSpeech.PREPOSITION}
+_FUNCTION_POS = {
+    PartOfSpeech.ARTICLE,
+    PartOfSpeech.CONJUNCTION,
+    PartOfSpeech.PREPOSITION,
+}
 
 
-def _word(lemma: str, pos: PartOfSpeech = PartOfSpeech.NOUN, cefr: str | None = "A1", rank: int = 1) -> Word:
+def _word(
+    lemma: str,
+    pos: PartOfSpeech = PartOfSpeech.NOUN,
+    cefr: str | None = "A1",
+    rank: int = 1,
+) -> Word:
     return Word(
         id=lemma,
         language="nl",
@@ -59,11 +67,31 @@ class _StubThemeAssigner(ThemeAssigner):
         return result
 
 
+class _StubPlannerThemeAssigner(_StubThemeAssigner):
+    def __init__(
+        self, mapping: dict[str, list[str]], plans: list[LessonThemePlan]
+    ) -> None:
+        super().__init__(mapping)
+        self._plans = plans
+
+    def plan_lessons(
+        self,
+        words: list[Word],
+        *,
+        cefr: str,
+        words_per_lesson: int,
+    ) -> list[LessonThemePlan]:
+        return list(self._plans)
+
+
 class _StubProvider(LLMProvider):
     """Returns the new-words list joined by spaces — always passes content-word validation."""
 
-    def complete(self, prompt: PromptInput, *, model=None, temperature=None, **kwargs) -> LLMResponse:
+    def complete(
+        self, prompt: PromptInput, *, model=None, temperature=None, **kwargs
+    ) -> LLMResponse:
         from course_compiler.llm.base import to_messages
+
         # Extract the new words from the user message and echo them.
         messages = to_messages(prompt)
         user_msg = next((m.content for m in messages if m.role.value == "user"), "")
@@ -74,11 +102,15 @@ class _StubProvider(LLMProvider):
                 return LLMResponse(content=words, model=model or "stub", raw={})
         return LLMResponse(content="", model=model or "stub", raw={})
 
-    async def acomplete(self, prompt: PromptInput, *, model=None, temperature=None, **kwargs) -> LLMResponse:
+    async def acomplete(
+        self, prompt: PromptInput, *, model=None, temperature=None, **kwargs
+    ) -> LLMResponse:
         return self.complete(prompt, model=model, temperature=temperature)
 
 
-def _make_orchestrator(theme_mapping: dict[str, list[str]], words_per_lesson: int = 10) -> LessonOrchestrator:
+def _make_orchestrator(
+    theme_mapping: dict[str, list[str]], words_per_lesson: int = 10
+) -> LessonOrchestrator:
     provider = _StubProvider()
     lemmatizer = _IdentityLemmatizer()
     generator = LessonGenerator(provider, lemmatizer)
@@ -89,6 +121,7 @@ def _make_orchestrator(theme_mapping: dict[str, list[str]], words_per_lesson: in
 # ---------------------------------------------------------------------------
 # Tests: plan()
 # ---------------------------------------------------------------------------
+
 
 def test_plan_filters_by_cefr():
     words = [_word("huis", cefr="A1"), _word("appartement", cefr="B1")]
@@ -141,7 +174,9 @@ def test_plan_sorted_by_frequency():
 
 def test_plan_words_per_lesson_respected():
     words = [_word(f"w{i}", rank=i) for i in range(1, 11)]
-    orc = _make_orchestrator({"misc": [f"w{i}" for i in range(1, 11)]}, words_per_lesson=3)
+    orc = _make_orchestrator(
+        {"misc": [f"w{i}" for i in range(1, 11)]}, words_per_lesson=3
+    )
     plans = orc.plan(words, cefr="A1")
     for plan in plans[:-1]:  # last lesson may have fewer
         assert len(plan.new_words) <= 3
@@ -149,16 +184,55 @@ def test_plan_words_per_lesson_respected():
 
 def test_plan_lesson_ids_are_unique_and_sequential():
     words = [_word(f"w{i}", rank=i) for i in range(1, 6)]
-    orc = _make_orchestrator({"misc": [f"w{i}" for i in range(1, 6)]}, words_per_lesson=2)
+    orc = _make_orchestrator(
+        {"misc": [f"w{i}" for i in range(1, 6)]}, words_per_lesson=2
+    )
     plans = orc.plan(words, cefr="A1")
     ids = [p.lesson_id for p in plans]
     assert len(ids) == len(set(ids))
     assert ids == sorted(ids)
 
 
+def test_plan_uses_lesson_blueprints_when_available():
+    words = [_word("huis", rank=1), _word("deur", rank=2), _word("tafel", rank=3)]
+    provider = _StubProvider()
+    lemmatizer = _IdentityLemmatizer()
+    generator = LessonGenerator(provider, lemmatizer)
+    assigner = _StubPlannerThemeAssigner(
+        {"misc": ["huis", "deur", "tafel"]},
+        plans=[LessonThemePlan(theme="home", seed_lemmas=["huis", "deur"])],
+    )
+    orc = LessonOrchestrator(generator, assigner, words_per_lesson=2)
+
+    plans = orc.plan(words, cefr="A1")
+
+    assert plans[0].theme == "home"
+    assert {w.lemma for w in plans[0].new_words} == {"huis", "deur"}
+
+
+def test_plan_blueprints_still_cover_all_content_words():
+    words = [_word("huis", rank=1), _word("deur", rank=2), _word("tafel", rank=3)]
+    provider = _StubProvider()
+    lemmatizer = _IdentityLemmatizer()
+    generator = LessonGenerator(provider, lemmatizer)
+    assigner = _StubPlannerThemeAssigner(
+        {"misc": ["huis", "deur", "tafel"]},
+        plans=[LessonThemePlan(theme="home", seed_lemmas=["huis"])],
+    )
+    orc = LessonOrchestrator(generator, assigner, words_per_lesson=2)
+
+    plans = orc.plan(words, cefr="A1")
+
+    all_lemmas = {w.lemma for p in plans for w in p.new_words}
+    assert all_lemmas == {"huis", "deur", "tafel"}
+    # ceil(3/2) = 2 lessons should be created overall.
+    assert len(plans) == 2
+
+
 # ---------------------------------------------------------------------------
 # Tests: generate()
 # ---------------------------------------------------------------------------
+
 
 def test_generate_returns_one_lesson_per_plan():
     words = [_word("huis"), _word("deur")]
@@ -183,6 +257,7 @@ def _verb(infinitive: str, cefr: str = "A1", rank: int = 1, **forms: str) -> Ver
 # ---------------------------------------------------------------------------
 # Tests: plan() with verbs
 # ---------------------------------------------------------------------------
+
 
 def test_plan_verbs_appear_as_new_word_lemmas():
     """Verb infinitives must appear in the combined new-words list for a lesson."""
@@ -234,10 +309,16 @@ def test_generate_verb_forms_exempt_from_validation():
     verb = _verb("lopen", cefr="A1", **{"ik": "loop", "jij": "loopt"})
 
     class _VerbFormProvider(LLMProvider):
-        def complete(self, prompt: PromptInput, *, model=None, temperature=None, **kwargs) -> LLMResponse:
-            return LLMResponse(content="loop loopt lopen", model=model or "stub", raw={})
+        def complete(
+            self, prompt: PromptInput, *, model=None, temperature=None, **kwargs
+        ) -> LLMResponse:
+            return LLMResponse(
+                content="loop loopt lopen", model=model or "stub", raw={}
+            )
 
-        async def acomplete(self, prompt: PromptInput, *, model=None, temperature=None, **kwargs) -> LLMResponse:
+        async def acomplete(
+            self, prompt: PromptInput, *, model=None, temperature=None, **kwargs
+        ) -> LLMResponse:
             return self.complete(prompt, model=model, temperature=temperature)
 
     lemmatizer = _IdentityLemmatizer()
@@ -257,10 +338,14 @@ def test_generate_function_lemmas_passed_through():
     # Provider returns a response that contains "de" (a function word).
     # Without function_lemmas wired through, "de" would fail validation.
     class _FixedProvider(LLMProvider):
-        def complete(self, prompt: PromptInput, *, model=None, temperature=None, **kwargs) -> LLMResponse:
+        def complete(
+            self, prompt: PromptInput, *, model=None, temperature=None, **kwargs
+        ) -> LLMResponse:
             return LLMResponse(content="de huis", model=model or "stub", raw={})
 
-        async def acomplete(self, prompt: PromptInput, *, model=None, temperature=None, **kwargs) -> LLMResponse:
+        async def acomplete(
+            self, prompt: PromptInput, *, model=None, temperature=None, **kwargs
+        ) -> LLMResponse:
             return self.complete(prompt, model=model, temperature=temperature)
 
     lemmatizer = _IdentityLemmatizer()

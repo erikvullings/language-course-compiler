@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from course_compiler.generation.lesson import GeneratedLesson, LessonGenerator
-from course_compiler.generation.themes import ThemeAssigner
+from course_compiler.generation.themes import LessonThemePlan, ThemeAssigner
 from course_compiler.models import PartOfSpeech, Verb, Word
 
 # POS tags treated as function words — exempt from vocabulary validation and
@@ -29,8 +29,13 @@ def _verb_surface_forms(verb: Verb) -> set[str]:
     """Collect every conjugated surface form from all tense tables of a verb."""
     forms: set[str] = set()
     for table in (
-        verb.present, verb.past, verb.perfect, verb.imperative,
-        verb.future, verb.conditional, verb.subjunctive,
+        verb.present,
+        verb.past,
+        verb.perfect,
+        verb.imperative,
+        verb.future,
+        verb.conditional,
+        verb.subjunctive,
     ):
         forms.update(table.values())
     return forms
@@ -91,6 +96,87 @@ class LessonOrchestrator:
             return word.frequency.rank
         return 999_999
 
+    def _plan_from_blueprints(
+        self,
+        blueprints: list[LessonThemePlan],
+        *,
+        all_content: list[Word],
+        function_lemmas: set[str],
+        verb_lookup: dict[str, Verb],
+    ) -> list[LessonPlan]:
+        by_lemma = {w.lemma: w for w in all_content}
+        accumulated: set[str] = set()
+        accumulated_forms: set[str] = set()
+        seen_new_lemmas: set[str] = set()
+        plans: list[LessonPlan] = []
+        lesson_num = 1
+
+        for blueprint in blueprints:
+            batch: list[Word] = []
+            for lemma in blueprint.seed_lemmas:
+                word = by_lemma.get(lemma)
+                if word is None or lemma in seen_new_lemmas:
+                    continue
+                batch.append(word)
+                seen_new_lemmas.add(lemma)
+
+            if not batch:
+                continue
+
+            new_lemmas = {w.lemma for w in batch}
+            batch_verbs = [
+                verb_lookup[w.lemma] for w in batch if w.lemma in verb_lookup
+            ]
+            non_verb_batch = [w for w in batch if w.lemma not in verb_lookup]
+            new_forms: set[str] = set()
+            for verb in batch_verbs:
+                new_forms |= _verb_surface_forms(verb)
+
+            plans.append(
+                LessonPlan(
+                    lesson_id=f"lesson{lesson_num:03d}",
+                    theme=blueprint.theme,
+                    new_words=non_verb_batch,
+                    allowed_lemmas=accumulated | new_lemmas,
+                    function_lemmas=function_lemmas,
+                    new_verbs=batch_verbs,
+                    allowed_forms=accumulated_forms | new_forms,
+                )
+            )
+            accumulated |= new_lemmas
+            accumulated_forms |= new_forms
+            lesson_num += 1
+
+        # Ensure full coverage even if the LLM misses lemmas.
+        leftover = [w for w in all_content if w.lemma not in seen_new_lemmas]
+        for i in range(0, len(leftover), self._words_per_lesson):
+            batch = leftover[i : i + self._words_per_lesson]
+            new_lemmas = {w.lemma for w in batch}
+            batch_verbs = [
+                verb_lookup[w.lemma] for w in batch if w.lemma in verb_lookup
+            ]
+            non_verb_batch = [w for w in batch if w.lemma not in verb_lookup]
+            new_forms: set[str] = set()
+            for verb in batch_verbs:
+                new_forms |= _verb_surface_forms(verb)
+
+            plans.append(
+                LessonPlan(
+                    lesson_id=f"lesson{lesson_num:03d}",
+                    theme="misc",
+                    new_words=non_verb_batch,
+                    allowed_lemmas=accumulated | new_lemmas,
+                    function_lemmas=function_lemmas,
+                    new_verbs=batch_verbs,
+                    allowed_forms=accumulated_forms | new_forms,
+                )
+            )
+            accumulated |= new_lemmas
+            accumulated_forms |= new_forms
+            lesson_num += 1
+
+        return plans
+
     def plan(
         self,
         words: list[Word],
@@ -116,7 +202,7 @@ class LessonOrchestrator:
         # Build verb lookup and create Word stubs so verbs participate in theme assignment.
         verb_lookup: dict[str, Verb] = {}
         verb_stubs: list[Word] = []
-        for verb in (verbs or []):
+        for verb in verbs or []:
             if verb.cefr == cefr:
                 stub = _verb_as_word(verb)
                 verb_stubs.append(stub)
@@ -126,6 +212,29 @@ class LessonOrchestrator:
 
         if not all_content:
             return []
+
+        planner = getattr(self._assigner, "plan_lessons", None)
+        if callable(planner):
+            planned_result = planner(
+                all_content,
+                cefr=cefr,
+                words_per_lesson=self._words_per_lesson,
+            )
+            lesson_blueprints: list[LessonThemePlan] = []
+            if isinstance(planned_result, list) and all(
+                isinstance(item, LessonThemePlan) for item in planned_result
+            ):
+                lesson_blueprints = planned_result
+
+            if lesson_blueprints:
+                planned = self._plan_from_blueprints(
+                    lesson_blueprints,
+                    all_content=all_content,
+                    function_lemmas=function_lemmas,
+                    verb_lookup=verb_lookup,
+                )
+                if planned:
+                    return planned
 
         themes = self._assigner.assign(all_content)
         # Deterministic theme order: alphabetical by theme name.
@@ -143,7 +252,9 @@ class LessonOrchestrator:
                 new_lemmas = {w.lemma for w in batch}
 
                 # Resolve verb stubs back to Verb objects; collect their surface forms.
-                batch_verbs = [verb_lookup[w.lemma] for w in batch if w.lemma in verb_lookup]
+                batch_verbs = [
+                    verb_lookup[w.lemma] for w in batch if w.lemma in verb_lookup
+                ]
                 non_verb_batch = [w for w in batch if w.lemma not in verb_lookup]
                 new_forms: set[str] = set()
                 for verb in batch_verbs:
@@ -179,15 +290,19 @@ class LessonOrchestrator:
         """Plan then generate all lessons, returning :class:`GeneratedLesson` objects."""
         # Build a full CEFR lookup from words and verbs so the validator can classify
         # extra words the LLM might introduce.
-        cefr_lookup: dict[str, str] = {w.lemma: w.cefr for w in words if w.cefr is not None}
-        for verb in (verbs or []):
+        cefr_lookup: dict[str, str] = {
+            w.lemma: w.cefr for w in words if w.cefr is not None
+        }
+        for verb in verbs or []:
             if verb.cefr is not None:
                 cefr_lookup[verb.infinitive] = verb.cefr
 
         plans = self.plan(words, cefr=cefr, verbs=verbs)
         lessons: list[GeneratedLesson] = []
         for plan in plans:
-            new_word_lemmas = [w.lemma for w in plan.new_words] + [v.infinitive for v in plan.new_verbs]
+            new_word_lemmas = [w.lemma for w in plan.new_words] + [
+                v.infinitive for v in plan.new_verbs
+            ]
             lesson = self._generator.generate(
                 plan.lesson_id,
                 new_word_lemmas,
