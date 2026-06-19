@@ -27,6 +27,8 @@ Implemented so far:
   - `LLMThemeAssigner` — clusters vocabulary into semantic themes via LLM (cached)
   - `LessonOrchestrator` — filters by CEFR, assigns themes, sequences lessons,
     accumulates allowed vocabulary, derives function-word exemptions from POS
+- `course generate-images` — generates lesson cover images via a local Flux.1 schnell API
+- `course download-audio` — downloads MP3 pronunciation files from `audio.json`
 
 ## Setup
 
@@ -127,6 +129,20 @@ To use a specific predefined theme catalog YAML:
 course generate-lessons --lang nl --cefr A1 --themes-file themes.yaml
 ```
 
+`--themes-file` first checks the provided path. For a bare filename (like
+`themes.yaml`), it also falls back to the bundled catalog at
+`src/course_compiler/generation/themes.yaml`. If no file is found, the command
+fails with an explicit error.
+
+Without `--themes-file`, `generate-lessons` auto-discovers in this order:
+
+1. `themes.yaml` in the repository root
+2. `themes.yaml` in the selected lexicon directory (for example `courses/nl/themes.yaml`)
+3. bundled `src/course_compiler/generation/themes.yaml`
+
+Note: the catalog currently controls lesson **theme names/order**. The
+`seedLemmas` are still selected automatically from the CEFR vocabulary.
+
 One lesson file per lesson is written to the output directory as
 `lesson001.json`, `lesson002.json`, … Run once per CEFR level to build a
 full A1 → B2 course. LLM responses (theme clustering and lesson text) are
@@ -147,6 +163,64 @@ rm -rf courses/nl/.llm_cache
 
 `generate-lessons` prefers `words.json` when present (falling back to
 `words/*.yaml`), so preview mode starts much faster on large lexicons.
+
+### Generate lesson images
+
+Generates a cover illustration for every lesson by posting to a locally running
+[Flux.1 schnell](https://blackforestlabs.ai/) image API (Automatic1111-compatible,
+default port 7860). Images are written to `courses/img/<LEVEL>/<LESSON>.png` and
+are language-independent, so one image set covers all target languages.
+
+```bash
+course generate-images
+```
+
+Existing images are skipped. Use `--force` to regenerate them. Narrow the run
+with `--level` and/or `--lesson`:
+
+```bash
+course generate-images --level A1 --lesson lesson001 --force
+```
+
+Override defaults:
+
+```bash
+course generate-images \
+  --themes-file src/course_compiler/generation/themes.yaml \
+  --out courses/img \
+  --api-url http://127.0.0.1:7860/sdapi/v1/txt2img \
+  --width 1024 --height 576 --steps 4 --cfg-scale 4.0
+```
+
+Each image seed is derived deterministically from the level + lesson ID, so
+re-running without `--force` produces the same images.
+
+### Download audio files
+
+Downloads MP3 pronunciation files listed in `courses/<lang>/audio.json` (a
+`{ word: url }` map built by `course import`) and saves them locally as
+`courses/<lang>/audio/<word>.mp3`. Spaces in word keys are replaced with
+underscores; slashes with underscores.
+
+```bash
+course download-audio --lang nl
+```
+
+Existing files are skipped. Use `--force` to re-download. For a quick test:
+
+```bash
+course download-audio --lang nl --limit 100 --dry-run
+```
+
+Override defaults:
+
+```bash
+course download-audio \
+  --lang nl \
+  --audio-json courses/nl/audio.json \
+  --out courses/nl/audio \
+  --force
+```
 
 ### Export split JSON bundles
 
@@ -174,11 +248,6 @@ provider = create_provider(Settings.load())   # picks Ollama or OpenAI from .env
 print(provider.complete("Translate 'huis' to English.").content)        # sync
 # result = await provider.acomplete("Translate 'huis' to English.")     # async
 ```
-
-## TODO
-
-- [ ] Download mp3 files from [Wiktionary](https://en.wiktionary.org/wiki/Wiktionary:Main_Page) and link them to the examples and words.
-- [ ] Download IPA examples from [https://en.wikipedia.org/wiki/Help:IPA/Dutch](https://en.wikipedia.org/wiki/Help:IPA/Dutch). See also [Seeing Speech](https://www.seeingspeech.ac.uk/ipa-charts/) and [IPA Chart](https://www.ipachart.com/) and generate a simple chart for it.
 
 ## License
 

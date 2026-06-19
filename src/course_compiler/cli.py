@@ -8,10 +8,13 @@ in ``TASKS/`` and will be added incrementally.
 from __future__ import annotations
 
 import argparse
+import base64
+import hashlib
 import json
 import sys
 from pathlib import Path
 
+import httpx
 import yaml
 
 from course_compiler import __version__
@@ -41,7 +44,15 @@ def _load_words_from_lexicon(lexicon_dir: Path):
 
     if words_json.exists():
         raw = json.loads(words_json.read_text(encoding="utf-8"))
-        return [Word.model_validate(entry) for entry in raw]
+        language = lexicon_dir.name
+        prepared: list[dict] = []
+        for entry in raw:
+            if not isinstance(entry, dict):
+                continue
+            if "language" not in entry:
+                entry = {"language": language, **entry}
+            prepared.append(entry)
+        return [Word.model_validate(entry) for entry in prepared]
 
     if words_yaml_dir.is_dir():
         word_files = sorted(
@@ -136,6 +147,131 @@ def _lesson_blueprint(plans: list[object]) -> dict[str, object]:
     return {"lessonCount": len(lessons), "lessons": lessons}
 
 
+_PROMPT_TEMPLATE = (
+    "A simple, clean 2D vector comic illustration style, flat colors, bold outlines, "
+    "educational language course graphic, minimalist, with the theme '{theme}' and "
+    "communicative goals: {goals}."
+)
+
+
+def _lesson_seed(level: str, lesson_id: str) -> int:
+    digest = hashlib.md5(f"{level}-{lesson_id}".encode()).hexdigest()
+    return int(digest, 16) % (2**31)
+
+
+def _audio_filename(word: str) -> str:
+    """Sanitize a word key into a safe filename stem (spaces → underscores)."""
+    return word.replace(" ", "_").replace("/", "_")
+
+
+def _cmd_generate_images(args) -> int:
+    themes_path: Path
+    if args.themes_file:
+        themes_path = Path(args.themes_file)
+        if not themes_path.exists():
+            bundled = Path(__file__).resolve().parent / "generation" / themes_path.name
+            if bundled.exists():
+                themes_path = bundled
+            else:
+                print(f"Error: themes file not found: {args.themes_file}", file=sys.stderr)
+                return 1
+    else:
+        themes_path = Path(__file__).resolve().parent / "generation" / "themes.yaml"
+
+    catalog: dict = yaml.safe_load(themes_path.read_text(encoding="utf-8"))
+    out_root = Path(args.out)
+
+    generated = skipped = failed = 0
+    with httpx.Client(timeout=120.0) as client:
+        for level, lessons in catalog.items():
+            if args.level and level != args.level:
+                continue
+            for lesson_id, info in lessons.items():
+                if args.lesson and lesson_id != args.lesson:
+                    continue
+
+                out_path = out_root / level / f"{lesson_id}.png"
+                if out_path.exists() and not args.force:
+                    skipped += 1
+                    continue
+
+                theme = info.get("theme", lesson_id)
+                goals = ", ".join(info.get("communicativeGoals", []))
+                prompt = _PROMPT_TEMPLATE.format(theme=theme, goals=goals)
+                seed = _lesson_seed(level, lesson_id)
+
+                print(f"  {level}/{lesson_id}: {theme}")
+                payload = {
+                    "prompt": prompt,
+                    "width": args.width,
+                    "height": args.height,
+                    "steps": args.steps,
+                    "cfg_scale": args.cfg_scale,
+                    "seed": seed,
+                    "model": "schnell",
+                }
+                try:
+                    resp = client.post(args.api_url, json=payload)
+                    resp.raise_for_status()
+                    image_b64: str = resp.json()["images"][0]
+                    out_path.parent.mkdir(parents=True, exist_ok=True)
+                    out_path.write_bytes(base64.b64decode(image_b64))
+                    generated += 1
+                except Exception as exc:
+                    print(f"    FAILED: {exc}", file=sys.stderr)
+                    failed += 1
+
+    print(f"Generated {generated}, skipped {skipped}, failed {failed}.")
+    return 0 if failed == 0 else 1
+
+
+def _cmd_download_audio(args) -> int:
+    lang: str = args.lang
+    audio_json_path = Path(args.audio_json) if args.audio_json else Path(f"courses/{lang}/audio.json")
+    out_dir = Path(args.out) if args.out else Path(f"courses/{lang}/audio")
+
+    if not audio_json_path.exists():
+        print(f"Error: {audio_json_path} not found.", file=sys.stderr)
+        return 1
+
+    catalog: dict[str, str] = json.loads(audio_json_path.read_text(encoding="utf-8"))
+    items = list(catalog.items())
+    if args.limit is not None:
+        items = items[: args.limit]
+
+    if not args.dry_run:
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+    downloaded = skipped = failed = 0
+    with httpx.Client(timeout=30.0, follow_redirects=True) as client:
+        for word, url in items:
+            suffix = Path(url).suffix or ".mp3"
+            filename = _audio_filename(word) + suffix
+            dest = out_dir / filename
+
+            if dest.exists() and not args.force:
+                skipped += 1
+                continue
+
+            if args.dry_run:
+                print(f"  would download: {word!r} → {dest}")
+                downloaded += 1
+                continue
+
+            try:
+                resp = client.get(url)
+                resp.raise_for_status()
+                dest.write_bytes(resp.content)
+                downloaded += 1
+            except Exception as exc:
+                print(f"  WARNING: failed to download {word!r}: {exc}", file=sys.stderr)
+                failed += 1
+
+    action = "Would download" if args.dry_run else "Downloaded"
+    print(f"{action} {downloaded}, skipped {skipped}, failed {failed}.")
+    return 0 if failed == 0 else 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="course", description="Language Course Compiler"
@@ -211,6 +347,52 @@ def build_parser() -> argparse.ArgumentParser:
         "--version", default="1.0", help="Course version for manifest.json"
     )
 
+    img = sub.add_parser(
+        "generate-images", help="Generate lesson images via a local Flux.1 schnell API"
+    )
+    img.add_argument(
+        "--themes-file",
+        default=None,
+        help="Path to themes YAML (defaults to bundled themes.yaml)",
+    )
+    img.add_argument(
+        "--out",
+        default="courses/img",
+        help="Output directory for images (default: courses/img)",
+    )
+    img.add_argument("--level", default=None, help="Only generate images for this CEFR level (e.g. A1)")
+    img.add_argument("--lesson", default=None, help="Only generate this lesson (e.g. lesson001)")
+    img.add_argument("--force", action="store_true", help="Overwrite existing images")
+    img.add_argument(
+        "--api-url",
+        default="http://127.0.0.1:7860/sdapi/v1/txt2img",
+        help="Flux.1 API endpoint",
+    )
+    img.add_argument("--width", type=int, default=1024)
+    img.add_argument("--height", type=int, default=576)
+    img.add_argument("--steps", type=int, default=4)
+    img.add_argument("--cfg-scale", type=float, default=4.0)
+
+    dl = sub.add_parser(
+        "download-audio", help="Download audio files listed in audio.json"
+    )
+    dl.add_argument("--lang", default="nl", help="BCP-47 language code (default: nl)")
+    dl.add_argument(
+        "--audio-json",
+        default=None,
+        help="Path to audio.json (defaults to courses/<lang>/audio.json)",
+    )
+    dl.add_argument(
+        "--out",
+        default=None,
+        help="Output directory (defaults to courses/<lang>/audio/)",
+    )
+    dl.add_argument("--force", action="store_true", help="Re-download existing files")
+    dl.add_argument(
+        "--dry-run", action="store_true", help="Print what would be downloaded"
+    )
+    dl.add_argument("--limit", type=int, default=None, help="Download only first N entries")
+
     return parser
 
 
@@ -254,17 +436,46 @@ def main(argv: list[str] | None = None) -> int:
 
         lemmatizer = create_lemmatizer(args.lang)
         generator = LessonGenerator(provider, lemmatizer, cache=cache)
+        selected_theme_catalog: Path | None = None
         if args.themes_file is not None:
-            predefined_themes_path = Path(args.themes_file)
+            requested = Path(args.themes_file)
+            candidate_paths = [requested]
+            if not requested.is_absolute() and requested.parent == Path("."):
+                # Convenience: allow "--themes-file themes.yaml" to resolve to
+                # the bundled catalog when no local file is present.
+                candidate_paths.append(
+                    Path(__file__).resolve().parent / "generation" / requested.name
+                )
+
+            predefined_themes_path = next(
+                (candidate for candidate in candidate_paths if candidate.exists()),
+                None,
+            )
+            if predefined_themes_path is None:
+                print(
+                    f"Error: themes file not found: {args.themes_file}",
+                    file=sys.stderr,
+                )
+                return 1
+            selected_theme_catalog = predefined_themes_path
         else:
             theme_candidates = [
-                Path("themes.yaml"),
                 Path(__file__).resolve().parents[2] / "themes.yaml",
+                lexicon_dir / "themes.yaml",
                 Path(__file__).resolve().parent / "generation" / "themes.yaml",
             ]
             predefined_themes_path = next(
                 (candidate for candidate in theme_candidates if candidate.exists()),
                 None,
+            )
+            selected_theme_catalog = predefined_themes_path
+
+        if selected_theme_catalog is not None:
+            print(f"Using theme catalog: {selected_theme_catalog}", file=sys.stderr)
+        else:
+            print(
+                "No predefined theme catalog found; using LLM theme planning.",
+                file=sys.stderr,
             )
         orchestrator = LessonOrchestrator(
             generator,
@@ -354,6 +565,12 @@ def main(argv: list[str] | None = None) -> int:
             f"(words={len(words)}, verbs={len(verbs)}, grammar={len(grammar)}, exercises={len(exercises)}, lessons={len(lessons)})"
         )
         return 0
+
+    if args.command == "generate-images":
+        return _cmd_generate_images(args)
+
+    if args.command == "download-audio":
+        return _cmd_download_audio(args)
 
     parser.print_help()
     return 0
