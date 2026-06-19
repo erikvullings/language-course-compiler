@@ -177,6 +177,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="When used with --preview, continue to generation after printing the blueprint",
     )
+    gen.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Disable LLM response caching (forces regeneration from scratch)",
+    )
 
     imp = sub.add_parser("import", help="Import lexical sources into canonical YAML")
     imp.add_argument("--language", default="nl", choices=["nl"], help="Source language")
@@ -239,7 +244,7 @@ def main(argv: list[str] | None = None) -> int:
         from course_compiler.generation.base import create_lemmatizer
 
         cache_dir = lexicon_dir / ".llm_cache"
-        cache = LLMCache(cache_dir)
+        cache = None if args.no_cache else LLMCache(cache_dir)
         assigner = LLMThemeAssigner(provider, model=None, cache=cache)
 
         lemmatizer = create_lemmatizer(args.lang)

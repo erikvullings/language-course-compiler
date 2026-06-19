@@ -127,6 +127,18 @@ full A1 → B2 course. LLM responses (theme clustering and lesson text) are
 cached in `courses/nl/.llm_cache/` so subsequent runs are fast and
 byte-identical.
 
+To regenerate lessons from scratch (ignoring cache):
+
+```bash
+course generate-lessons --lang nl --cefr A1 --no-cache
+```
+
+Or manually clear the cache:
+
+```bash
+rm -rf courses/nl/.llm_cache
+```
+
 `generate-lessons` prefers `words.json` when present (falling back to
 `words/*.yaml`), so preview mode starts much faster on large lexicons.
 
