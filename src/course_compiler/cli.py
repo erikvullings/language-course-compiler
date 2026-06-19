@@ -23,6 +23,15 @@ def build_parser() -> argparse.ArgumentParser:
     ask = sub.add_parser("ask", help="Send a one-off prompt to the configured LLM")
     ask.add_argument("prompt", help="The prompt text")
 
+    imp = sub.add_parser("import", help="Import lexical sources into canonical YAML")
+    imp.add_argument("--language", default="nl", choices=["nl"], help="Source language")
+    imp.add_argument("--kaikki", required=True, help="Path to kaikki.org JSONL dump")
+    imp.add_argument("--wordnet", help="Path to Open WordNet LMF XML (synonyms)")
+    imp.add_argument("--frequency", help="Path to wordfreq cBpack file")
+    imp.add_argument("--nt2lex", help="Path to NT2Lex .tsv resource (CEFR levels)")
+    imp.add_argument("--out", default="courses/nl", help="Output course directory")
+    imp.add_argument("--limit", type=int, help="Only process the first N entries")
+
     return parser
 
 
@@ -34,6 +43,21 @@ def main(argv: list[str] | None = None) -> int:
         settings = Settings.load()
         provider = create_provider(settings)
         print(provider.complete(args.prompt).content)
+        return 0
+
+    if args.command == "import":
+        # Language-specific importers live in course_compiler.converters.
+        from course_compiler.converters import dutch
+
+        counts = dutch.convert(
+            args.kaikki,
+            args.out,
+            wordnet_path=args.wordnet,
+            frequency_path=args.frequency,
+            nt2lex_path=args.nt2lex,
+            limit=args.limit,
+        )
+        print(f"Imported {counts['words']} words and {counts['verbs']} verbs into {args.out}")
         return 0
 
     parser.print_help()

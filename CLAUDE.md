@@ -55,8 +55,27 @@ These shape every change — violating them is a bug:
   and `openai.py` implement it; `factory.py` is a registry
   (`register_provider` / `create_provider`). This registry pattern is the
   template for the other pluggable providers (TTS, importers, exporters).
+- **`models.py`** — the canonical, **language-agnostic** Pydantic schema (`Word`,
+  `Verb`, `Frequency`, ...). Serializes camelCase via `to_yaml`. Conjugation
+  tables are `{slot: form}` mappings, not fixed pronoun fields, so the schema
+  isn't tied to one language. This module must never gain language-specific logic.
+- **`converters/`** — **language-dependent** importers that map source datasets
+  onto `models`. `dutch.py` maps kaikki.org Wiktionary JSONL (primary: pos,
+  gender, plural/diminutive, IPA, syllables, verb conjugations, English glosses →
+  `translations.en`) + Open Dutch WordNet XML (synonyms via shared synsets) +
+  wordfreq frequency + NT2Lex `.tsv` (CEFR level = earliest attested level per
+  lemma). Per-entry mappers (`word_from_kaikki`, `verb_from_kaikki`)
+  are pure; `convert` streams files, `convert_iterables` is the I/O-free variant.
+- **`frequency.py`** — reader for wordfreq `cBpack` files (generic).
 - **`settings.py`** — `Settings.load(env=...)` reads config via python-dotenv.
-- **`cli.py`** — `course` entry point (skeleton; subcommands grow per `TASKS/`).
+- **`cli.py`** — `course` entry point (`ask`, `import`; grows per `TASKS/`).
+
+The split between `models.py` (generic) and `converters/<lang>.py` (specific) is
+the load-bearing boundary: anything that knows Dutch (pronouns, gender mapping,
+form-tag quirks) belongs in the converter, never in the models or the pipeline.
+
+Source datasets are not in git (large): `data/nl/` holds the kaikki JSONL, ODWN
+XML and wordfreq msgpack used by the Dutch importer.
 
 ### Two testability patterns to follow when extending
 

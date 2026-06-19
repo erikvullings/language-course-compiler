@@ -10,6 +10,9 @@ keywords = ["language-learning", "compiler", "llm", "course", "pwa"]
 dependencies = [
     "httpx>=0.27",
     "python-dotenv>=1.0",
+    "pydantic>=2.7",
+    "pyyaml>=6.0",
+    "msgpack>=1.0",
 ]
 
 [project.optional-dependencies]

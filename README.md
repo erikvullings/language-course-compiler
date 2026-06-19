@@ -62,6 +62,33 @@ Or via the CLI:
 course ask "Translate 'huis' to English."
 ```
 
+## Importing a lexicon (Dutch)
+
+The canonical lexicon schema is defined as language-agnostic Pydantic models in
+`course_compiler.models`. Language-specific importers in
+`course_compiler.converters` map source datasets onto it.
+
+The Dutch importer combines four open datasets (placed in `data/nl/`):
+
+- **kaikki.org Dutch JSONL** (machine-readable Wiktionary) — part of speech,
+  gender, plural/diminutive, IPA, syllables, verb conjugations, English glosses.
+- **Open Dutch WordNet (LMF XML)** — synonyms (lemmas sharing a synset).
+- **wordfreq cBpack** — frequency rank.
+- **NT2Lex (`.tsv`)** — CEFR level (A1–C1), taken as the earliest level at which
+  a lemma is attested in the CEFR-graded corpus.
+
+```bash
+course import \
+  --kaikki    data/nl/kaikki.org-dictionary-Dutch.jsonl \
+  --wordnet   data/nl/odwn_orbn_gwg-LMF_1.3.xml \
+  --frequency data/nl/large_nl.msgpack \
+  --nt2lex    data/nl/NT2Lex-main/resource/NT2Lex-CGN+ODWN-v01.tsv \
+  --out       courses/nl
+```
+
+This writes one YAML file per lemma under `courses/nl/words/` and
+`courses/nl/verbs/` (use `--limit N` for a quick smoke run).
+
 ## License
 
 MIT

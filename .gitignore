@@ -19,9 +19,11 @@ uv.lock
 .mypy_cache/
 
 # Generated course output
-/courses/**/audio/
-/courses/**/images/
+/courses/
 /dist-course/
+
+# Large source datasets (downloaded, not version-controlled)
+/data/
 
 # OS
 .DS_Store
