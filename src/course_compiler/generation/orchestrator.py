@@ -123,6 +123,10 @@ class LessonOrchestrator:
         temperature: float = 0.7,
     ) -> list[GeneratedLesson]:
         """Plan then generate all lessons, returning :class:`GeneratedLesson` objects."""
+        # Build a full CEFR lookup from the entire word list (not just the target level)
+        # so the validator can classify extra words the LLM might introduce.
+        cefr_lookup: dict[str, str] = {w.lemma: w.cefr for w in words if w.cefr is not None}
+
         plans = self.plan(words, cefr=cefr)
         lessons: list[GeneratedLesson] = []
         for plan in plans:
@@ -136,6 +140,7 @@ class LessonOrchestrator:
                 model=model,
                 temperature=temperature,
                 function_lemmas=plan.function_lemmas,
+                cefr_lookup=cefr_lookup,
             )
             lessons.append(lesson)
         return lessons

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from course_compiler.generation.base import Lemmatizer
 from course_compiler.generation.cache import LLMCache
-from course_compiler.generation.validator import VocabularyValidator
+from course_compiler.generation.validator import ValidationResult, VocabularyValidator
 from course_compiler.llm.base import LLMProvider, Message, Role
 
 #: Words of lesson text generated per new content word introduced.
@@ -22,6 +22,7 @@ class GeneratedLesson:
     lesson_id: str
     content: str
     attempts: int
+    tolerated: frozenset[str] = frozenset()
 
 
 def _system_prompt(language: str, target_length: str) -> str:
@@ -35,14 +36,28 @@ def _system_prompt(language: str, target_length: str) -> str:
     )
 
 
+def _feedback_message(result: ValidationResult, cefr_target: str) -> str:
+    parts: list[str] = ["Your previous response contained vocabulary problems. Please rewrite the lesson."]
+    if result.violations:
+        words = ", ".join(sorted(result.violations))
+        parts.append(
+            f"These words must not appear — they are above {cefr_target} level "
+            f"or outside the allowed vocabulary: {words}."
+        )
+    return " ".join(parts)
+
+
 class LessonGenerator:
     """Generate lesson text via an :class:`~course_compiler.llm.base.LLMProvider`.
 
-    Validates content words against the allowed vocabulary and retries on leakage.
-    Function words (articles, prepositions, etc.) are exempt from validation;
-    supply them via ``function_lemmas`` (derive from the imported lexicon by POS).
+    Validates content words against the allowed vocabulary and retries on leakage,
+    using multi-turn feedback so the LLM knows exactly what went wrong.
 
-    Optionally caches LLM responses for reproducibility.
+    Extra words at or below the target CEFR level are tolerated up to
+    ``extra_tolerance`` × ``len(new_words)`` (default 50 %).  Words above the
+    target CEFR are always rejected.
+
+    Optionally caches LLM responses (first-attempt only) for reproducibility.
     """
 
     def __init__(
@@ -53,13 +68,15 @@ class LessonGenerator:
         function_lemmas: set[str] | None = None,
         cache: LLMCache | None = None,
         max_retries: int = 5,
+        extra_tolerance: float = 0.5,
     ) -> None:
         self._provider = provider
         self._validator = VocabularyValidator(lemmatizer, function_lemmas)
         self._cache = cache
         self._max_retries = max_retries
+        self._extra_tolerance = extra_tolerance
 
-    def _build_messages(
+    def _build_initial_messages(
         self,
         lesson_id: str,
         language: str,
@@ -92,33 +109,35 @@ class LessonGenerator:
         model: str | None = None,
         temperature: float = 0.7,
         function_lemmas: set[str] | None = None,
+        cefr_lookup: dict[str, str] | None = None,
     ) -> GeneratedLesson:
-        """Generate and validate lesson content, retrying on vocabulary leakage.
+        """Generate and validate lesson content, retrying with feedback on violation.
 
         Args:
             lesson_id: Unique identifier for this lesson (e.g. ``"lesson001"``).
             new_words: Content-word lemmas being introduced for the first time.
-            allowed_words: Full set of content-word lemmas the validator accepts
-                (all prior lessons + current lesson words). Not sent to the LLM.
+            allowed_words: Full set of content-word lemmas the validator accepts.
+                Not sent to the LLM — enforced by the validator only.
             language: Human-readable target language name (e.g. ``"Dutch"``).
-            cefr: CEFR level string (e.g. ``"A1"``). Included in the prompt so
-                the LLM self-regulates vocabulary complexity.
-            theme: Semantic theme for this lesson (e.g. ``"home"``). Helps the
-                LLM write coherent, contextually consistent text.
+            cefr: CEFR level (e.g. ``"A1"``). Included in the prompt and used to
+                classify extra words as tolerated vs. violations.
+            theme: Semantic theme (e.g. ``"home"``). Included in the prompt.
             model: LLM model identifier; provider default used if omitted.
             temperature: Sampling temperature forwarded to the provider.
-            function_lemmas: Extra lemmas exempt from validation for this call
-                (typically verb surface forms derived by the orchestrator).
+            function_lemmas: Extra per-call exempt lemmas (e.g. verb surface forms).
+            cefr_lookup: ``{lemma: cefr_level}`` mapping from the imported lexicon.
+                Required for CEFR-aware tolerance; without it all extras are violations.
 
         Raises:
-            RuntimeError: If vocabulary leakage persists after ``max_retries``.
+            RuntimeError: If violations persist after ``max_retries``.
         """
         target_length = _target_length(len(new_words))
-        messages = self._build_messages(lesson_id, language, cefr, theme, target_length, new_words)
+        messages = self._build_initial_messages(lesson_id, language, cefr, theme, target_length, new_words)
         raw_messages = [m.as_dict() for m in messages]
         resolved_model = model or ""
 
         for attempt in range(1, self._max_retries + 1):
+            # Cache: only the first attempt (deterministic prompt) is cached.
             if attempt == 1 and self._cache is not None:
                 cached = self._cache.get(resolved_model, raw_messages)
                 if cached is not None:
@@ -129,11 +148,32 @@ class LessonGenerator:
             if self._cache is not None and attempt == 1:
                 self._cache.put(resolved_model, raw_messages, response)
 
-            unknown = self._validator.validate(response.content, allowed_words, extra_function_lemmas=function_lemmas)
-            if not unknown:
-                return GeneratedLesson(lesson_id=lesson_id, content=response.content, attempts=attempt)
+            result: ValidationResult = self._validator.validate(
+                response.content,
+                allowed_words,
+                extra_function_lemmas=function_lemmas,
+                cefr_target=cefr,
+                cefr_lookup=cefr_lookup,
+                extra_tolerance=self._extra_tolerance,
+                new_word_count=len(new_words),
+            )
+
+            if result.is_valid:
+                return GeneratedLesson(
+                    lesson_id=lesson_id,
+                    content=response.content,
+                    attempts=attempt,
+                    tolerated=result.tolerated,
+                )
+
+            # Append the bad response and a correction message for the next attempt.
+            messages = [
+                *messages,
+                Message(Role.ASSISTANT, response.content),
+                Message(Role.USER, _feedback_message(result, cefr)),
+            ]
 
         raise RuntimeError(
             f"LessonGenerator exceeded max_retries={self._max_retries} for lesson {lesson_id!r}. "
-            "Vocabulary leakage could not be eliminated."
+            "Vocabulary violations could not be resolved."
         )
