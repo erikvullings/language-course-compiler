@@ -90,13 +90,20 @@ This writes `courses/nl/words.json` (use `--limit N` for a quick smoke run).
 ### Generate lessons
 
 ```bash
+course generate-lessons --lang nl --cefr A1
+```
+
+`--lang` is the only required flag. Defaults: lexicon at `courses/<lang>`,
+output at `<lexicon>/lessons`, language name derived from the lang code,
+10 words per lesson. Override any of these explicitly:
+
+```bash
 course generate-lessons \
-  --lexicon      courses/nl \
-  --lang         nl \
+  --lang nl --cefr A1 \
+  --lexicon courses/nl \
   --language-name Dutch \
-  --cefr         A1 \
   --words-per-lesson 10 \
-  --out          courses/nl/lessons
+  --out courses/nl/lessons
 ```
 
 One lesson file per lesson is written to the output directory as

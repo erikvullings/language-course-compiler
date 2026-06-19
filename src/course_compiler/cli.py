@@ -14,6 +14,20 @@ from course_compiler import __version__
 from course_compiler.llm import create_provider
 from course_compiler.settings import Settings
 
+# BCP-47 → human-readable name used in LLM prompts.
+_LANG_NAMES: dict[str, str] = {
+    "nl": "Dutch",
+    "de": "German",
+    "fr": "French",
+    "es": "Spanish",
+    "it": "Italian",
+    "pt": "Portuguese",
+    "pl": "Polish",
+    "sv": "Swedish",
+    "da": "Danish",
+    "no": "Norwegian",
+}
+
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="course", description="Language Course Compiler")
@@ -24,10 +38,10 @@ def build_parser() -> argparse.ArgumentParser:
     ask.add_argument("prompt", help="The prompt text")
 
     gen = sub.add_parser("generate-lessons", help="Generate lessons from an imported lexicon")
-    gen.add_argument("--lexicon", required=True, help="Path to the imported lexicon directory (e.g. courses/nl)")
-    gen.add_argument("--lang", default="nl", help="BCP-47 language code (e.g. nl)")
-    gen.add_argument("--language-name", default="Dutch", help="Human-readable language name for the LLM prompt")
+    gen.add_argument("--lang", required=True, help="BCP-47 language code (e.g. nl)")
     gen.add_argument("--cefr", default="A1", help="Target CEFR level (A1, A2, B1, …)")
+    gen.add_argument("--lexicon", default=None, help="Lexicon directory (defaults to courses/<lang>)")
+    gen.add_argument("--language-name", default=None, help="LLM prompt name (defaults to known name for --lang)")
     gen.add_argument("--words-per-lesson", type=int, default=10, help="New content words per lesson")
     gen.add_argument("--out", default=None, help="Output directory (defaults to <lexicon>/lessons)")
 
@@ -66,7 +80,8 @@ def main(argv: list[str] | None = None) -> int:
         settings = Settings.load()
         provider = create_provider(settings)
 
-        lexicon_dir = Path(args.lexicon)
+        lexicon_dir = Path(args.lexicon or f"courses/{args.lang}")
+        language_name = args.language_name or _LANG_NAMES.get(args.lang) or args.lang
         words_file = lexicon_dir / "words.json"
         if not words_file.exists():
             print(f"Error: {words_file} not found. Run 'course import' first.", file=sys.stderr)
@@ -89,7 +104,7 @@ def main(argv: list[str] | None = None) -> int:
 
         lessons = orchestrator.generate(
             words,
-            language=args.language_name,
+            language=language_name,
             cefr=args.cefr,
         )
 
