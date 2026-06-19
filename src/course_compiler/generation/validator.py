@@ -34,14 +34,21 @@ class VocabularyValidator:
         self._lemmatizer = lemmatizer
         self._function_lemmas: set[str] = function_lemmas or set()
 
-    def validate(self, text: str, allowed: set[str]) -> set[str]:
+    def validate(
+        self,
+        text: str,
+        allowed: set[str],
+        *,
+        extra_function_lemmas: set[str] | None = None,
+    ) -> set[str]:
         """Return the set of unknown content-word lemmas found in *text*.
 
         An empty return value means the text passes validation.
-        Tokens whose lemma is in ``function_lemmas`` are not checked.
-        Tokens the lemmatizer cannot resolve are reported by their lowercase
-        surface form so the caller can inspect what the LLM introduced.
+        Tokens whose lemma is in ``function_lemmas`` (or ``extra_function_lemmas``)
+        are not checked.  Tokens the lemmatizer cannot resolve are reported by
+        their lowercase surface form.
         """
+        exempt = self._function_lemmas | (extra_function_lemmas or set())
         unknown: set[str] = set()
         for raw_token in _TOKEN_RE.split(text):
             token = raw_token.strip()
@@ -49,7 +56,7 @@ class VocabularyValidator:
                 continue
             lemma = self._lemmatizer.lemmatize(token)
             resolved = lemma if lemma is not None else token.lower()
-            if resolved in self._function_lemmas:
+            if resolved in exempt:
                 continue
             if resolved not in allowed:
                 unknown.add(resolved)

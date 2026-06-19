@@ -23,6 +23,14 @@ def build_parser() -> argparse.ArgumentParser:
     ask = sub.add_parser("ask", help="Send a one-off prompt to the configured LLM")
     ask.add_argument("prompt", help="The prompt text")
 
+    gen = sub.add_parser("generate-lessons", help="Generate lessons from an imported lexicon")
+    gen.add_argument("--lexicon", required=True, help="Path to the imported lexicon directory (e.g. courses/nl)")
+    gen.add_argument("--lang", default="nl", help="BCP-47 language code (e.g. nl)")
+    gen.add_argument("--language-name", default="Dutch", help="Human-readable language name for the LLM prompt")
+    gen.add_argument("--cefr", default="A1", help="Target CEFR level (A1, A2, B1, …)")
+    gen.add_argument("--words-per-lesson", type=int, default=10, help="New content words per lesson")
+    gen.add_argument("--out", default=None, help="Output directory (defaults to <lexicon>/lessons)")
+
     imp = sub.add_parser("import", help="Import lexical sources into canonical YAML")
     imp.add_argument("--language", default="nl", choices=["nl"], help="Source language")
     imp.add_argument("--kaikki", required=True, help="Path to kaikki.org JSONL dump")
@@ -43,6 +51,54 @@ def main(argv: list[str] | None = None) -> int:
         settings = Settings.load()
         provider = create_provider(settings)
         print(provider.complete(args.prompt).content)
+        return 0
+
+    if args.command == "generate-lessons":
+        import json
+        from pathlib import Path
+
+        from course_compiler.generation.lesson import LessonGenerator
+        from course_compiler.generation.orchestrator import LessonOrchestrator
+        from course_compiler.generation.themes import LLMThemeAssigner
+        from course_compiler.llm import create_provider
+        from course_compiler.models import Word
+
+        settings = Settings.load()
+        provider = create_provider(settings)
+
+        lexicon_dir = Path(args.lexicon)
+        words_file = lexicon_dir / "words.json"
+        if not words_file.exists():
+            print(f"Error: {words_file} not found. Run 'course import' first.", file=sys.stderr)
+            return 1
+
+        raw = json.loads(words_file.read_text(encoding="utf-8"))
+        words = [Word.model_validate(entry) for entry in raw]
+
+        # Theme assigner — LLM-backed with disk cache next to the lexicon.
+        from course_compiler.generation.cache import LLMCache
+        from course_compiler.generation.base import create_lemmatizer
+
+        cache_dir = lexicon_dir / ".llm_cache"
+        cache = LLMCache(cache_dir)
+        assigner = LLMThemeAssigner(provider, model=None, cache=cache)
+
+        lemmatizer = create_lemmatizer(args.lang)
+        generator = LessonGenerator(provider, lemmatizer, cache=cache)
+        orchestrator = LessonOrchestrator(generator, assigner, words_per_lesson=args.words_per_lesson)
+
+        lessons = orchestrator.generate(
+            words,
+            language=args.language_name,
+            cefr=args.cefr,
+        )
+
+        out_dir = Path(args.out) if args.out else lexicon_dir / "lessons"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        for lesson in lessons:
+            (out_dir / f"{lesson.lesson_id}.txt").write_text(lesson.content, encoding="utf-8")
+
+        print(f"Generated {len(lessons)} lessons into {out_dir}")
         return 0
 
     if args.command == "import":

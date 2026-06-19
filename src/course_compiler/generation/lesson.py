@@ -81,6 +81,7 @@ class LessonGenerator:
         model: str | None = None,
         temperature: float = 0.7,
         target_length: str = "180 words",
+        function_lemmas: set[str] | None = None,
     ) -> GeneratedLesson:
         """Generate and validate lesson content, retrying on vocabulary leakage.
 
@@ -114,7 +115,7 @@ class LessonGenerator:
             if self._cache is not None and attempt == 1:
                 self._cache.put(resolved_model, raw_messages, response)
 
-            unknown = self._validator.validate(response.content, allowed_words)
+            unknown = self._validator.validate(response.content, allowed_words, extra_function_lemmas=function_lemmas)
             if not unknown:
                 return GeneratedLesson(lesson_id=lesson_id, content=response.content, attempts=attempt)
 
