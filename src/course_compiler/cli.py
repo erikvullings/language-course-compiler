@@ -12,6 +12,8 @@ import base64
 import hashlib
 import json
 import sys
+import time
+from collections.abc import Sequence
 from pathlib import Path
 
 import httpx
@@ -129,7 +131,7 @@ def _load_lessons_for_export(lessons_dir: Path) -> dict[str, dict]:
     return lessons
 
 
-def _lesson_blueprint(plans: list[object]) -> dict[str, object]:
+def _lesson_blueprint(plans: Sequence[object]) -> dict[str, object]:
     lessons: list[dict[str, object]] = []
     for plan in plans:
         lesson_id = getattr(plan, "lesson_id", "")
@@ -151,7 +153,8 @@ _PROMPT_TEMPLATE = (
     "A clean, modern flat-design illustration for an adult language-learning course, "
     "minimal linework, sophisticated muted color palette, depicting a realistic everyday scene "
     "where adults are {goals}. "
-    "No text, no letters, no words, no signs, no writing, no speech bubbles, no labels anywhere in the image. "
+    "No text, no letters, no words, no signs, no writing, no speech bubbles, "
+    "no labels anywhere in the image. "
     "Contemporary editorial illustration style, subtle gradients, professional and approachable."
 )
 
@@ -180,10 +183,7 @@ def _is_valid_theme_catalog(path: Path) -> bool:
     if not isinstance(loaded, dict) or not loaded:
         return False
 
-    for _cefr, lessons in loaded.items():
-        if isinstance(lessons, dict) and lessons:
-            return True
-    return False
+    return any(isinstance(lessons, dict) and lessons for _cefr, lessons in loaded.items())
 
 
 def _audio_filename(word: str) -> str:
@@ -200,7 +200,9 @@ def _cmd_generate_images(args) -> int:
             if bundled.exists():
                 themes_path = bundled
             else:
-                print(f"Error: themes file not found: {args.themes_file}", file=sys.stderr)
+                print(
+                    f"Error: themes file not found: {args.themes_file}", file=sys.stderr
+                )
                 return 1
     else:
         candidates = [
@@ -209,7 +211,10 @@ def _cmd_generate_images(args) -> int:
         ]
         themes_path = next((p for p in candidates if p.exists()), None)
         if themes_path is None:
-            print("Error: no themes.yaml found. Pass --themes-file explicitly.", file=sys.stderr)
+            print(
+                "Error: no themes.yaml found. Pass --themes-file explicitly.",
+                file=sys.stderr,
+            )
             return 1
 
     catalog: dict = yaml.safe_load(themes_path.read_text(encoding="utf-8"))
@@ -264,7 +269,9 @@ def _cmd_generate_images(args) -> int:
 
 def _cmd_download_audio(args) -> int:
     lang: str = args.lang
-    audio_json_path = Path(args.audio_json) if args.audio_json else Path(f"courses/{lang}/audio.json")
+    audio_json_path = (
+        Path(args.audio_json) if args.audio_json else Path(f"courses/{lang}/audio.json")
+    )
     out_dir = Path(args.out) if args.out else Path(f"courses/{lang}/audio")
 
     if not audio_json_path.exists():
@@ -281,7 +288,10 @@ def _cmd_download_audio(args) -> int:
 
     downloaded = skipped = failed = 0
     headers = {
-        "User-Agent": "language-course-compiler/1.0 (https://github.com/erikvullings/language-course-compiler; educational use)"
+        "User-Agent": (
+            "language-course-compiler/1.0 "
+            "(https://github.com/erikvullings/language-course-compiler; educational use)"
+        )
     }
     with httpx.Client(timeout=30.0, follow_redirects=True, headers=headers) as client:
         for word, url in items:
@@ -303,6 +313,7 @@ def _cmd_download_audio(args) -> int:
                 resp.raise_for_status()
                 dest.write_bytes(resp.content)
                 downloaded += 1
+                time.sleep(args.delay)
             except Exception as exc:
                 print(f"  WARNING: failed to download {word!r}: {exc}", file=sys.stderr)
                 failed += 1
@@ -400,8 +411,14 @@ def build_parser() -> argparse.ArgumentParser:
         default="courses/img",
         help="Output directory for images (default: courses/img)",
     )
-    img.add_argument("--level", default=None, help="Only generate images for this CEFR level (e.g. A1)")
-    img.add_argument("--lesson", default=None, help="Only generate this lesson (e.g. lesson001)")
+    img.add_argument(
+        "--level",
+        default=None,
+        help="Only generate images for this CEFR level (e.g. A1)",
+    )
+    img.add_argument(
+        "--lesson", default=None, help="Only generate this lesson (e.g. lesson001)"
+    )
     img.add_argument("--force", action="store_true", help="Overwrite existing images")
     img.add_argument(
         "--api-url",
@@ -410,9 +427,19 @@ def build_parser() -> argparse.ArgumentParser:
     )
     img.add_argument("--width", type=int, default=1024)
     img.add_argument("--height", type=int, default=576)
-    img.add_argument("--steps", type=int, default=None, help="Inference steps (default: 4 for schnell, 25 for dev)")
+    img.add_argument(
+        "--steps",
+        type=int,
+        default=None,
+        help="Inference steps (default: 4 for schnell, 25 for dev)",
+    )
     img.add_argument("--cfg-scale", type=float, default=4.0)
-    img.add_argument("--model", default="schnell", choices=["schnell", "dev"], help="Flux model (default: schnell)")
+    img.add_argument(
+        "--model",
+        default="schnell",
+        choices=["schnell", "dev"],
+        help="Flux model (default: schnell)",
+    )
     img.add_argument(
         "--timeout",
         type=float,
@@ -438,7 +465,15 @@ def build_parser() -> argparse.ArgumentParser:
     dl.add_argument(
         "--dry-run", action="store_true", help="Print what would be downloaded"
     )
-    dl.add_argument("--limit", type=int, default=None, help="Download only first N entries")
+    dl.add_argument(
+        "--limit", type=int, default=None, help="Download only first N entries"
+    )
+    dl.add_argument(
+        "--delay",
+        type=float,
+        default=2,
+        help="Seconds to wait between requests (default: 2)",
+    )
 
     return parser
 
@@ -468,14 +503,17 @@ def main(argv: list[str] | None = None) -> int:
             words = _load_words_from_lexicon(lexicon_dir)
         except FileNotFoundError:
             print(
-                f"Error: neither {lexicon_dir / 'words.json'} nor {lexicon_dir / 'words'} found. Run 'course import' first.",
+                (
+                    f"Error: neither {lexicon_dir / 'words.json'} nor "
+                    f"{lexicon_dir / 'words'} found. Run 'course import' first."
+                ),
                 file=sys.stderr,
             )
             return 1
 
         # Theme assigner — LLM-backed with disk cache next to the lexicon.
-        from course_compiler.generation.cache import LLMCache
         from course_compiler.generation.base import create_lemmatizer
+        from course_compiler.generation.cache import LLMCache
 
         cache_dir = lexicon_dir / ".llm_cache"
         cache = None if args.no_cache else LLMCache(cache_dir)
@@ -617,7 +655,8 @@ def main(argv: list[str] | None = None) -> int:
 
         print(
             f"Exported course bundles into {out_dir} "
-            f"(words={len(words)}, verbs={len(verbs)}, grammar={len(grammar)}, exercises={len(exercises)}, lessons={len(lessons)})"
+            f"(words={len(words)}, verbs={len(verbs)}, grammar={len(grammar)}, "
+            f"exercises={len(exercises)}, lessons={len(lessons)})"
         )
         return 0
 
