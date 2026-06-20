@@ -108,6 +108,30 @@ class _StubSelectingThemeAssigner(_StubThemeAssigner):
         return list(self._selections_by_theme.get(theme, []))
 
 
+class _StubProposingThemeAssigner(_StubThemeAssigner):
+    def __init__(
+        self,
+        mapping: dict[str, list[str]],
+        proposals_by_theme: dict[str, list[str]],
+    ) -> None:
+        super().__init__(mapping)
+        self._proposals_by_theme = proposals_by_theme
+        self.propose_calls: list[tuple[str, int, str]] = []
+
+    def propose_theme_vocabulary(
+        self,
+        *,
+        cefr: str,
+        theme: str,
+        communicative_goals: list[str],
+        target_count: int,
+        already_used: list[str],
+        language: str = "",
+    ) -> list[str]:
+        self.propose_calls.append((theme, target_count, language))
+        return list(self._proposals_by_theme.get(theme, []))
+
+
 class _StubProvider(LLMProvider):
     """Returns the new-words list joined by spaces — always passes content-word validation."""
 
@@ -209,6 +233,49 @@ def test_plan_words_per_lesson_respected():
     plans = orc.plan(words, cefr="A1")
     for plan in plans[:-1]:  # last lesson may have fewer
         assert len(plan.new_words) <= 3
+
+
+def test_front_loaded_budget_gives_early_lessons_more_words():
+    """Opt-in front-loading: lesson 1 introduces more words, tapering to steady state."""
+    words = [_word(f"w{i:03d}", rank=i) for i in range(1, 101)]  # 100 words
+    provider = _StubProvider()
+    generator = LessonGenerator(provider, _IdentityLemmatizer())
+    assigner = _StubThemeAssigner({"misc": [w.lemma for w in words]})
+    orc = LessonOrchestrator(
+        generator,
+        assigner,
+        words_per_lesson=10,
+        first_lesson_words=40,
+        front_load_lessons=3,
+        predefined_themes={},
+    )
+
+    plans = orc.plan(words, cefr="A1")
+    counts = [len(p.new_words) for p in plans]
+
+    # Linear taper: L1=40, L2=25, L3+=10 (steady state).
+    assert counts[0] == 40
+    assert counts[1] == 25
+    assert counts[2] == 10
+    assert counts[0] > counts[-1]
+    # No word is dropped or duplicated.
+    all_lemmas = [w.lemma for p in plans for w in p.new_words]
+    assert len(all_lemmas) == len(set(all_lemmas)) == 100
+
+
+def test_uniform_budget_is_the_default():
+    """Without front-load params, every lesson uses words_per_lesson (back-compat)."""
+    words = [_word(f"w{i:02d}", rank=i) for i in range(1, 21)]
+    provider = _StubProvider()
+    generator = LessonGenerator(provider, _IdentityLemmatizer())
+    assigner = _StubThemeAssigner({"misc": [w.lemma for w in words]})
+    orc = LessonOrchestrator(
+        generator, assigner, words_per_lesson=5, predefined_themes={}
+    )
+
+    plans = orc.plan(words, cefr="A1")
+
+    assert [len(p.new_words) for p in plans] == [5, 5, 5, 5]
 
 
 def test_plan_lesson_ids_are_unique_and_sequential():
@@ -439,6 +506,44 @@ def test_plan_spreads_content_across_all_predefined_themes_when_more_than_implie
 
     assert [p.theme for p in plans] == ["T1", "T2", "T3", "T4"]
     assert [len(p.new_words) for p in plans] == [1, 1, 1, 1]
+
+
+def test_plan_predefined_themes_prefer_proposed_vocabulary_filtered_to_lexicon():
+    """LLM proposes theme words; orchestrator keeps only lexicon hits, freq-ranked."""
+    words = [_word("koffie", rank=2), _word("thee", rank=1), _word("water", rank=3)]
+    provider = _StubProvider()
+    generator = LessonGenerator(provider, _IdentityLemmatizer())
+    assigner = _StubProposingThemeAssigner(
+        {"misc": ["koffie", "thee", "water"]},
+        proposals_by_theme={
+            # 'espresso' is theme-relevant but absent from our lexicon -> dropped.
+            "Cafe": ["espresso", "thee", "koffie"],
+        },
+    )
+    orc = LessonOrchestrator(
+        generator,
+        assigner,
+        words_per_lesson=2,
+        predefined_themes={
+            "A1": [
+                LessonThemePlan(
+                    theme="Cafe",
+                    seed_lemmas=[],
+                    communicative_goals=["order drinks"],
+                )
+            ]
+        },
+    )
+
+    plans = orc.plan(words, cefr="A1", language="Dutch")
+
+    # Out-of-lexicon proposal dropped; survivors ranked by frequency (thee=1 < koffie=2).
+    assert [w.lemma for w in plans[0].new_words] == ["thee", "koffie"]
+    all_lemmas = {w.lemma for p in plans for w in p.new_words}
+    assert "espresso" not in all_lemmas
+    # The proposer was consulted with the lesson's target count and language.
+    assert assigner.propose_calls and assigner.propose_calls[0][0] == "Cafe"
+    assert assigner.propose_calls[0][2] == "Dutch"
 
 
 def test_plan_predefined_themes_use_goal_aware_seed_selection_with_fallback():

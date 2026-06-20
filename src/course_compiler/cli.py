@@ -389,7 +389,24 @@ def build_parser() -> argparse.ArgumentParser:
         help="LLM prompt name (defaults to known name for --lang)",
     )
     gen.add_argument(
-        "--words-per-lesson", type=int, default=10, help="New content words per lesson"
+        "--words-per-lesson",
+        type=int,
+        default=10,
+        help="New content words per lesson (steady-state count)",
+    )
+    gen.add_argument(
+        "--first-lesson-words",
+        type=int,
+        default=None,
+        help="Front-load: new words in lesson 1, tapering to --words-per-lesson "
+        "(e.g. 40, Delft-style). Omit for a uniform budget.",
+    )
+    gen.add_argument(
+        "--front-load-lessons",
+        type=int,
+        default=3,
+        help="Number of early lessons over which --first-lesson-words tapers to "
+        "the steady-state count (default: 3)",
     )
     gen.add_argument(
         "--out", default=None, help="Output directory (defaults to <lexicon>/lessons)"
@@ -619,10 +636,12 @@ def main(argv: list[str] | None = None) -> int:
             generator,
             assigner,
             words_per_lesson=args.words_per_lesson,
+            first_lesson_words=args.first_lesson_words,
+            front_load_lessons=args.front_load_lessons,
             predefined_themes_path=predefined_themes_path,
         )
 
-        plans = orchestrator.plan(words, cefr=args.cefr)
+        plans = orchestrator.plan(words, cefr=args.cefr, language=language_name)
         if args.preview:
             print(json.dumps(_lesson_blueprint(plans), ensure_ascii=False, indent=2))
             if not args.approve:

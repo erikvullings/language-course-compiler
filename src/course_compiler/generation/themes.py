@@ -55,6 +55,20 @@ _THEME_SEED_SYSTEM_PROMPT = (
     "Respond as JSON only with shape: {\"seed_lemmas\": [str]}."
 )
 
+_PROPOSE_VOCAB_SYSTEM_PROMPT = (
+    "You design vocabulary for a single beginner language lesson. "
+    "You will receive the target language, CEFR level, lesson theme, communicative "
+    "goals, a target word count n, and a list of already-taught lemmas to avoid. "
+    "Propose the most useful, communicatively central words a learner needs to talk "
+    "about this theme and reach these goals — drawn from your own knowledge of the "
+    "language, NOT from any provided list. "
+    "Give base dictionary forms (lemmas), lower-case, in the target language. "
+    "Prefer concrete, high-frequency, everyday words at or below the CEFR level. "
+    "Do not repeat any already-taught lemma. "
+    "Return about 5×n candidates so the course can select the best ones. "
+    'Respond as JSON only with shape: {"vocabulary": [str]}.'
+)
+
 
 @dataclass(frozen=True)
 class LessonThemePlan:
@@ -84,6 +98,17 @@ class ThemeAssigner(Protocol):
         target_count: int,
         already_used: list[str],
         candidate_lemmas: list[str],
+    ) -> list[str]: ...
+
+    def propose_theme_vocabulary(
+        self,
+        *,
+        cefr: str,
+        theme: str,
+        communicative_goals: list[str],
+        target_count: int,
+        already_used: list[str],
+        language: str = "",
     ) -> list[str]: ...
 
 
@@ -256,6 +281,73 @@ class LLMThemeAssigner:
         if self._cache is not None:
             self._cache.put(self._model, raw_messages, response)
         return selected
+
+    def propose_theme_vocabulary(
+        self,
+        *,
+        cefr: str,
+        theme: str,
+        communicative_goals: list[str],
+        target_count: int,
+        already_used: list[str],
+        language: str = "",
+    ) -> list[str]:
+        """Ask the LLM to *generate* ~5×n theme-relevant lemmas from its own knowledge.
+
+        Unlike :meth:`select_seed_lemmas_for_theme`, no candidate list is supplied —
+        the LLM proposes communicatively central words for the theme, which the
+        caller then filters against the lexicon. Cached for reproducibility; returns
+        ``[]`` on provider/parse error so callers can fall back.
+        """
+        if target_count < 1:
+            return []
+
+        payload = {
+            "language": language,
+            "cefr": cefr,
+            "theme": theme,
+            "communicative_goals": communicative_goals,
+            "target_count": target_count,
+            "oversample_count": target_count * 5,
+            "already_used_lemmas": already_used,
+        }
+        raw_messages = [
+            {"role": "system", "content": _PROPOSE_VOCAB_SYSTEM_PROMPT},
+            {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
+        ]
+
+        if self._cache is not None:
+            cached = self._cache.get(self._model, raw_messages)
+            if cached is not None:
+                return self._parse_proposed_vocabulary(cached.content)
+
+        messages = [
+            Message(Role.SYSTEM, _PROPOSE_VOCAB_SYSTEM_PROMPT),
+            Message(Role.USER, json.dumps(payload, ensure_ascii=False)),
+        ]
+
+        try:
+            response = self._provider.complete(messages, model=self._model or None)
+            proposed = self._parse_proposed_vocabulary(response.content)
+        except (LLMError, json.JSONDecodeError, TypeError, ValueError):
+            return []
+
+        if self._cache is not None:
+            self._cache.put(self._model, raw_messages, response)
+        return proposed
+
+    def _parse_proposed_vocabulary(self, text: str) -> list[str]:
+        raw = json.loads(_strip_fences(text))
+        if not isinstance(raw, dict) or not isinstance(raw.get("vocabulary"), list):
+            raise ValueError("Invalid proposed-vocabulary response shape.")
+
+        out: list[str] = []
+        for item in raw["vocabulary"]:
+            if isinstance(item, str):
+                lemma = item.strip()
+                if lemma and lemma not in out:
+                    out.append(lemma)
+        return out
 
     def _parse(self, text: str, by_lemma: dict[str, Word]) -> dict[str, list[Word]]:
         raw = json.loads(_strip_fences(text))

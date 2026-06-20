@@ -90,14 +90,21 @@ def _lemmatizer(words: list[str]) -> _MapLemmatizer:
 # ---------------------------------------------------------------------------
 
 
-def test_target_length_scales_with_word_count():
-    assert _target_length(10) == "150 words"
-    assert _target_length(5) == "75 words"
-    assert _target_length(1) == "30 words"
+def test_target_length_new_word_limited_when_vocab_is_ample():
+    # With a large allowed vocabulary, length is driven by the new-word budget.
+    assert _target_length(10, 1000) == "150 words"
+    assert _target_length(5, 1000) == "75 words"
+    assert _target_length(1, 1000) == "30 words"
+
+
+def test_target_length_vocab_limited_at_cold_start():
+    # Early lessons (allowed ≈ new) are capped by the sustainable-vocab budget,
+    # not by 15 × new_words — otherwise we demand 150 words from a 10-word vocab.
+    assert _target_length(10, 10) == "40 words"
 
 
 def test_target_length_floor():
-    assert _target_length(0) == "30 words"
+    assert _target_length(0, 0) == "30 words"
 
 
 # ---------------------------------------------------------------------------
@@ -128,6 +135,38 @@ def test_generate_theme_in_user_prompt():
         "lesson001", ["huis"], {"huis"}, language="Dutch", theme="home", model="stub"
     )
     assert "home" in provider._calls[0][1].content
+
+
+def test_early_lesson_uses_example_format_when_vocab_is_small():
+    """With little vocabulary to recombine, ask for simple example sentences."""
+    provider = _StubProvider(["## T\n**New words:** huis\nhuis"])
+    gen = LessonGenerator(provider, _lemmatizer(["huis"]))
+    gen.generate("lesson001", ["huis"], {"huis"}, language="Dutch", model="stub")
+    system_prompt = provider._calls[0][0].content.lower()
+    assert "example sentences" in system_prompt
+    assert "narrative" not in system_prompt
+
+
+def test_mature_lesson_uses_narrative_format_when_vocab_is_large():
+    """Once a base vocabulary exists, ask for a coherent narrative."""
+    allowed = {f"w{i}" for i in range(80)}
+    provider = _StubProvider(["## T\n**New words:** w0\nw0"])
+    gen = LessonGenerator(provider, _MapLemmatizer({w: w for w in allowed}))
+    gen.generate("lesson050", ["w0"], allowed, language="Dutch", model="stub")
+    system_prompt = provider._calls[0][0].content.lower()
+    assert "narrative" in system_prompt
+
+
+def test_narrative_threshold_is_configurable():
+    """Lowering the threshold flips a small-vocab lesson into narrative format."""
+    allowed = {"huis", "deur"}
+    provider = _StubProvider(["## T\n**New words:** huis\nhuis"])
+    gen = LessonGenerator(
+        provider, _MapLemmatizer({"huis": "huis", "deur": "deur"}),
+        narrative_vocab_threshold=2,
+    )
+    gen.generate("lesson001", ["huis"], allowed, language="Dutch", model="stub")
+    assert "narrative" in provider._calls[0][0].content.lower()
 
 
 def test_low_cefr_system_prompt_allows_frequent_simple_past_forms():
@@ -224,6 +263,31 @@ def test_extra_word_above_cefr_triggers_retry_with_feedback():
     # Second call must include a feedback message mentioning the violation.
     second_call_text = " ".join(m.content for m in provider._calls[1])
     assert "appartement" in second_call_text
+
+
+def test_retry_feedback_asks_for_minimal_edit_not_rewrite():
+    """Feedback anchors on the previous draft (revise, don't regenerate from scratch)."""
+    mapping = {"huis": "huis", "appartement": "appartement"}
+    cefr_lookup = {"huis": "A1", "appartement": "B1"}
+    bad = "## Home\n**New words:** huis, appartement\nappartement"
+    good = "## Home\n**New words:** huis\nhuis"
+    provider = _StubProvider([bad, good])
+    gen = LessonGenerator(provider, _MapLemmatizer(mapping))
+    gen.generate(
+        "lesson001",
+        ["huis"],
+        {"huis"},
+        language="Dutch",
+        cefr="A1",
+        model="stub",
+        cefr_lookup=cefr_lookup,
+    )
+    feedback = provider._calls[1][3].content.lower()
+    # Instructs a minimal revision of the previous version, not a fresh rewrite.
+    assert "revise" in feedback
+    assert "rewrite from scratch" in feedback
+    # Still names the offending word to remove/replace.
+    assert "appartement" in feedback
 
 
 def test_retry_messages_form_multi_turn_conversation():

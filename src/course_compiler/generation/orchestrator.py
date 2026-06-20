@@ -241,6 +241,8 @@ class LessonOrchestrator:
         theme_assigner: ThemeAssigner,
         *,
         words_per_lesson: int = 10,
+        first_lesson_words: int | None = None,
+        front_load_lessons: int = 3,
         function_pos: frozenset[PartOfSpeech] = FUNCTION_POS,
         predefined_themes_path: Path | None = None,
         predefined_themes: dict[str, list[str] | list[LessonThemePlan]] | None = None,
@@ -248,6 +250,8 @@ class LessonOrchestrator:
         self._generator = generator
         self._assigner = theme_assigner
         self._words_per_lesson = words_per_lesson
+        self._first_lesson_words = first_lesson_words
+        self._front_load_lessons = front_load_lessons
         self._function_pos = function_pos
         if predefined_themes is not None:
             self._predefined_themes = {
@@ -273,6 +277,43 @@ class LessonOrchestrator:
         if word.frequency and word.frequency.rank is not None:
             return word.frequency.rank
         return 999_999
+
+    def _budget_for(self, lesson_number: int) -> int:
+        """New-word budget for lesson *lesson_number* (1-based).
+
+        Uniform (``words_per_lesson``) unless ``first_lesson_words`` is set, in
+        which case the budget tapers linearly from ``first_lesson_words`` (lesson
+        1) down to ``words_per_lesson`` over ``front_load_lessons`` lessons, then
+        holds at the steady state. This front-loading gives early lessons enough
+        critical mass to form coherent text when there is no prior vocabulary to
+        recombine (cf. the Delft Method).
+        """
+        steady = self._words_per_lesson
+        first = self._first_lesson_words
+        if first is None:
+            return steady
+        if lesson_number >= self._front_load_lessons:
+            return steady
+        span = self._front_load_lessons - 1
+        if span <= 0:
+            return max(1, first)
+        frac = (lesson_number - 1) / span
+        return max(1, round(first + frac * (steady - first)))
+
+    def _schedule_slices(
+        self, total: int, start_lesson: int = 1
+    ) -> list[tuple[int, int]]:
+        """Cut ``total`` ordered items into per-lesson ``(start, end)`` ranges
+        using the (possibly front-loaded) budget schedule."""
+        slices: list[tuple[int, int]] = []
+        start = 0
+        lesson = start_lesson
+        while start < total:
+            end = min(start + self._budget_for(lesson), total)
+            slices.append((start, end))
+            start = end
+            lesson += 1
+        return slices
 
     def _plan_from_blueprints(
         self,
@@ -363,6 +404,7 @@ class LessonOrchestrator:
         all_content: list[Word],
         function_lemmas: set[str],
         verb_lookup: dict[str, Verb],
+        language: str = "",
     ) -> list[LessonPlan]:
         """Use predefined lesson theme names in order.
 
@@ -385,14 +427,14 @@ class LessonOrchestrator:
             ]
             slices = [(boundaries[i], boundaries[i + 1]) for i in range(lesson_count)]
         else:
-            slices = [
-                (start, min(start + self._words_per_lesson, len(all_content)))
-                for start in range(0, len(all_content), self._words_per_lesson)
-            ]
+            # Front-loaded budget: early themes get more words (see _budget_for).
+            slices = self._schedule_slices(len(all_content))
 
         by_lemma = {w.lemma: w for w in all_content}
+        by_lemma_lower = {lemma.lower(): w for lemma, w in by_lemma.items()}
         ordered_lemmas = [w.lemma for w in all_content]
         used_lemmas: set[str] = set()
+        proposer = getattr(self._assigner, "propose_theme_vocabulary", None)
         selector = getattr(self._assigner, "select_seed_lemmas_for_theme", None)
 
         for index, (start, end) in enumerate(slices):
@@ -413,7 +455,39 @@ class LessonOrchestrator:
                 communicative_goals=theme_plan.communicative_goals,
             )
 
-            if callable(selector):
+            # Primary: the LLM proposes theme-relevant words from its own knowledge;
+            # we keep only those present in our lexicon, ranked by frequency. This
+            # gives communicatively coherent vocabulary instead of frequency-noise.
+            if callable(proposer):
+                proposed = proposer(
+                    cefr=cefr,
+                    theme=theme_plan.theme,
+                    communicative_goals=theme_plan.communicative_goals,
+                    target_count=target_count,
+                    already_used=sorted(used_lemmas),
+                    language=language,
+                )
+                survivors: list[Word] = []
+                seen_lower: set[str] = set()
+                for raw in proposed if isinstance(proposed, list) else []:
+                    if not isinstance(raw, str):
+                        continue
+                    key = raw.strip().lower()
+                    if not key or key in seen_lower:
+                        continue
+                    word = by_lemma.get(raw.strip()) or by_lemma_lower.get(key)
+                    if word is None or word.lemma in used_lemmas:
+                        continue
+                    seen_lower.add(key)
+                    survivors.append(word)
+                survivors.sort(key=self._sort_key)
+                for word in survivors:
+                    if word.lemma not in selected:
+                        selected.append(word.lemma)
+                    if len(selected) >= target_count:
+                        break
+
+            if len(selected) < target_count and callable(selector):
                 try:
                     proposed = selector(
                         cefr=cefr,
@@ -489,6 +563,7 @@ class LessonOrchestrator:
         *,
         cefr: str,
         verbs: list[Verb] | None = None,
+        language: str = "",
     ) -> list[LessonPlan]:
         """Build an ordered list of :class:`LessonPlan` without calling the LLM generator.
 
@@ -527,6 +602,7 @@ class LessonOrchestrator:
                 all_content=all_content,
                 function_lemmas=function_lemmas,
                 verb_lookup=verb_lookup,
+                language=language,
             )
 
         planner = getattr(self._assigner, "plan_lessons", None)
@@ -563,8 +639,13 @@ class LessonOrchestrator:
 
         for theme_name, theme_words in ordered_themes:
             sorted_theme = sorted(theme_words, key=self._sort_key)
-            for i in range(0, len(sorted_theme), self._words_per_lesson):
-                batch = sorted_theme[i : i + self._words_per_lesson]
+            # Front-loaded budget: the per-lesson size follows the global lesson
+            # counter, so early lessons across the whole course get more words.
+            cursor = 0
+            while cursor < len(sorted_theme):
+                budget = self._budget_for(lesson_num)
+                batch = sorted_theme[cursor : cursor + budget]
+                cursor += len(batch)
                 new_lemmas = {w.lemma for w in batch}
 
                 # Resolve verb stubs back to Verb objects; collect their surface forms.
@@ -613,7 +694,7 @@ class LessonOrchestrator:
             if verb.cefr is not None:
                 cefr_lookup[verb.infinitive] = verb.cefr
 
-        plans = self.plan(words, cefr=cefr, verbs=verbs)
+        plans = self.plan(words, cefr=cefr, verbs=verbs, language=language)
         lessons: list[GeneratedLesson] = []
         for plan in plans:
             new_word_lemmas = [w.lemma for w in plan.new_words] + [
