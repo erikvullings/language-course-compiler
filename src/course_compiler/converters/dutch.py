@@ -28,6 +28,7 @@ from pathlib import Path
 
 from course_compiler.frequency import load_frequencies
 from course_compiler.models import (
+    Audio,
     Diminutive,
     Frequency,
     Gender,
@@ -82,6 +83,34 @@ _MARKED = frozenset(
         "table-tags",
         "inflection-template",
         "class",
+    }
+)
+
+_NOISY_CATEGORY_PREFIXES = (
+    "pages with",
+    "dutch entries",
+)
+
+_NON_THEMATIC_TAGS = frozenset(
+    {
+        "singular",
+        "plural",
+        "first-person",
+        "second-person",
+        "third-person",
+        "present",
+        "past",
+        "future",
+        "imperative",
+        "indicative",
+        "subjunctive",
+        "participle",
+        "form-of",
+        "neuter",
+        "masculine",
+        "feminine",
+        "common",
+        "not-comparable",
     }
 )
 
@@ -176,6 +205,50 @@ def _english_translation(entry: dict) -> str | None:
     return None
 
 
+def _audio_url(entry: dict) -> str | None:
+    """Best audio URL from a kaikki entry's sound objects."""
+    for sound in entry.get("sounds") or []:
+        for key in ("mp3_url", "ogg_url", "audio_url", "wav_url", "url"):
+            value = sound.get(key)
+            if isinstance(value, str) and value.startswith(("http://", "https://")):
+                return value
+        audio = sound.get("audio")
+        if isinstance(audio, str) and audio.startswith(("http://", "https://")):
+            return audio
+    return None
+
+
+def _extract_tags(entry: dict) -> list[str]:
+    """Extract lightweight lexical tags from sense tags/categories."""
+    tags: set[str] = set()
+
+    for raw in entry.get("tags") or []:
+        if isinstance(raw, str):
+            norm = raw.strip().lower()
+            if norm and norm not in _NON_THEMATIC_TAGS:
+                tags.add(norm)
+
+    for sense in entry.get("senses") or []:
+        for raw in sense.get("tags") or []:
+            if isinstance(raw, str):
+                norm = raw.strip().lower()
+                if norm and norm not in _NON_THEMATIC_TAGS:
+                    tags.add(norm)
+
+        for category in sense.get("categories") or []:
+            if not isinstance(category, dict):
+                continue
+            name = category.get("name")
+            if not isinstance(name, str):
+                continue
+            norm = name.strip().lower()
+            if not norm or norm.startswith(_NOISY_CATEGORY_PREFIXES):
+                continue
+            tags.add(norm)
+
+    return sorted(tags)
+
+
 def word_from_kaikki(
     entry: dict, *, frequency: Frequency | None = None, cefr: str | None = None
 ) -> Word | None:
@@ -197,6 +270,7 @@ def word_from_kaikki(
     dim_forms = _all_forms(forms, {"diminutive"})
 
     translation = _english_translation(entry)
+    audio_url = _audio_url(entry)
 
     return Word(
         id=normalize(lemma),
@@ -216,6 +290,8 @@ def word_from_kaikki(
         syllables=_syllables(entry),
         frequency=frequency,
         cefr=cefr,
+        audio=Audio(recorded=audio_url) if audio_url else None,
+        tags=_extract_tags(entry),
     )
 
 
@@ -288,6 +364,7 @@ def verb_from_kaikki(
         irregular=irregular,
         frequency=frequency,
         cefr=cefr,
+        tags=_extract_tags(entry),
     )
 
 
@@ -397,6 +474,7 @@ def convert(
     seen_verbs: set[str] = set()
     words_json: list[dict] = []
     verbs_json: list[dict] = []
+    audio_json: dict[str, str] = {}
 
     for i, entry in enumerate(iter_kaikki(kaikki_path)):
         if limit is not None and i >= limit:
@@ -411,7 +489,13 @@ def convert(
                 continue
             seen_verbs.add(verb.id)
             (verbs_dir / f"{_safe_name(verb.id)}.yaml").write_text(to_yaml(verb), encoding="utf-8")
-            verbs_json.append(verb.model_dump(by_alias=True, exclude_none=True, mode="json"))
+            verbs_json.append(
+                _compact_aggregate_row(
+                    verb.model_dump(by_alias=True, exclude_none=True, mode="json")
+                )
+            )
+            if audio := _audio_url(entry):
+                audio_json[verb.id] = audio
             counts["verbs"] += 1
         else:
             word = word_from_kaikki(entry, frequency=freq, cefr=level)
@@ -421,11 +505,18 @@ def convert(
                 word.synonyms = synonyms[key]
             seen_words.add(word.id)
             (words_dir / f"{_safe_name(word.id)}.yaml").write_text(to_yaml(word), encoding="utf-8")
-            words_json.append(word.model_dump(by_alias=True, exclude_none=True, mode="json"))
+            words_json.append(
+                _compact_aggregate_row(
+                    word.model_dump(by_alias=True, exclude_none=True, mode="json")
+                )
+            )
+            if audio := _audio_url(entry):
+                audio_json[word.id] = audio
             counts["words"] += 1
 
     _write_json_array(out / "words.json", words_json)
     _write_json_array(out / "verbs.json", verbs_json)
+    _write_json_object(out / "audio.json", audio_json)
 
     return counts
 
@@ -436,6 +527,38 @@ def _write_json_array(path: Path, rows: list[dict]) -> None:
         json.dumps(ordered, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+
+
+def _write_json_object(path: Path, rows: dict[str, str]) -> None:
+    ordered = {key: rows[key] for key in sorted(rows)}
+    path.write_text(
+        json.dumps(ordered, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _compact_aggregate_row(row: dict) -> dict:
+    """Compact aggregate JSON payloads by dropping empty/default-style values."""
+
+    def _compact(value):
+        if isinstance(value, dict):
+            out: dict = {}
+            for key, child in value.items():
+                if key == "language":
+                    continue
+                compacted = _compact(child)
+                if compacted in (None, [], {}):
+                    continue
+                out[key] = compacted
+            return out
+        if isinstance(value, list):
+            out_list = [_compact(item) for item in value]
+            out_list = [item for item in out_list if item not in (None, [], {})]
+            return out_list
+        return value
+
+    compacted_row = _compact(row)
+    return compacted_row if isinstance(compacted_row, dict) else row
 
 
 def _safe_name(value: str) -> str:

@@ -150,12 +150,23 @@ def _lesson_blueprint(plans: Sequence[object]) -> dict[str, object]:
 
 
 _PROMPT_TEMPLATE = (
-    "A clean, modern flat-design illustration for an adult language-learning course, "
+    "A clean, modern flat-design illustration without text for an adult language-learning course, "
     "minimal linework, sophisticated muted color palette, depicting a realistic everyday scene "
-    "where adults are {goals}. "
-    "No text, no letters, no words, no signs, no writing, no speech bubbles, "
-    "no labels anywhere in the image. "
-    "Contemporary editorial illustration style, subtle gradients, professional and approachable."
+    "that conveys {goals}. "
+)
+
+_IMAGE_PROMPT_SYSTEM = (
+    "You are an expert at writing image generation prompts for Flux/Stable Diffusion. "
+    "Given a lesson theme and communicative goals for an adult language-learning course, "
+    "write a single, vivid image prompt (≤120 words) that a diffusion model can render. "
+    "Style: clean flat-design illustration, no text, minimal linework, sophisticated muted "
+    "color palette, realistic everyday scene. Output only the prompt — no preamble, no quotes."
+)
+
+_IMAGE_PROMPT_USER = (
+    "Lesson theme: {theme}\n"
+    "Communicative goals: {goals}\n\n"
+    "Write the image generation prompt."
 )
 
 _NEGATIVE_PROMPT = (
@@ -163,6 +174,18 @@ _NEGATIVE_PROMPT = (
     "writing, typography, font, logo, banner, childish, cartoon, cute, kawaii, pastel, "
     "children, kids, toys, 3d, photo, dark, scary, violent"
 )
+
+
+def _build_image_prompt(theme: str, goals: str, provider) -> str:
+    """Ask the LLM to craft a diffusion-model image prompt for a lesson."""
+    from course_compiler.llm.base import Message, Role
+
+    messages = [
+        Message(role=Role.SYSTEM, content=_IMAGE_PROMPT_SYSTEM),
+        Message(role=Role.USER, content=_IMAGE_PROMPT_USER.format(theme=theme, goals=goals or theme)),
+    ]
+    response = provider.complete(messages)
+    return response.content.strip()
 
 
 def _lesson_seed(level: str, lesson_id: str) -> int:
@@ -183,7 +206,9 @@ def _is_valid_theme_catalog(path: Path) -> bool:
     if not isinstance(loaded, dict) or not loaded:
         return False
 
-    return any(isinstance(lessons, dict) and lessons for _cefr, lessons in loaded.items())
+    return any(
+        isinstance(lessons, dict) and lessons for _cefr, lessons in loaded.items()
+    )
 
 
 def _audio_filename(word: str) -> str:
@@ -220,6 +245,11 @@ def _cmd_generate_images(args) -> int:
     catalog: dict = yaml.safe_load(themes_path.read_text(encoding="utf-8"))
     out_root = Path(args.out)
 
+    llm_provider = None
+    if not args.no_llm_prompt:
+        settings = Settings.load()
+        llm_provider = create_provider(settings)
+
     steps = args.steps if args.steps is not None else (25 if args.model == "dev" else 4)
     generated = skipped = failed = 0
     timeout = httpx.Timeout(connect=10.0, read=args.timeout, write=30.0, pool=5.0)
@@ -238,10 +268,20 @@ def _cmd_generate_images(args) -> int:
 
                 theme = info.get("theme", lesson_id)
                 goals = ", ".join(info.get("communicativeGoals", []))
-                prompt = _PROMPT_TEMPLATE.format(theme=theme, goals=goals)
                 seed = _lesson_seed(level, lesson_id)
 
                 print(f"  {level}/{lesson_id}: {theme}")
+
+                if llm_provider is not None:
+                    try:
+                        prompt = _build_image_prompt(theme, goals, llm_provider)
+                        print(f"    prompt: {prompt[:80]}...")
+                    except Exception as exc:
+                        print(f"    LLM prompt failed ({exc}), using template fallback", file=sys.stderr)
+                        prompt = _PROMPT_TEMPLATE.format(theme=theme, goals=goals or theme)
+                else:
+                    prompt = _PROMPT_TEMPLATE.format(theme=theme, goals=goals or theme)
+
                 payload = {
                     "prompt": prompt,
                     "negative_prompt": _NEGATIVE_PROMPT,
@@ -445,6 +485,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=float,
         default=300.0,
         help="Per-request timeout in seconds (default: 300)",
+    )
+    img.add_argument(
+        "--no-llm-prompt",
+        action="store_true",
+        help="Skip LLM prompt refinement and use the built-in template directly",
     )
 
     dl = sub.add_parser(

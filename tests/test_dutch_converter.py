@@ -15,9 +15,21 @@ NOUN = {
         {"form": "huisje", "tags": ["diminutive", "neuter"]},
         {"form": "huys", "tags": ["alternative", "obsolete"]},
     ],
-    "sounds": [{"ipa": "/ɦœys/"}, {"ipa": "[ɦœys]"}],
+    "sounds": [
+        {"ipa": "/ɦœys/"},
+        {"ipa": "[ɦœys]"},
+        {
+            "audio": "Nl-huis.ogg",
+            "ogg_url": "https://example.test/Nl-huis.ogg",
+        },
+    ],
     "hyphenations": [{"parts": ["huis"]}],
-    "senses": [{"glosses": ["a house, home; residence"], "tags": ["neuter"]}],
+    "senses": [
+        {
+            "glosses": ["a house, home; residence"],
+            "tags": ["neuter", "historical"],
+        }
+    ],
 }
 
 STRONG_VERB = {
@@ -62,6 +74,8 @@ def test_noun_maps_core_fields():
     assert word.gender is Gender.NEUTER
     assert word.ipa == "/ɦœys/"  # phonemic form preferred over [..]
     assert word.syllables == ["huis"]
+    assert word.audio is not None
+    assert word.audio.recorded == "https://example.test/Nl-huis.ogg"
 
 
 def test_noun_plural_and_diminutive_skip_marked_variants():
@@ -74,6 +88,13 @@ def test_noun_plural_and_diminutive_skip_marked_variants():
 def test_english_gloss_becomes_translation():
     word = dutch.word_from_kaikki(NOUN)
     assert word.translations == {"en": "house"}  # leading article + extra senses stripped
+
+
+def test_entry_tags_are_extracted():
+    word = dutch.word_from_kaikki(NOUN)
+    assert word is not None
+    # Grammar-only tags like "neuter" are filtered; lexical tags remain.
+    assert "historical" in word.tags
 
 
 def test_verbs_are_not_emitted_as_words():

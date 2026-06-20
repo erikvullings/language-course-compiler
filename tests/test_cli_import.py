@@ -20,6 +20,12 @@ def test_import_writes_word_and_verb_yaml(tmp_path):
                     "word": "kat",
                     "head_templates": [{"name": "nl-noun", "args": {"1": "c"}}],
                     "forms": [{"form": "katten", "tags": ["plural"]}],
+                    "sounds": [
+                        {
+                            "audio": "Nl-kat.ogg",
+                            "ogg_url": "https://example.test/Nl-kat.ogg",
+                        }
+                    ],
                     "senses": [{"glosses": ["a cat"]}],
                 },
                 {
@@ -28,6 +34,12 @@ def test_import_writes_word_and_verb_yaml(tmp_path):
                     "forms": [
                         {"form": "zijn", "tags": ["infinitive"]},
                         {"form": "geweest", "tags": ["participle", "past"]},
+                    ],
+                    "sounds": [
+                        {
+                            "audio": "Nl-zijn.ogg",
+                            "mp3_url": "https://example.test/Nl-zijn.mp3",
+                        }
                     ],
                     "senses": [{"glosses": ["to be"]}],
                 },
@@ -48,8 +60,18 @@ def test_import_writes_word_and_verb_yaml(tmp_path):
 
     words_json = json.loads((out / "words.json").read_text(encoding="utf-8"))
     verbs_json = json.loads((out / "verbs.json").read_text(encoding="utf-8"))
+    audio_json = json.loads((out / "audio.json").read_text(encoding="utf-8"))
     assert [entry["id"] for entry in words_json] == ["kat"]
     assert [entry["id"] for entry in verbs_json] == ["zijn"]
+    # Compact aggregates omit per-entry language and empty arrays.
+    assert "language" not in words_json[0]
+    assert "language" not in verbs_json[0]
+    assert "tags" not in words_json[0]
+    assert "tags" not in verbs_json[0]
+    assert audio_json == {
+        "kat": "https://example.test/Nl-kat.ogg",
+        "zijn": "https://example.test/Nl-zijn.mp3",
+    }
 
 
 def test_lemmas_with_same_safe_stem_do_not_overwrite(tmp_path):

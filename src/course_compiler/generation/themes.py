@@ -10,7 +10,7 @@ import math
 import hashlib
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol
 
 from course_compiler.generation.cache import LLMCache
@@ -47,6 +47,14 @@ _LESSON_PLAN_SYSTEM_PROMPT = (
     'Respond as JSON only with shape: {"lessons": [{"theme": str, "seed_lemmas": [str]}]}.'
 )
 
+_THEME_SEED_SYSTEM_PROMPT = (
+    "You are selecting vocabulary for one language lesson. "
+    "You will receive CEFR level, lesson theme, communicative goals and target seed count n. "
+    "Propose semantically relevant lemmas for this lesson. "
+    "Return at least n lemmas when possible. "
+    "Respond as JSON only with shape: {\"seed_lemmas\": [str]}."
+)
+
 
 @dataclass(frozen=True)
 class LessonThemePlan:
@@ -54,6 +62,7 @@ class LessonThemePlan:
 
     theme: str
     seed_lemmas: list[str]
+    communicative_goals: list[str] = field(default_factory=list)
 
 
 class ThemeAssigner(Protocol):
@@ -65,6 +74,17 @@ class ThemeAssigner(Protocol):
     """
 
     def assign(self, words: list[Word]) -> dict[str, list[Word]]: ...
+
+    def select_seed_lemmas_for_theme(
+        self,
+        *,
+        cefr: str,
+        theme: str,
+        communicative_goals: list[str],
+        target_count: int,
+        already_used: list[str],
+        candidate_lemmas: list[str],
+    ) -> list[str]: ...
 
 
 def _strip_fences(text: str) -> str:
@@ -191,6 +211,52 @@ class LLMThemeAssigner:
 
         return parsed
 
+    def select_seed_lemmas_for_theme(
+        self,
+        *,
+        cefr: str,
+        theme: str,
+        communicative_goals: list[str],
+        target_count: int,
+        already_used: list[str],
+        candidate_lemmas: list[str],
+    ) -> list[str]:
+        if target_count < 1:
+            return []
+
+        payload = {
+            "cefr": cefr,
+            "theme": theme,
+            "communicative_goals": communicative_goals,
+            "target_count": target_count,
+            "already_used_lemmas": already_used,
+            "candidate_lemmas": candidate_lemmas,
+        }
+        raw_messages = [
+            {"role": "system", "content": _THEME_SEED_SYSTEM_PROMPT},
+            {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
+        ]
+
+        if self._cache is not None:
+            cached = self._cache.get(self._model, raw_messages)
+            if cached is not None:
+                return self._parse_seed_selection(cached.content)
+
+        messages = [
+            Message(Role.SYSTEM, _THEME_SEED_SYSTEM_PROMPT),
+            Message(Role.USER, json.dumps(payload, ensure_ascii=False)),
+        ]
+
+        try:
+            response = self._provider.complete(messages, model=self._model or None)
+            selected = self._parse_seed_selection(response.content)
+        except (LLMError, json.JSONDecodeError, TypeError, ValueError):
+            return []
+
+        if self._cache is not None:
+            self._cache.put(self._model, raw_messages, response)
+        return selected
+
     def _parse(self, text: str, by_lemma: dict[str, Word]) -> dict[str, list[Word]]:
         raw = json.loads(_strip_fences(text))
         result: dict[str, list[Word]] = {}
@@ -254,3 +320,16 @@ class LLMThemeAssigner:
             lessons.append(LessonThemePlan(theme=theme, seed_lemmas=seeds))
 
         return lessons
+
+    def _parse_seed_selection(self, text: str) -> list[str]:
+        raw = json.loads(_strip_fences(text))
+        if not isinstance(raw, dict) or not isinstance(raw.get("seed_lemmas"), list):
+            raise ValueError("Invalid seed selection response shape.")
+
+        out: list[str] = []
+        for item in raw["seed_lemmas"]:
+            if isinstance(item, str):
+                lemma = item.strip()
+                if lemma and lemma not in out:
+                    out.append(lemma)
+        return out

@@ -27,7 +27,7 @@ Implemented so far:
   - `LLMThemeAssigner` — clusters vocabulary into semantic themes via LLM (cached)
   - `LessonOrchestrator` — filters by CEFR, assigns themes, sequences lessons,
     accumulates allowed vocabulary, derives function-word exemptions from POS
-- `course generate-images` — generates lesson cover images via a local Flux.1 schnell API
+- `course generate-images` — generates lesson cover images via a local Flux.1 API
 - `course download-audio` — downloads MP3 pronunciation files from `audio.json`
 
 ## Setup
@@ -167,13 +167,13 @@ rm -rf courses/nl/.llm_cache
 ### Generate lesson images
 
 Generates a cover illustration for every lesson by posting to a locally running
-[Flux.1 schnell](https://blackforestlabs.ai/) image API (Automatic1111-compatible,
+[Flux.1](https://blackforestlabs.ai/) image API (Automatic1111-compatible,
 default port 7860). Images are written to `courses/img/<LEVEL>/<LESSON>.png` and
 are language-independent, so one image set covers all target languages.
 
 #### Installing the image generation service
 
-Open the model file on Hugging Face at [Flux.1 schnell](https://huggingface.co/black-forest-labs/FLUX.1-schnell) and accept the conditions.
+Open the model page on Hugging Face at [black-forest-labs](https://huggingface.co/black-forest-labs) and accept the conditions.
 
 ```bash
 brew install python@3.11
@@ -207,7 +207,7 @@ Override defaults:
 
 ```bash
 course generate-images \
-  --themes-file src/course_compiler/generation/themes.yaml \
+  --themes-file themes.yaml \
   --out courses/img \
   --api-url http://127.0.0.1:7860/sdapi/v1/txt2img \
   --width 1024 --height 576 --steps 4 --cfg-scale 4.0

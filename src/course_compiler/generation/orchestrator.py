@@ -6,9 +6,10 @@ a sequence of generated lessons for a target CEFR level.
 
 from __future__ import annotations
 
+import math
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
-import re
 
 import yaml
 
@@ -28,6 +29,38 @@ FUNCTION_POS: frozenset[PartOfSpeech] = frozenset(
     }
 )
 
+_TOKEN_RE = re.compile(r"[a-zA-Z0-9]+")
+
+# Lightweight Dutch stopword-like lemmas to avoid as seed vocabulary where possible.
+_LOW_SIGNAL_LEMMAS: frozenset[str] = frozenset(
+    {
+        "op",
+        "te",
+        "niet",
+        "er",
+        "maar",
+        "ook",
+        "uit",
+        "dan",
+        "was",
+        "over",
+        "nog",
+        "zo",
+        "wel",
+        "nu",
+        "dus",
+        "hier",
+        "weer",
+        "alleen",
+        "onder",
+        "tussen",
+        "bij",
+        "door",
+        "naar",
+        "om",
+    }
+)
+
 
 def _lesson_sort_key(lesson_id: str) -> tuple[int, str]:
     """Sort keys like lesson001, lesson002, ... in numeric order."""
@@ -37,8 +70,69 @@ def _lesson_sort_key(lesson_id: str) -> tuple[int, str]:
     return (int(m.group(1)), lesson_id)
 
 
-def _load_predefined_themes(path: Path) -> dict[str, list[str]]:
-    """Load {CEFR: [theme1, theme2, ...]} from a YAML catalog file."""
+def _tokens(text: str) -> set[str]:
+    return {t.lower() for t in _TOKEN_RE.findall(text) if len(t) > 1}
+
+
+def _theme_candidate_pool(
+    *,
+    remaining_words: list[Word],
+    theme: str,
+    communicative_goals: list[str],
+    cap: int = 200,
+) -> list[str]:
+    """Rank CEFR lemmas for a lesson theme and return a manageable candidate pool."""
+    if not remaining_words:
+        return []
+
+    theme_tokens = _tokens(theme)
+    for goal in communicative_goals:
+        theme_tokens |= _tokens(goal)
+
+    scored: list[tuple[int, int, str]] = []
+    for word in remaining_words:
+        score = 0
+
+        # Prefer nouns/verbs/adjectives/interjections as lesson seed lemmas.
+        if word.part_of_speech in {
+            PartOfSpeech.NOUN,
+            PartOfSpeech.VERB,
+            PartOfSpeech.ADJECTIVE,
+            PartOfSpeech.INTERJECTION,
+            PartOfSpeech.NUMERAL,
+        }:
+            score += 2
+
+        # Penalize low-signal lemmas that often reduce theme coherence.
+        if word.lemma.lower() in _LOW_SIGNAL_LEMMAS:
+            score -= 5
+
+        lexical_tokens: set[str] = _tokens(word.lemma)
+        lexical_tokens |= _tokens(" ".join(word.tags))
+        lexical_tokens |= _tokens(" ".join(word.related))
+        lexical_tokens |= _tokens(" ".join(word.synonyms))
+        lexical_tokens |= _tokens(" ".join(word.antonyms))
+        lexical_tokens |= _tokens(" ".join(word.translations.values()))
+
+        overlap = len(theme_tokens & lexical_tokens)
+        if overlap > 0:
+            score += overlap * 6
+
+        # More frequent words first when scores are tied.
+        rank = (
+            word.frequency.rank
+            if word.frequency and word.frequency.rank is not None
+            else 999_999
+        )
+        scored.append((score, -rank, word.lemma))
+
+    scored.sort(reverse=True)
+    candidate_lemmas = [lemma for _, _, lemma in scored]
+    return candidate_lemmas[: max(1, cap)]
+
+
+def _load_predefined_themes(path: Path) -> dict[str, list[LessonThemePlan]]:
+    """Load {CEFR: [LessonThemePlan, ...]} from a YAML catalog file."""
     if not path.exists():
         return {}
 
@@ -46,30 +140,47 @@ def _load_predefined_themes(path: Path) -> dict[str, list[str]]:
     if not isinstance(loaded, dict):
         return {}
 
-    result: dict[str, list[str]] = {}
+    result: dict[str, list[LessonThemePlan]] = {}
     for cefr_key, cefr_block in loaded.items():
         if not isinstance(cefr_key, str) or not isinstance(cefr_block, dict):
             continue
 
-        entries: list[tuple[str, str]] = []
+        entries: list[tuple[str, LessonThemePlan]] = []
         for lesson_id, lesson_data in cefr_block.items():
             if not isinstance(lesson_id, str):
                 continue
 
             theme_name = ""
+            communicative_goals: list[str] = []
             if isinstance(lesson_data, dict):
                 raw_theme = lesson_data.get("theme")
                 if isinstance(raw_theme, str):
                     theme_name = raw_theme.strip()
+                raw_goals = lesson_data.get("communicativeGoals")
+                if isinstance(raw_goals, list):
+                    communicative_goals = [
+                        str(goal).strip()
+                        for goal in raw_goals
+                        if isinstance(goal, str) and goal.strip()
+                    ]
             elif isinstance(lesson_data, str):
                 theme_name = lesson_data.strip()
 
             if theme_name:
-                entries.append((lesson_id, theme_name))
+                entries.append(
+                    (
+                        lesson_id,
+                        LessonThemePlan(
+                            theme=theme_name,
+                            seed_lemmas=[],
+                            communicative_goals=communicative_goals,
+                        ),
+                    )
+                )
 
         if entries:
             entries.sort(key=lambda item: _lesson_sort_key(item[0]))
-            result[cefr_key.upper()] = [theme for _, theme in entries]
+            result[cefr_key.upper()] = [plan for _, plan in entries]
 
     return result
 
@@ -132,7 +243,7 @@ class LessonOrchestrator:
         words_per_lesson: int = 10,
         function_pos: frozenset[PartOfSpeech] = FUNCTION_POS,
         predefined_themes_path: Path | None = None,
-        predefined_themes: dict[str, list[str]] | None = None,
+        predefined_themes: dict[str, list[str] | list[LessonThemePlan]] | None = None,
     ) -> None:
         self._generator = generator
         self._assigner = theme_assigner
@@ -140,7 +251,15 @@ class LessonOrchestrator:
         self._function_pos = function_pos
         if predefined_themes is not None:
             self._predefined_themes = {
-                key.upper(): list(value) for key, value in predefined_themes.items()
+                key.upper(): [
+                    (
+                        plan
+                        if isinstance(plan, LessonThemePlan)
+                        else LessonThemePlan(theme=str(plan), seed_lemmas=[])
+                    )
+                    for plan in value
+                ]
+                for key, value in predefined_themes.items()
             }
         elif predefined_themes_path is not None:
             self._predefined_themes = _load_predefined_themes(predefined_themes_path)
@@ -238,21 +357,102 @@ class LessonOrchestrator:
 
     def _plan_with_theme_sequence(
         self,
-        theme_sequence: list[str],
+        theme_sequence: list[LessonThemePlan],
         *,
+        cefr: str,
         all_content: list[Word],
         function_lemmas: set[str],
         verb_lookup: dict[str, Verb],
     ) -> list[LessonPlan]:
-        """Use predefined lesson theme names in order and fill lessons sequentially."""
+        """Use predefined lesson theme names in order.
+
+        When the configured theme sequence is longer than the default lesson
+        count implied by ``words_per_lesson``, spread the content across the
+        configured sequence so every configured lesson theme can be used.
+        """
         plans: list[LessonPlan] = []
         accumulated: set[str] = set()
         accumulated_forms: set[str] = set()
 
-        for index, start in enumerate(
-            range(0, len(all_content), self._words_per_lesson)
-        ):
-            batch = all_content[start : start + self._words_per_lesson]
+        if not all_content:
+            return plans
+
+        implied_lessons = max(1, math.ceil(len(all_content) / self._words_per_lesson))
+        if len(theme_sequence) > implied_lessons:
+            lesson_count = min(len(theme_sequence), len(all_content))
+            boundaries = [
+                i * len(all_content) // lesson_count for i in range(lesson_count + 1)
+            ]
+            slices = [(boundaries[i], boundaries[i + 1]) for i in range(lesson_count)]
+        else:
+            slices = [
+                (start, min(start + self._words_per_lesson, len(all_content)))
+                for start in range(0, len(all_content), self._words_per_lesson)
+            ]
+
+        by_lemma = {w.lemma: w for w in all_content}
+        ordered_lemmas = [w.lemma for w in all_content]
+        used_lemmas: set[str] = set()
+        selector = getattr(self._assigner, "select_seed_lemmas_for_theme", None)
+
+        for index, (start, end) in enumerate(slices):
+            if index >= len(theme_sequence):
+                break
+
+            theme_plan = theme_sequence[index]
+            target_count = max(1, end - start)
+            selected: list[str] = []
+            remaining_words = [
+                by_lemma[lemma]
+                for lemma in ordered_lemmas
+                if lemma not in used_lemmas and lemma in by_lemma
+            ]
+            candidate_lemmas = _theme_candidate_pool(
+                remaining_words=remaining_words,
+                theme=theme_plan.theme,
+                communicative_goals=theme_plan.communicative_goals,
+            )
+
+            if callable(selector):
+                try:
+                    proposed = selector(
+                        cefr=cefr,
+                        theme=theme_plan.theme,
+                        communicative_goals=theme_plan.communicative_goals,
+                        target_count=target_count,
+                        already_used=sorted(used_lemmas),
+                        candidate_lemmas=candidate_lemmas,
+                    )
+                except TypeError:
+                    # Backward compatibility with assigners that have the old signature.
+                    proposed = selector(
+                        cefr=cefr,
+                        theme=theme_plan.theme,
+                        communicative_goals=theme_plan.communicative_goals,
+                        target_count=target_count,
+                        already_used=sorted(used_lemmas),
+                    )
+                if not isinstance(proposed, list):
+                    proposed = []
+                for lemma in proposed:
+                    if (
+                        lemma in by_lemma
+                        and lemma not in used_lemmas
+                        and lemma not in selected
+                    ):
+                        selected.append(lemma)
+                    if len(selected) >= target_count:
+                        break
+
+            if len(selected) < target_count:
+                for lemma in candidate_lemmas + ordered_lemmas:
+                    if lemma in used_lemmas or lemma in selected:
+                        continue
+                    selected.append(lemma)
+                    if len(selected) >= target_count:
+                        break
+
+            batch = [by_lemma[lemma] for lemma in selected if lemma in by_lemma]
             if not batch:
                 continue
 
@@ -265,11 +465,7 @@ class LessonOrchestrator:
             for verb in batch_verbs:
                 new_forms |= _verb_surface_forms(verb)
 
-            theme_name = (
-                theme_sequence[index].strip()
-                if index < len(theme_sequence) and theme_sequence[index].strip()
-                else "misc"
-            )
+            theme_name = theme_plan.theme.strip() or "misc"
             plans.append(
                 LessonPlan(
                     lesson_id=f"lesson{index + 1:03d}",
@@ -283,6 +479,7 @@ class LessonOrchestrator:
             )
             accumulated |= new_lemmas
             accumulated_forms |= new_forms
+            used_lemmas |= new_lemmas
 
         return plans
 
@@ -326,6 +523,7 @@ class LessonOrchestrator:
         if predefined_themes:
             return self._plan_with_theme_sequence(
                 predefined_themes,
+                cefr=cefr,
                 all_content=all_content,
                 function_lemmas=function_lemmas,
                 verb_lookup=verb_lookup,

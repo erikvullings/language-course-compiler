@@ -109,6 +109,7 @@ def test_generate_images_creates_files(tmp_path: Path, minimal_themes_yaml: Path
             "generate-images",
             "--themes-file", str(minimal_themes_yaml),
             "--out", str(out_dir),
+            "--no-llm-prompt",
         ]
     )
 
@@ -145,6 +146,7 @@ def test_generate_images_skips_existing(tmp_path: Path, minimal_themes_yaml: Pat
             "generate-images",
             "--themes-file", str(minimal_themes_yaml),
             "--out", str(out_dir),
+            "--no-llm-prompt",
         ]
     )
 
@@ -176,6 +178,7 @@ def test_generate_images_force_overwrites(tmp_path: Path, minimal_themes_yaml: P
             "--themes-file", str(minimal_themes_yaml),
             "--out", str(out_dir),
             "--force",
+            "--no-llm-prompt",
         ]
     )
 
@@ -208,6 +211,7 @@ def test_generate_images_level_filter(tmp_path: Path, minimal_themes_yaml: Path,
             "--themes-file", str(minimal_themes_yaml),
             "--out", str(out_dir),
             "--level", "A1",
+            "--no-llm-prompt",
         ]
     )
 

@@ -84,6 +84,30 @@ class _StubPlannerThemeAssigner(_StubThemeAssigner):
         return list(self._plans)
 
 
+class _StubSelectingThemeAssigner(_StubThemeAssigner):
+    def __init__(
+        self,
+        mapping: dict[str, list[str]],
+        selections_by_theme: dict[str, list[str]],
+    ) -> None:
+        super().__init__(mapping)
+        self._selections_by_theme = selections_by_theme
+        self.calls: list[tuple[str, list[str], int]] = []
+
+    def select_seed_lemmas_for_theme(
+        self,
+        *,
+        cefr: str,
+        theme: str,
+        communicative_goals: list[str],
+        target_count: int,
+        already_used: list[str],
+        candidate_lemmas: list[str],
+    ) -> list[str]:
+        self.calls.append((theme, communicative_goals, target_count))
+        return list(self._selections_by_theme.get(theme, []))
+
+
 class _StubProvider(LLMProvider):
     """Returns the new-words list joined by spaces — always passes content-word validation."""
 
@@ -391,3 +415,77 @@ def test_plan_uses_predefined_themes_for_cefr_when_available():
     plans = orc.plan(words, cefr="A1")
 
     assert [p.theme for p in plans] == ["Configured Theme 1", "Configured Theme 2"]
+
+
+def test_plan_spreads_content_across_all_predefined_themes_when_more_than_implied():
+    words = [
+        _word("w1", rank=1),
+        _word("w2", rank=2),
+        _word("w3", rank=3),
+        _word("w4", rank=4),
+    ]
+    provider = _StubProvider()
+    lemmatizer = _IdentityLemmatizer()
+    generator = LessonGenerator(provider, lemmatizer)
+    assigner = _StubThemeAssigner({"misc": ["w1", "w2", "w3", "w4"]})
+    orc = LessonOrchestrator(
+        generator,
+        assigner,
+        words_per_lesson=10,
+        predefined_themes={"A1": ["T1", "T2", "T3", "T4"]},
+    )
+
+    plans = orc.plan(words, cefr="A1")
+
+    assert [p.theme for p in plans] == ["T1", "T2", "T3", "T4"]
+    assert [len(p.new_words) for p in plans] == [1, 1, 1, 1]
+
+
+def test_plan_predefined_themes_use_goal_aware_seed_selection_with_fallback():
+    words = [
+        _word("koffie", rank=1),
+        _word("thee", rank=2),
+        _word("water", rank=3),
+        _word("brood", rank=4),
+    ]
+    provider = _StubProvider()
+    lemmatizer = _IdentityLemmatizer()
+    generator = LessonGenerator(provider, lemmatizer)
+    assigner = _StubSelectingThemeAssigner(
+        {"misc": ["koffie", "thee", "water", "brood"]},
+        selections_by_theme={
+            "Cafe": ["koffie", "thee"],
+            # Includes an unknown lemma to assert filtering + deterministic fallback.
+            "Bakery": ["onbekend"],
+        },
+    )
+
+    orc = LessonOrchestrator(
+        generator,
+        assigner,
+        words_per_lesson=2,
+        predefined_themes={
+            "A1": [
+                LessonThemePlan(
+                    theme="Cafe",
+                    seed_lemmas=[],
+                    communicative_goals=["order drinks"],
+                ),
+                LessonThemePlan(
+                    theme="Bakery",
+                    seed_lemmas=[],
+                    communicative_goals=["buy bread"],
+                ),
+            ]
+        },
+    )
+
+    plans = orc.plan(words, cefr="A1")
+
+    assert [p.theme for p in plans] == ["Cafe", "Bakery"]
+    assert {w.lemma for w in plans[0].new_words} == {"koffie", "thee"}
+    assert {w.lemma for w in plans[1].new_words} == {"water", "brood"}
+    assert assigner.calls == [
+        ("Cafe", ["order drinks"], 2),
+        ("Bakery", ["buy bread"], 2),
+    ]
