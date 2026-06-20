@@ -12,9 +12,26 @@ from course_compiler.llm.base import LLMError, LLMProvider, Message, Role
 #: Words of lesson text generated per new content word introduced.
 WORDS_PER_NEW_WORD = 15
 
+#: Words of natural, low-repetition text each available content word can sustain.
+#: Caps the requested length so we never demand long prose from a tiny vocabulary
+#: (the cold-start problem: lesson 1 has only its own new words to recombine).
+WORDS_PER_ALLOWED_WORD = 4
 
-def _target_length(new_word_count: int) -> str:
-    return f"{max(new_word_count * WORDS_PER_NEW_WORD, 30)} words"
+#: Smallest lesson text we will ever request.
+MIN_TARGET_WORDS = 30
+
+
+def _target_length(new_word_count: int, allowed_word_count: int) -> str:
+    """Requested lesson length: the smaller of two budgets, floored.
+
+    ``by_new`` gives each new word room to be introduced in context; ``by_vocab``
+    caps the text at what the recombinant vocabulary can sustain naturally. Early
+    lessons are vocab-limited (short, natural); mature lessons, where the allowed
+    set dwarfs the new words, stay new-word-limited (the original behaviour).
+    """
+    by_new = new_word_count * WORDS_PER_NEW_WORD
+    by_vocab = allowed_word_count * WORDS_PER_ALLOWED_WORD
+    return f"{max(min(by_new, by_vocab), MIN_TARGET_WORDS)} words"
 
 
 @dataclass(frozen=True)
@@ -42,14 +59,42 @@ def _tense_guidance(cefr: str) -> str:
     return ""
 
 
-def _system_prompt(language: str, target_length: str, cefr: str = "") -> str:
+#: Lesson body formats, selected by how much vocabulary the learner can recombine.
+FORMAT_EXAMPLES = "examples"
+FORMAT_NARRATIVE = "narrative"
+
+
+def _body_instruction(fmt: str, target_length: str) -> str:
+    """Format-specific instruction for the lesson body.
+
+    Early lessons (little recombinant vocabulary) ask for short example sentences
+    or a brief dialogue, which read naturally with sparse vocabulary. Mature
+    lessons ask for a coherent narrative of the target length.
+    """
+    if fmt == FORMAT_EXAMPLES:
+        return (
+            "Several short, simple example sentences (or a brief dialogue), "
+            f"approximately {target_length} in total. Keep sentences short and "
+            "concrete; each new word should appear in at least one sentence. "
+        )
+    return (
+        f"Coherent narrative text, approximately {target_length}. "
+        "Introduce each new word naturally in context. "
+    )
+
+
+def _system_prompt(
+    language: str,
+    target_length: str,
+    cefr: str = "",
+    fmt: str = FORMAT_NARRATIVE,
+) -> str:
     return (
         f"You are a language-learning content writer. "
         f"Write a short lesson in {language} with this exact structure:\n\n"
         f"## Lesson Title\n\n"
         f"**New words:** comma-separated list of the new lemmas\n\n"
-        f"[Coherent narrative text, approximately {target_length}. "
-        f"Introduce each new word naturally in context. "
+        f"[{_body_instruction(fmt, target_length)}"
         f"Keep the vocabulary at the stated CEFR level — do not use advanced words. "
         f"{_tense_guidance(cefr)}"
         f"Articles, prepositions, conjunctions, and common pronouns may be used freely.]\n\n"
@@ -59,13 +104,16 @@ def _system_prompt(language: str, target_length: str, cefr: str = "") -> str:
 
 def _feedback_message(result: ValidationResult, cefr_target: str) -> str:
     parts: list[str] = [
-        "Your previous response contained vocabulary problems. Please rewrite the lesson."
+        "Your previous lesson had vocabulary problems. Revise that version with the "
+        "smallest possible change — keep the title, structure, and as much of the "
+        "wording and length as you can. Do not rewrite from scratch."
     ]
     if result.violations:
         words = ", ".join(sorted(result.violations))
         parts.append(
-            f"These words must not appear — they are above {cefr_target} level "
-            f"or outside the allowed vocabulary: {words}."
+            f"Remove or replace only these words, because they are above "
+            f"{cefr_target} level or outside the allowed vocabulary: {words}. "
+            f"Swap each for a simpler allowed word, or drop just that phrase."
         )
     return " ".join(parts)
 
@@ -136,6 +184,7 @@ class LessonGenerator:
         cache: LLMCache | None = None,
         max_retries: int = 5,
         extra_tolerance: float = 0.5,
+        narrative_vocab_threshold: int = 60,
         fail_open_on_llm_error: bool = True,
         fail_open_on_validation_error: bool = True,
     ) -> None:
@@ -144,6 +193,7 @@ class LessonGenerator:
         self._cache = cache
         self._max_retries = max_retries
         self._extra_tolerance = extra_tolerance
+        self._narrative_vocab_threshold = narrative_vocab_threshold
         self._fail_open_on_llm_error = fail_open_on_llm_error
         self._fail_open_on_validation_error = fail_open_on_validation_error
 
@@ -155,6 +205,7 @@ class LessonGenerator:
         theme: str,
         target_length: str,
         new_words: list[str],
+        fmt: str,
     ) -> list[Message]:
         user_content = (
             f"Lesson ID: {lesson_id}\n"
@@ -164,7 +215,7 @@ class LessonGenerator:
             "Write the lesson now."
         )
         return [
-            Message(Role.SYSTEM, _system_prompt(language, target_length, cefr)),
+            Message(Role.SYSTEM, _system_prompt(language, target_length, cefr, fmt)),
             Message(Role.USER, user_content),
         ]
 
@@ -202,9 +253,14 @@ class LessonGenerator:
         Raises:
             RuntimeError: If violations persist after ``max_retries``.
         """
-        target_length = _target_length(len(new_words))
+        target_length = _target_length(len(new_words), len(allowed_words))
+        fmt = (
+            FORMAT_NARRATIVE
+            if len(allowed_words) >= self._narrative_vocab_threshold
+            else FORMAT_EXAMPLES
+        )
         messages = self._build_initial_messages(
-            lesson_id, language, cefr, theme, target_length, new_words
+            lesson_id, language, cefr, theme, target_length, new_words, fmt
         )
         raw_messages = [m.as_dict() for m in messages]
         resolved_model = model or ""

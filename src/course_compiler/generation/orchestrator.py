@@ -6,7 +6,6 @@ a sequence of generated lessons for a target CEFR level.
 
 from __future__ import annotations
 
-import math
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -214,6 +213,38 @@ def _verb_as_word(verb: Verb) -> Word:
     )
 
 
+def _is_verb_item(word: Word, verb_lookup: dict[str, Verb]) -> bool:
+    """True if *word* is the verb sense of a (lemma, pos) item, not a noun sense.
+
+    The learnable unit is ``(lemma, part_of_speech)``: a noun and a verb sharing a
+    surface form (e.g. ``eten`` = food / to eat) are distinct items. A verb stub
+    carries ``part_of_speech == VERB``; a homographic noun keeps its own POS, so a
+    lemma being present in ``verb_lookup`` no longer means *every* item with that
+    lemma is a verb — only the VERB-tagged stub is.
+    """
+    return word.part_of_speech == PartOfSpeech.VERB and word.lemma in verb_lookup
+
+
+def _group_by_lemma(words: list[Word]) -> dict[str, list[Word]]:
+    """Map each lemma to all its sense-items (noun + verb homographs co-exist)."""
+    grouped: dict[str, list[Word]] = {}
+    for word in words:
+        grouped.setdefault(word.lemma, []).append(word)
+    return grouped
+
+
+def _split_batch(
+    batch: list[Word], verb_lookup: dict[str, Verb]
+) -> tuple[list[Word], list[Verb], set[str]]:
+    """Split a batch into (non-verb words, verbs, verb surface forms) by item POS."""
+    batch_verbs = [verb_lookup[w.lemma] for w in batch if _is_verb_item(w, verb_lookup)]
+    non_verb_batch = [w for w in batch if not _is_verb_item(w, verb_lookup)]
+    new_forms: set[str] = set()
+    for verb in batch_verbs:
+        new_forms |= _verb_surface_forms(verb)
+    return non_verb_batch, batch_verbs, new_forms
+
+
 @dataclass(frozen=True)
 class LessonPlan:
     lesson_id: str
@@ -241,6 +272,8 @@ class LessonOrchestrator:
         theme_assigner: ThemeAssigner,
         *,
         words_per_lesson: int = 10,
+        first_lesson_words: int | None = None,
+        front_load_lessons: int = 3,
         function_pos: frozenset[PartOfSpeech] = FUNCTION_POS,
         predefined_themes_path: Path | None = None,
         predefined_themes: dict[str, list[str] | list[LessonThemePlan]] | None = None,
@@ -248,6 +281,8 @@ class LessonOrchestrator:
         self._generator = generator
         self._assigner = theme_assigner
         self._words_per_lesson = words_per_lesson
+        self._first_lesson_words = first_lesson_words
+        self._front_load_lessons = front_load_lessons
         self._function_pos = function_pos
         if predefined_themes is not None:
             self._predefined_themes = {
@@ -274,6 +309,55 @@ class LessonOrchestrator:
             return word.frequency.rank
         return 999_999
 
+    def _budget_for(self, lesson_number: int) -> int:
+        """New-word budget for lesson *lesson_number* (1-based).
+
+        Uniform (``words_per_lesson``) unless ``first_lesson_words`` is set, in
+        which case the budget tapers linearly from ``first_lesson_words`` (lesson
+        1) down to ``words_per_lesson`` over ``front_load_lessons`` lessons, then
+        holds at the steady state. This front-loading gives early lessons enough
+        critical mass to form coherent text when there is no prior vocabulary to
+        recombine (cf. the Delft Method).
+        """
+        steady = self._words_per_lesson
+        first = self._first_lesson_words
+        if first is None:
+            return steady
+        if lesson_number >= self._front_load_lessons:
+            return steady
+        span = self._front_load_lessons - 1
+        if span <= 0:
+            return max(1, first)
+        frac = (lesson_number - 1) / span
+        return max(1, round(first + frac * (steady - first)))
+
+    def _distribute(self, total: int, lessons: int) -> list[tuple[int, int]]:
+        """Split ``total`` ordered items into exactly ``lessons`` contiguous
+        ``(start, end)`` ranges that together cover everything.
+
+        Even split by default; front-loaded (early lessons larger) when
+        ``first_lesson_words`` is configured. Used by the catalog path so every
+        configured theme becomes one lesson and no vocabulary is dropped.
+        """
+        if lessons <= 0 or total <= 0:
+            return []
+        if lessons >= total:
+            return [(i, i + 1) for i in range(total)]
+
+        if self._first_lesson_words is None:
+            bounds = [i * total // lessons for i in range(lessons + 1)]
+        else:
+            weights = [max(1, self._budget_for(i + 1)) for i in range(lessons)]
+            wsum = sum(weights)
+            bounds = [0]
+            acc = 0
+            for w in weights:
+                acc += w
+                bounds.append(round(acc / wsum * total))
+            bounds[-1] = total
+
+        return [(bounds[i], bounds[i + 1]) for i in range(lessons)]
+
     def _plan_from_blueprints(
         self,
         blueprints: list[LessonThemePlan],
@@ -282,7 +366,7 @@ class LessonOrchestrator:
         function_lemmas: set[str],
         verb_lookup: dict[str, Verb],
     ) -> list[LessonPlan]:
-        by_lemma = {w.lemma: w for w in all_content}
+        by_lemma = _group_by_lemma(all_content)
         accumulated: set[str] = set()
         accumulated_forms: set[str] = set()
         seen_new_lemmas: set[str] = set()
@@ -292,23 +376,18 @@ class LessonOrchestrator:
         for blueprint in blueprints:
             batch: list[Word] = []
             for lemma in blueprint.seed_lemmas:
-                word = by_lemma.get(lemma)
-                if word is None or lemma in seen_new_lemmas:
+                items = by_lemma.get(lemma)
+                if not items or lemma in seen_new_lemmas:
                     continue
-                batch.append(word)
+                # A seed lemma pulls in all its senses (noun + verb homograph).
+                batch.extend(items)
                 seen_new_lemmas.add(lemma)
 
             if not batch:
                 continue
 
             new_lemmas = {w.lemma for w in batch}
-            batch_verbs = [
-                verb_lookup[w.lemma] for w in batch if w.lemma in verb_lookup
-            ]
-            non_verb_batch = [w for w in batch if w.lemma not in verb_lookup]
-            new_forms: set[str] = set()
-            for verb in batch_verbs:
-                new_forms |= _verb_surface_forms(verb)
+            non_verb_batch, batch_verbs, new_forms = _split_batch(batch, verb_lookup)
 
             plans.append(
                 LessonPlan(
@@ -330,13 +409,7 @@ class LessonOrchestrator:
         for i in range(0, len(leftover), self._words_per_lesson):
             batch = leftover[i : i + self._words_per_lesson]
             new_lemmas = {w.lemma for w in batch}
-            batch_verbs = [
-                verb_lookup[w.lemma] for w in batch if w.lemma in verb_lookup
-            ]
-            non_verb_batch = [w for w in batch if w.lemma not in verb_lookup]
-            new_forms: set[str] = set()
-            for verb in batch_verbs:
-                new_forms |= _verb_surface_forms(verb)
+            non_verb_batch, batch_verbs, new_forms = _split_batch(batch, verb_lookup)
 
             plans.append(
                 LessonPlan(
@@ -363,6 +436,7 @@ class LessonOrchestrator:
         all_content: list[Word],
         function_lemmas: set[str],
         verb_lookup: dict[str, Verb],
+        language: str = "",
     ) -> list[LessonPlan]:
         """Use predefined lesson theme names in order.
 
@@ -377,22 +451,21 @@ class LessonOrchestrator:
         if not all_content:
             return plans
 
-        implied_lessons = max(1, math.ceil(len(all_content) / self._words_per_lesson))
-        if len(theme_sequence) > implied_lessons:
-            lesson_count = min(len(theme_sequence), len(all_content))
-            boundaries = [
-                i * len(all_content) // lesson_count for i in range(lesson_count + 1)
-            ]
-            slices = [(boundaries[i], boundaries[i + 1]) for i in range(lesson_count)]
-        else:
-            slices = [
-                (start, min(start + self._words_per_lesson, len(all_content)))
-                for start in range(0, len(all_content), self._words_per_lesson)
-            ]
+        # One lesson per configured theme: distribute ALL content across the
+        # themes so nothing is dropped (front-loaded when configured). The lesson
+        # count is min(themes, words); words_per_lesson does not cap this path.
+        lesson_count = min(len(theme_sequence), len(all_content))
+        slices = self._distribute(len(all_content), lesson_count)
 
-        by_lemma = {w.lemma: w for w in all_content}
+        # A lemma can map to multiple sense-items (noun + verb homograph); keep
+        # them all so neither sense is dropped when the lemma is selected.
+        by_lemma = _group_by_lemma(all_content)
+        by_lemma_lower: dict[str, list[Word]] = {}
+        for lemma, items in by_lemma.items():
+            by_lemma_lower.setdefault(lemma.lower(), []).extend(items)
         ordered_lemmas = [w.lemma for w in all_content]
         used_lemmas: set[str] = set()
+        proposer = getattr(self._assigner, "propose_theme_vocabulary", None)
         selector = getattr(self._assigner, "select_seed_lemmas_for_theme", None)
 
         for index, (start, end) in enumerate(slices):
@@ -402,18 +475,48 @@ class LessonOrchestrator:
             theme_plan = theme_sequence[index]
             target_count = max(1, end - start)
             selected: list[str] = []
-            remaining_words = [
-                by_lemma[lemma]
-                for lemma in ordered_lemmas
-                if lemma not in used_lemmas and lemma in by_lemma
-            ]
+            remaining_words = [w for w in all_content if w.lemma not in used_lemmas]
             candidate_lemmas = _theme_candidate_pool(
                 remaining_words=remaining_words,
                 theme=theme_plan.theme,
                 communicative_goals=theme_plan.communicative_goals,
             )
 
-            if callable(selector):
+            # Primary: the LLM proposes theme-relevant words from its own knowledge;
+            # we keep only those present in our lexicon, ranked by frequency. This
+            # gives communicatively coherent vocabulary instead of frequency-noise.
+            if callable(proposer):
+                proposed = proposer(
+                    cefr=cefr,
+                    theme=theme_plan.theme,
+                    communicative_goals=theme_plan.communicative_goals,
+                    target_count=target_count,
+                    already_used=sorted(used_lemmas),
+                    language=language,
+                )
+                survivors: list[Word] = []
+                seen_lower: set[str] = set()
+                for raw in proposed if isinstance(proposed, list) else []:
+                    if not isinstance(raw, str):
+                        continue
+                    key = raw.strip().lower()
+                    if not key or key in seen_lower:
+                        continue
+                    items = by_lemma.get(raw.strip()) or by_lemma_lower.get(key)
+                    if not items or items[0].lemma in used_lemmas:
+                        continue
+                    seen_lower.add(key)
+                    # Use the first (most frequent) sense as the frequency proxy;
+                    # all senses are pulled in when the lemma is batched below.
+                    survivors.append(items[0])
+                survivors.sort(key=self._sort_key)
+                for word in survivors:
+                    if word.lemma not in selected:
+                        selected.append(word.lemma)
+                    if len(selected) >= target_count:
+                        break
+
+            if len(selected) < target_count and callable(selector):
                 try:
                     proposed = selector(
                         cefr=cefr,
@@ -452,18 +555,14 @@ class LessonOrchestrator:
                     if len(selected) >= target_count:
                         break
 
-            batch = [by_lemma[lemma] for lemma in selected if lemma in by_lemma]
+            # Expand each selected lemma to all its sense-items so a noun and its
+            # verb homograph are both taught (neither sense is silently dropped).
+            batch = [item for lemma in selected for item in by_lemma.get(lemma, [])]
             if not batch:
                 continue
 
             new_lemmas = {w.lemma for w in batch}
-            batch_verbs = [
-                verb_lookup[w.lemma] for w in batch if w.lemma in verb_lookup
-            ]
-            non_verb_batch = [w for w in batch if w.lemma not in verb_lookup]
-            new_forms: set[str] = set()
-            for verb in batch_verbs:
-                new_forms |= _verb_surface_forms(verb)
+            non_verb_batch, batch_verbs, new_forms = _split_batch(batch, verb_lookup)
 
             theme_name = theme_plan.theme.strip() or "misc"
             plans.append(
@@ -489,6 +588,7 @@ class LessonOrchestrator:
         *,
         cefr: str,
         verbs: list[Verb] | None = None,
+        language: str = "",
     ) -> list[LessonPlan]:
         """Build an ordered list of :class:`LessonPlan` without calling the LLM generator.
 
@@ -527,6 +627,7 @@ class LessonOrchestrator:
                 all_content=all_content,
                 function_lemmas=function_lemmas,
                 verb_lookup=verb_lookup,
+                language=language,
             )
 
         planner = getattr(self._assigner, "plan_lessons", None)
@@ -563,18 +664,19 @@ class LessonOrchestrator:
 
         for theme_name, theme_words in ordered_themes:
             sorted_theme = sorted(theme_words, key=self._sort_key)
-            for i in range(0, len(sorted_theme), self._words_per_lesson):
-                batch = sorted_theme[i : i + self._words_per_lesson]
+            # Front-loaded budget: the per-lesson size follows the global lesson
+            # counter, so early lessons across the whole course get more words.
+            cursor = 0
+            while cursor < len(sorted_theme):
+                budget = self._budget_for(lesson_num)
+                batch = sorted_theme[cursor : cursor + budget]
+                cursor += len(batch)
                 new_lemmas = {w.lemma for w in batch}
 
                 # Resolve verb stubs back to Verb objects; collect their surface forms.
-                batch_verbs = [
-                    verb_lookup[w.lemma] for w in batch if w.lemma in verb_lookup
-                ]
-                non_verb_batch = [w for w in batch if w.lemma not in verb_lookup]
-                new_forms: set[str] = set()
-                for verb in batch_verbs:
-                    new_forms |= _verb_surface_forms(verb)
+                non_verb_batch, batch_verbs, new_forms = _split_batch(
+                    batch, verb_lookup
+                )
 
                 plans.append(
                     LessonPlan(
@@ -613,7 +715,7 @@ class LessonOrchestrator:
             if verb.cefr is not None:
                 cefr_lookup[verb.infinitive] = verb.cefr
 
-        plans = self.plan(words, cefr=cefr, verbs=verbs)
+        plans = self.plan(words, cefr=cefr, verbs=verbs, language=language)
         lessons: list[GeneratedLesson] = []
         for plan in plans:
             new_word_lemmas = [w.lemma for w in plan.new_words] + [

@@ -66,7 +66,37 @@ These shape every change — violating them is a bug:
   wordfreq frequency + NT2Lex `.tsv` (CEFR level = earliest attested level per
   lemma). Per-entry mappers (`word_from_kaikki`, `verb_from_kaikki`)
   are pure; `convert` streams files, `convert_iterables` is the I/O-free variant.
+- **`generation/`** — the lesson pipeline (language-agnostic). `orchestrator.py`
+  plans a CEFR level into a lesson sequence (filter → theme → select seed words →
+  accumulate allowed vocabulary); `themes.py` proposes themes + vocabulary via
+  LLM; `lesson.py` writes and validates lesson text with feedback-driven retry;
+  `validator.py` enforces vocabulary discipline. Three design choices worth
+  knowing: (1) requested text length scales with the **allowed** (recombinant)
+  vocabulary, not the new-word count, so early lessons stay short and natural
+  (`_target_length`); (2) seed words are **generate-then-filter** — the LLM
+  proposes ~5n theme-relevant words (`propose_theme_vocabulary`) and the
+  orchestrator keeps only lexicon hits, frequency-ranked, falling back to a
+  candidate pool for coverage; (3) on vocabulary leakage the generator asks for a
+  **minimal revision** of the prior draft, not a fresh rewrite. All LLM calls are
+  cached for reproducibility. Two cold-start aids: the per-lesson word budget can
+  be **front-loaded** (`first_lesson_words` tapers to `words_per_lesson` over
+  `front_load_lessons`, via `_budget_for`) so early lessons have critical mass,
+  and the lesson **format adapts to stage** — below `narrative_vocab_threshold`
+  allowed words the prompt asks for short example sentences/dialogue instead of a
+  narrative. Both are opt-in/config so output stays reproducible and
+  language-agnostic.
 - **`frequency.py`** — reader for wordfreq `cBpack` files (generic).
+- **`leveling.py`** — generic CEFR assignment by **cumulative frequency budget**
+  (`assign_levels`): items fill levels most-frequent-first up to each level's
+  budget increment; a per-item floor (e.g. a resource's attested level) is a
+  minimum that lets an item roll forward when its level is full; items past the
+  top budget are excluded. Budgets are config, not code. The Dutch converter calls
+  this (`reassign_cefr_by_budget`) with each `(lemma, pos)` as a separate item.
+- **`compounds.py`** — generic, language-pluggable compound splitter
+  (`split_compound` / `is_derivable_compound`): a word splitting into ≥2 known
+  lemmas (linkers passed in by the caller) is a **transparent** compound and is
+  introduced without consuming budget; `opaque` words still count. The converter
+  supplies Dutch linkers and levels transparent compounds to `max(level of parts)`.
 - **`settings.py`** — `Settings.load(env=...)` reads config via python-dotenv.
 - **`cli.py`** — `course` entry point (`ask`, `import`; grows per `TASKS/`).
 

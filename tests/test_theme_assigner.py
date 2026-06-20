@@ -142,6 +142,68 @@ def test_plan_lessons_returns_sanitized_lesson_blueprints():
     assert "x-unknown" not in plans[1].seed_lemmas
 
 
+def test_propose_theme_vocabulary_returns_parsed_lemmas():
+    """The LLM generates theme-relevant words from its own knowledge (not a pool)."""
+    payload = json.dumps({"vocabulary": ["brood", "appel", "melk", "koffie"]})
+    provider = _StubProvider(payload)
+    assigner = LLMThemeAssigner(provider, model="stub")
+
+    result = assigner.propose_theme_vocabulary(
+        cefr="A1",
+        theme="food and drink",
+        communicative_goals=["order food in a cafe"],
+        target_count=2,
+        already_used=[],
+    )
+
+    assert result == ["brood", "appel", "melk", "koffie"]
+
+
+def test_propose_theme_vocabulary_returns_empty_on_provider_error():
+    class _FailingProvider(LLMProvider):
+        def complete(
+            self, prompt: PromptInput, *, model=None, temperature=None, **kwargs
+        ) -> LLMResponse:
+            raise LLMError("timeout")
+
+        async def acomplete(
+            self, prompt: PromptInput, *, model=None, temperature=None, **kwargs
+        ) -> LLMResponse:
+            raise LLMError("timeout")
+
+    assigner = LLMThemeAssigner(_FailingProvider(), model="stub")
+    assert (
+        assigner.propose_theme_vocabulary(
+            cefr="A1",
+            theme="food",
+            communicative_goals=[],
+            target_count=5,
+            already_used=[],
+        )
+        == []
+    )
+
+
+def test_propose_theme_vocabulary_uses_cache(tmp_path):
+    from course_compiler.generation.cache import LLMCache
+
+    payload = json.dumps({"vocabulary": ["brood", "appel"]})
+    provider = _StubProvider(payload)
+    cache = LLMCache(tmp_path)
+    assigner = LLMThemeAssigner(provider, model="stub", cache=cache)
+
+    for _ in range(2):
+        assigner.propose_theme_vocabulary(
+            cefr="A1",
+            theme="food",
+            communicative_goals=["order food"],
+            target_count=2,
+            already_used=[],
+        )
+
+    assert provider.calls == 1
+
+
 def test_plan_lessons_returns_empty_on_provider_error():
     class _FailingProvider(LLMProvider):
         def complete(

@@ -23,10 +23,15 @@ Implemented so far:
   - Pluggable `Lemmatizer` registry (mirrors the LLM factory pattern)
   - Disk-based LLM response cache for reproducible, offline-safe generation
   - `VocabularyValidator` — tokenize → lemmatize → reject unknown content words
-  - `LessonGenerator` — LLM call + validation + retry on vocabulary leakage
-  - `LLMThemeAssigner` — clusters vocabulary into semantic themes via LLM (cached)
+  - `LessonGenerator` — LLM call + validation; text length scales with the
+    accumulated (recombinant) vocabulary, lesson format adapts to stage (example
+    sentences early, narrative once a base exists), and leakage triggers a
+    minimal-edit retry of the prior draft rather than a fresh rewrite
+  - `LLMThemeAssigner` — clusters vocabulary into themes and proposes
+    theme-relevant seed words (generate-then-filter against the lexicon), cached
   - `LessonOrchestrator` — filters by CEFR, assigns themes, sequences lessons,
-    accumulates allowed vocabulary, derives function-word exemptions from POS
+    accumulates allowed vocabulary, derives function-word exemptions from POS,
+    and supports an optional front-loaded per-lesson word budget
 - `course generate-images` — generates lesson cover images via a local Flux.1 API
 - `course download-audio` — downloads MP3 pronunciation files from `audio.json`
 
@@ -99,8 +104,9 @@ course generate-lessons --lang nl --cefr A1
 ```
 
 `--lang` is the only required flag. Defaults: lexicon at `courses/<lang>`,
-output at `<lexicon>/lessons`, language name derived from the lang code,
-10 words per lesson. Override any of these explicitly:
+output at `<lexicon>/<CEFR>/lessons` (e.g. `courses/nl/A1/lessons`), language
+name derived from the lang code. Both words and verbs from the lexicon are used.
+Override any of these explicitly:
 
 ```bash
 course generate-lessons \
@@ -108,8 +114,29 @@ course generate-lessons \
   --lexicon courses/nl \
   --language-name Dutch \
   --words-per-lesson 10 \
-  --out courses/nl/lessons
+  --out courses/nl/A1/lessons
 ```
+
+When a theme catalog is used, each configured theme becomes exactly one lesson
+and the level's full vocabulary (words + verbs) is distributed across those
+themes — so the number of lessons equals the number of themes for that level,
+and lesson size is roughly `level_vocabulary / number_of_themes`.
+
+To **front-load** vocabulary (Delft-style), introduce more words in the first
+lessons and taper to the steady-state count — useful because early lessons have
+no prior vocabulary to recombine:
+
+```bash
+course generate-lessons --lang nl --cefr A1 \
+  --first-lesson-words 40 --front-load-lessons 3 --words-per-lesson 10
+```
+
+This makes lesson 1 introduce 40 words, lesson 2 ~25, and lesson 3 onward 10.
+Omit `--first-lesson-words` for a uniform budget. Independently, early lessons
+(while little vocabulary has accumulated) are written as short example
+sentences/dialogue rather than a narrative, which reads more naturally with a
+sparse word set; the compiler switches to narrative once enough vocabulary
+exists.
 
 Preview the computed lesson blueprint first (count + theme + seed lemmas):
 
@@ -140,10 +167,13 @@ Without `--themes-file`, `generate-lessons` auto-discovers in this order:
 2. `themes.yaml` in the selected lexicon directory (for example `courses/nl/themes.yaml`)
 3. bundled `src/course_compiler/generation/themes.yaml`
 
-Note: the catalog currently controls lesson **theme names/order**. The
-`seedLemmas` are still selected automatically from the CEFR vocabulary.
+Note: the catalog controls lesson **theme names/order** and optional
+**communicative goals**. Seed words are selected automatically: the LLM proposes
+theme-relevant vocabulary, the compiler keeps only the words present in the CEFR
+lexicon (frequency-ranked), and lesson text length scales with the accumulated
+(recombinant) vocabulary so early lessons stay short and natural.
 
-One lesson file per lesson is written to the output directory as
+One lesson file per lesson is written to `courses/<lang>/<CEFR>/lessons/` as
 `lesson001.json`, `lesson002.json`, … Run once per CEFR level to build a
 full A1 → B2 course. LLM responses (theme clustering and lesson text) are
 cached in `courses/nl/.llm_cache/` so subsequent runs are fast and
