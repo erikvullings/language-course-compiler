@@ -567,6 +567,194 @@ def test_plan_predefined_themes_prefer_proposed_vocabulary_filtered_to_lexicon()
     assert assigner.propose_calls[0][2] == "Dutch"
 
 
+# ---------------------------------------------------------------------------
+# Tests: noun/verb homographs (item identity = (lemma, pos))
+# ---------------------------------------------------------------------------
+
+
+class _BothSensesAssigner(ThemeAssigner):
+    """Theme assigner that returns every content item (no lemma collapsing)."""
+
+    def assign(self, words: list[Word]) -> dict[str, list[Word]]:
+        return {"food": list(words)}
+
+
+def test_homograph_catalog_path_teaches_both_noun_and_verb():
+    """A lemma that is both a noun and a verb yields two items; neither is dropped."""
+    noun = _word("eten", pos=PartOfSpeech.NOUN, cefr="A1", rank=1)
+    other = _word("huis", pos=PartOfSpeech.NOUN, cefr="A1", rank=3)
+    verb = _verb("eten", cefr="A1", rank=2, **{"ik": "eet", "jij": "eet"})
+
+    generator = LessonGenerator(_StubProvider(), _IdentityLemmatizer())
+    assigner = _StubThemeAssigner({"misc": ["eten", "huis"]})
+    orc = LessonOrchestrator(
+        generator,
+        assigner,
+        words_per_lesson=10,
+        predefined_themes={"A1": ["T1"]},
+    )
+
+    plans = orc.plan([noun, other], cefr="A1", verbs=[verb])
+
+    noun_lemmas = {w.lemma for p in plans for w in p.new_words}
+    verb_lemmas = {v.infinitive for p in plans for v in p.new_verbs}
+    assert "eten" in noun_lemmas  # the noun sense is taught
+    assert "eten" in verb_lemmas  # the verb sense is taught
+    assert "huis" in noun_lemmas
+
+
+def test_homograph_blueprint_path_teaches_both_noun_and_verb():
+    noun = _word("eten", pos=PartOfSpeech.NOUN, cefr="A1", rank=1)
+    verb = _verb("eten", cefr="A1", rank=2, **{"ik": "eet"})
+    assigner = _StubPlannerThemeAssigner(
+        {"misc": ["eten"]},
+        plans=[LessonThemePlan(theme="food", seed_lemmas=["eten"])],
+    )
+    generator = LessonGenerator(_StubProvider(), _IdentityLemmatizer())
+    orc = LessonOrchestrator(
+        generator, assigner, words_per_lesson=10, predefined_themes={}
+    )
+
+    plans = orc.plan([noun], cefr="A1", verbs=[verb])
+
+    noun_lemmas = {w.lemma for p in plans for w in p.new_words}
+    verb_lemmas = {v.infinitive for p in plans for v in p.new_verbs}
+    assert "eten" in noun_lemmas
+    assert "eten" in verb_lemmas
+
+
+def test_homograph_default_theme_path_keeps_noun_sense():
+    noun = _word("eten", pos=PartOfSpeech.NOUN, cefr="A1", rank=1)
+    verb = _verb("eten", cefr="A1", rank=2, **{"ik": "eet"})
+    generator = LessonGenerator(_StubProvider(), _IdentityLemmatizer())
+    orc = LessonOrchestrator(
+        generator, _BothSensesAssigner(), words_per_lesson=10, predefined_themes={}
+    )
+
+    plans = orc.plan([noun], cefr="A1", verbs=[verb])
+
+    noun_lemmas = {w.lemma for p in plans for w in p.new_words}
+    verb_lemmas = {v.infinitive for p in plans for v in p.new_verbs}
+    assert "eten" in noun_lemmas
+    assert "eten" in verb_lemmas
+
+
+def test_non_homograph_lemma_yields_exactly_one_item():
+    """A lemma that is only a noun (or only a verb) is not duplicated."""
+    noun = _word("huis", pos=PartOfSpeech.NOUN, cefr="A1", rank=1)
+    verb = _verb("lopen", cefr="A1", rank=2, **{"ik": "loop"})
+    generator = LessonGenerator(_StubProvider(), _IdentityLemmatizer())
+    assigner = _StubThemeAssigner({"misc": ["huis", "lopen"]})
+    orc = LessonOrchestrator(
+        generator, assigner, words_per_lesson=10, predefined_themes={"A1": ["T1"]}
+    )
+
+    plans = orc.plan([noun], cefr="A1", verbs=[verb])
+
+    noun_lemmas = [w.lemma for p in plans for w in p.new_words]
+    verb_lemmas = [v.infinitive for p in plans for v in p.new_verbs]
+    assert noun_lemmas.count("huis") == 1
+    assert verb_lemmas.count("lopen") == 1
+
+
+def test_homograph_both_senses_pass_validation_once_taught():
+    """Both the noun form and a verb form are accepted by the validator."""
+    noun = _word("eten", pos=PartOfSpeech.NOUN, cefr="A1", rank=1)
+    verb = _verb("eten", cefr="A1", rank=2, **{"ik": "eet", "jij": "eet"})
+
+    class _NounAndFormProvider(LLMProvider):
+        def complete(
+            self, prompt: PromptInput, *, model=None, temperature=None, **kwargs
+        ) -> LLMResponse:
+            return LLMResponse(content="eten eet", model=model or "stub", raw={})
+
+        async def acomplete(
+            self, prompt: PromptInput, *, model=None, temperature=None, **kwargs
+        ) -> LLMResponse:
+            return self.complete(prompt, model=model, temperature=temperature)
+
+    generator = LessonGenerator(
+        lemmatizer=_IdentityLemmatizer(), provider=_NounAndFormProvider()
+    )
+    assigner = _StubThemeAssigner({"misc": ["eten"]})
+    orc = LessonOrchestrator(generator, assigner, predefined_themes={"A1": ["T1"]})
+
+    lessons = orc.generate(
+        [noun], language="Dutch", cefr="A1", verbs=[verb], model="stub"
+    )
+    assert lessons[0].content == "eten eet"
+
+
+def test_homograph_plan_is_deterministic():
+    noun = _word("eten", pos=PartOfSpeech.NOUN, cefr="A1", rank=1)
+    other = _word("huis", pos=PartOfSpeech.NOUN, cefr="A1", rank=3)
+    verb = _verb("eten", cefr="A1", rank=2, **{"ik": "eet"})
+    generator = LessonGenerator(_StubProvider(), _IdentityLemmatizer())
+    assigner = _StubThemeAssigner({"misc": ["eten", "huis"]})
+    orc = LessonOrchestrator(
+        generator, assigner, words_per_lesson=10, predefined_themes={"A1": ["T1"]}
+    )
+
+    first = orc.plan([noun, other], cefr="A1", verbs=[verb])
+    second = orc.plan([noun, other], cefr="A1", verbs=[verb])
+
+    def shape(plans):
+        return [
+            (
+                p.lesson_id,
+                p.theme,
+                tuple(w.lemma for w in p.new_words),
+                tuple(v.infinitive for v in p.new_verbs),
+                tuple(sorted(p.allowed_lemmas)),
+                tuple(sorted(p.allowed_forms)),
+            )
+            for p in plans
+        ]
+
+    assert shape(first) == shape(second)
+
+
+def test_catalog_path_front_loads_when_configured():
+    """Predefined-theme runs front-load: the first lesson is largest, then tapers."""
+    words = [_word(f"w{i:03d}", rank=i) for i in range(1, 101)]  # 100 words
+    generator = LessonGenerator(_StubProvider(), _IdentityLemmatizer())
+    assigner = _StubThemeAssigner({"misc": [w.lemma for w in words]})
+    orc = LessonOrchestrator(
+        generator,
+        assigner,
+        words_per_lesson=10,
+        first_lesson_words=40,
+        front_load_lessons=3,
+        predefined_themes={"A1": [f"T{i}" for i in range(1, 11)]},  # 10 themes
+    )
+
+    plans = orc.plan(words, cefr="A1")
+    counts = [len(p.new_words) for p in plans]
+
+    assert counts[0] == max(counts)  # first lesson is the largest
+    assert counts[0] > counts[1] > counts[2]  # tapers over the front-load window
+    assert min(counts) >= 1  # rounding never yields a zero-size lesson
+    all_lemmas = [w.lemma for p in plans for w in p.new_words]
+    assert len(all_lemmas) == len(set(all_lemmas)) == 100  # nothing lost/duplicated
+
+
+def test_catalog_path_is_even_split_without_front_load():
+    """Regression: without first_lesson_words, the catalog path splits evenly."""
+    words = [_word(f"w{i:03d}", rank=i) for i in range(1, 101)]
+    generator = LessonGenerator(_StubProvider(), _IdentityLemmatizer())
+    assigner = _StubThemeAssigner({"misc": [w.lemma for w in words]})
+    orc = LessonOrchestrator(
+        generator,
+        assigner,
+        words_per_lesson=10,
+        predefined_themes={"A1": [f"T{i}" for i in range(1, 11)]},
+    )
+
+    plans = orc.plan(words, cefr="A1")
+
+    assert [len(p.new_words) for p in plans] == [10] * 10
+
+
 def test_plan_predefined_themes_use_goal_aware_seed_selection_with_fallback():
     words = [
         _word("koffie", rank=1),

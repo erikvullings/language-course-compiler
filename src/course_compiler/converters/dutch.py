@@ -22,11 +22,13 @@ import hashlib
 import json
 import xml.etree.ElementTree as ET
 from collections import defaultdict
-from collections.abc import Iterable, Iterator
+from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
 from collections.abc import Set as AbstractSet
 from pathlib import Path
 
+from course_compiler.compounds import is_derivable_compound, split_compound
 from course_compiler.frequency import load_frequencies
+from course_compiler.leveling import CEFR_ORDER, LevelItem, assign_levels
 from course_compiler.models import (
     Audio,
     Diminutive,
@@ -409,6 +411,75 @@ def load_cefr_levels(path: str | Path) -> dict[str, str]:
     return levels
 
 
+# Dutch linking morphemes for compound splitting (longest first for determinism).
+DUTCH_LINKERS: tuple[str, ...] = ("en", "s", "e", "n")
+
+
+def reassign_cefr_by_budget(
+    words: list[Word],
+    verbs: list[Verb],
+    budgets: Mapping[str, int],
+    *,
+    linkers: Sequence[str] = (),
+    opaque: Collection[str] = (),
+) -> None:
+    """Reassign each item's CEFR level by cumulative frequency budget, in place.
+
+    The current ``cefr`` (the NT2Lex earliest-attested level) becomes the *floor*:
+    an item is never placed below it but may roll forward when its level's budget
+    is spent. Items beyond the highest budget have their ``cefr`` cleared (excluded
+    from all levels). A noun and a verb sharing a form are distinct ``(lemma, pos)``
+    items and consume budget independently (cf. task 0019).
+
+    When ``linkers`` is given, *transparent compounds* (a word that splits into ≥2
+    known lemmas, excluding any in ``opaque``) do **not** consume budget: the
+    learner already knows the parts. Such a compound is still levelled — it becomes
+    available at the highest level among its parts — so it can be introduced in a
+    lesson without inflating the new-word count (cf. task 0018).
+    """
+    known = {obj.lemma for obj in (*words, *verbs)}
+
+    items: list[LevelItem] = []
+    by_key: dict[str, Word | Verb] = {}
+    lemma_of: dict[str, str] = {}
+    transparent: set[str] = set()
+    for kind, objects in (("w", words), ("v", verbs)):
+        for index, obj in enumerate(objects):
+            key = f"{kind}{index}"
+            by_key[key] = obj
+            lemma_of[key] = obj.lemma
+            rank = obj.frequency.rank if obj.frequency else None
+            items.append(LevelItem(key=key, rank=rank, floor=obj.cefr))
+            if linkers and is_derivable_compound(
+                obj.lemma, known, linkers=linkers, opaque=opaque
+            ):
+                transparent.add(key)
+
+    # Transparent compounds are excluded from the budget; everything else counts.
+    counting = [item for item in items if item.key not in transparent]
+    assigned = assign_levels(counting, budgets)
+
+    lemma_level: dict[str, str] = {}
+    for key, level in assigned.items():
+        lemma = lemma_of[key]
+        current = lemma_level.get(lemma)
+        if current is None or CEFR_ORDER.index(level) > CEFR_ORDER.index(current):
+            lemma_level[lemma] = level
+
+    for key, obj in by_key.items():
+        if key in transparent:
+            continue
+        obj.cefr = assigned.get(key)
+
+    for key in transparent:
+        obj = by_key[key]
+        parts = split_compound(obj.lemma, known, linkers=linkers)
+        part_levels = [lemma_level[p] for p in parts if p in lemma_level]
+        if part_levels:
+            obj.cefr = max(part_levels, key=CEFR_ORDER.index)
+        # else: a part has no level — leave the original (floor) cefr untouched.
+
+
 def load_wordnet_synonyms(path: str | Path) -> dict[str, list[str]]:
     """Group Open Dutch WordNet lemmas by shared synset to derive synonyms.
 
@@ -451,12 +522,18 @@ def convert(
     wordnet_path: str | Path | None = None,
     frequency_path: str | Path | None = None,
     nt2lex_path: str | Path | None = None,
+    budgets: Mapping[str, int] | None = None,
+    detect_compounds: bool = False,
+    opaque: Collection[str] = (),
     limit: int | None = None,
 ) -> dict[str, int]:
     """Convert Dutch sources to YAML entries plus aggregate JSON indexes.
 
     Returns counts ``{"words": n, "verbs": m}``. ``limit`` caps the number of
-    processed kaikki entries (useful for smoke tests).
+    processed kaikki entries (useful for smoke tests). When ``budgets`` is given,
+    CEFR levels are reassigned by cumulative frequency budget (NT2Lex = floor);
+    with ``detect_compounds`` transparent Dutch compounds are introduced without
+    consuming budget (``opaque`` lists compounds to keep counting).
     """
 
     out = Path(output_dir)
@@ -469,13 +546,14 @@ def convert(
     synonyms = load_wordnet_synonyms(wordnet_path) if wordnet_path else {}
     cefr = load_cefr_levels(nt2lex_path) if nt2lex_path else {}
 
-    counts = {"words": 0, "verbs": 0}
     seen_words: set[str] = set()
     seen_verbs: set[str] = set()
-    words_json: list[dict] = []
-    verbs_json: list[dict] = []
+    words: list[Word] = []
+    verbs: list[Verb] = []
     audio_json: dict[str, str] = {}
 
+    # Scan first so the budget pass (if any) sees the whole lexicon before levels
+    # are assigned; YAML/JSON are written afterwards with the final CEFR levels.
     for i, entry in enumerate(iter_kaikki(kaikki_path)):
         if limit is not None and i >= limit:
             break
@@ -488,15 +566,9 @@ def convert(
             if verb is None or verb.id in seen_verbs:
                 continue
             seen_verbs.add(verb.id)
-            (verbs_dir / f"{_safe_name(verb.id)}.yaml").write_text(to_yaml(verb), encoding="utf-8")
-            verbs_json.append(
-                _compact_aggregate_row(
-                    verb.model_dump(by_alias=True, exclude_none=True, mode="json")
-                )
-            )
+            verbs.append(verb)
             if audio := _audio_url(entry):
                 audio_json[verb.id] = audio
-            counts["verbs"] += 1
         else:
             word = word_from_kaikki(entry, frequency=freq, cefr=level)
             if word is None or word.id in seen_words:
@@ -504,16 +576,37 @@ def convert(
             if key in synonyms:
                 word.synonyms = synonyms[key]
             seen_words.add(word.id)
-            (words_dir / f"{_safe_name(word.id)}.yaml").write_text(to_yaml(word), encoding="utf-8")
-            words_json.append(
-                _compact_aggregate_row(
-                    word.model_dump(by_alias=True, exclude_none=True, mode="json")
-                )
-            )
+            words.append(word)
             if audio := _audio_url(entry):
                 audio_json[word.id] = audio
-            counts["words"] += 1
 
+    if budgets:
+        reassign_cefr_by_budget(
+            words,
+            verbs,
+            budgets,
+            linkers=DUTCH_LINKERS if detect_compounds else (),
+            opaque=opaque,
+        )
+
+    words_json: list[dict] = []
+    verbs_json: list[dict] = []
+    for verb in verbs:
+        (verbs_dir / f"{_safe_name(verb.id)}.yaml").write_text(to_yaml(verb), encoding="utf-8")
+        verbs_json.append(
+            _compact_aggregate_row(
+                verb.model_dump(by_alias=True, exclude_none=True, mode="json")
+            )
+        )
+    for word in words:
+        (words_dir / f"{_safe_name(word.id)}.yaml").write_text(to_yaml(word), encoding="utf-8")
+        words_json.append(
+            _compact_aggregate_row(
+                word.model_dump(by_alias=True, exclude_none=True, mode="json")
+            )
+        )
+
+    counts = {"words": len(words), "verbs": len(verbs)}
     _write_json_array(out / "words.json", words_json)
     _write_json_array(out / "verbs.json", verbs_json)
     _write_json_object(out / "audio.json", audio_json)
@@ -584,8 +677,17 @@ def convert_iterables(
     frequencies: dict[str, Frequency] | None = None,
     synonyms: dict[str, list[str]] | None = None,
     cefr: dict[str, str] | None = None,
+    budgets: Mapping[str, int] | None = None,
+    linkers: Sequence[str] = (),
+    opaque: Collection[str] = (),
 ) -> tuple[list[Word], list[Verb]]:
-    """In-memory variant of :func:`convert` for tests: returns models, no I/O."""
+    """In-memory variant of :func:`convert` for tests: returns models, no I/O.
+
+    When ``budgets`` is given, CEFR levels are reassigned by cumulative frequency
+    budget (the NT2Lex ``cefr`` becomes the floor); otherwise the NT2Lex level is
+    kept as-is. ``linkers`` enables transparent-compound detection so those words
+    don't consume budget (see :func:`reassign_cefr_by_budget`).
+    """
 
     frequencies = frequencies or {}
     synonyms = synonyms or {}
@@ -606,4 +708,9 @@ def convert_iterables(
                 if key in synonyms:
                     word.synonyms = synonyms[key]
                 words.append(word)
+
+    if budgets:
+        reassign_cefr_by_budget(
+            words, verbs, budgets, linkers=linkers, opaque=opaque
+        )
     return words, verbs

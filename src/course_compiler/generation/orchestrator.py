@@ -213,6 +213,38 @@ def _verb_as_word(verb: Verb) -> Word:
     )
 
 
+def _is_verb_item(word: Word, verb_lookup: dict[str, Verb]) -> bool:
+    """True if *word* is the verb sense of a (lemma, pos) item, not a noun sense.
+
+    The learnable unit is ``(lemma, part_of_speech)``: a noun and a verb sharing a
+    surface form (e.g. ``eten`` = food / to eat) are distinct items. A verb stub
+    carries ``part_of_speech == VERB``; a homographic noun keeps its own POS, so a
+    lemma being present in ``verb_lookup`` no longer means *every* item with that
+    lemma is a verb — only the VERB-tagged stub is.
+    """
+    return word.part_of_speech == PartOfSpeech.VERB and word.lemma in verb_lookup
+
+
+def _group_by_lemma(words: list[Word]) -> dict[str, list[Word]]:
+    """Map each lemma to all its sense-items (noun + verb homographs co-exist)."""
+    grouped: dict[str, list[Word]] = {}
+    for word in words:
+        grouped.setdefault(word.lemma, []).append(word)
+    return grouped
+
+
+def _split_batch(
+    batch: list[Word], verb_lookup: dict[str, Verb]
+) -> tuple[list[Word], list[Verb], set[str]]:
+    """Split a batch into (non-verb words, verbs, verb surface forms) by item POS."""
+    batch_verbs = [verb_lookup[w.lemma] for w in batch if _is_verb_item(w, verb_lookup)]
+    non_verb_batch = [w for w in batch if not _is_verb_item(w, verb_lookup)]
+    new_forms: set[str] = set()
+    for verb in batch_verbs:
+        new_forms |= _verb_surface_forms(verb)
+    return non_verb_batch, batch_verbs, new_forms
+
+
 @dataclass(frozen=True)
 class LessonPlan:
     lesson_id: str
@@ -334,7 +366,7 @@ class LessonOrchestrator:
         function_lemmas: set[str],
         verb_lookup: dict[str, Verb],
     ) -> list[LessonPlan]:
-        by_lemma = {w.lemma: w for w in all_content}
+        by_lemma = _group_by_lemma(all_content)
         accumulated: set[str] = set()
         accumulated_forms: set[str] = set()
         seen_new_lemmas: set[str] = set()
@@ -344,23 +376,18 @@ class LessonOrchestrator:
         for blueprint in blueprints:
             batch: list[Word] = []
             for lemma in blueprint.seed_lemmas:
-                word = by_lemma.get(lemma)
-                if word is None or lemma in seen_new_lemmas:
+                items = by_lemma.get(lemma)
+                if not items or lemma in seen_new_lemmas:
                     continue
-                batch.append(word)
+                # A seed lemma pulls in all its senses (noun + verb homograph).
+                batch.extend(items)
                 seen_new_lemmas.add(lemma)
 
             if not batch:
                 continue
 
             new_lemmas = {w.lemma for w in batch}
-            batch_verbs = [
-                verb_lookup[w.lemma] for w in batch if w.lemma in verb_lookup
-            ]
-            non_verb_batch = [w for w in batch if w.lemma not in verb_lookup]
-            new_forms: set[str] = set()
-            for verb in batch_verbs:
-                new_forms |= _verb_surface_forms(verb)
+            non_verb_batch, batch_verbs, new_forms = _split_batch(batch, verb_lookup)
 
             plans.append(
                 LessonPlan(
@@ -382,13 +409,7 @@ class LessonOrchestrator:
         for i in range(0, len(leftover), self._words_per_lesson):
             batch = leftover[i : i + self._words_per_lesson]
             new_lemmas = {w.lemma for w in batch}
-            batch_verbs = [
-                verb_lookup[w.lemma] for w in batch if w.lemma in verb_lookup
-            ]
-            non_verb_batch = [w for w in batch if w.lemma not in verb_lookup]
-            new_forms: set[str] = set()
-            for verb in batch_verbs:
-                new_forms |= _verb_surface_forms(verb)
+            non_verb_batch, batch_verbs, new_forms = _split_batch(batch, verb_lookup)
 
             plans.append(
                 LessonPlan(
@@ -436,8 +457,12 @@ class LessonOrchestrator:
         lesson_count = min(len(theme_sequence), len(all_content))
         slices = self._distribute(len(all_content), lesson_count)
 
-        by_lemma = {w.lemma: w for w in all_content}
-        by_lemma_lower = {lemma.lower(): w for lemma, w in by_lemma.items()}
+        # A lemma can map to multiple sense-items (noun + verb homograph); keep
+        # them all so neither sense is dropped when the lemma is selected.
+        by_lemma = _group_by_lemma(all_content)
+        by_lemma_lower: dict[str, list[Word]] = {}
+        for lemma, items in by_lemma.items():
+            by_lemma_lower.setdefault(lemma.lower(), []).extend(items)
         ordered_lemmas = [w.lemma for w in all_content]
         used_lemmas: set[str] = set()
         proposer = getattr(self._assigner, "propose_theme_vocabulary", None)
@@ -450,11 +475,7 @@ class LessonOrchestrator:
             theme_plan = theme_sequence[index]
             target_count = max(1, end - start)
             selected: list[str] = []
-            remaining_words = [
-                by_lemma[lemma]
-                for lemma in ordered_lemmas
-                if lemma not in used_lemmas and lemma in by_lemma
-            ]
+            remaining_words = [w for w in all_content if w.lemma not in used_lemmas]
             candidate_lemmas = _theme_candidate_pool(
                 remaining_words=remaining_words,
                 theme=theme_plan.theme,
@@ -481,11 +502,13 @@ class LessonOrchestrator:
                     key = raw.strip().lower()
                     if not key or key in seen_lower:
                         continue
-                    word = by_lemma.get(raw.strip()) or by_lemma_lower.get(key)
-                    if word is None or word.lemma in used_lemmas:
+                    items = by_lemma.get(raw.strip()) or by_lemma_lower.get(key)
+                    if not items or items[0].lemma in used_lemmas:
                         continue
                     seen_lower.add(key)
-                    survivors.append(word)
+                    # Use the first (most frequent) sense as the frequency proxy;
+                    # all senses are pulled in when the lemma is batched below.
+                    survivors.append(items[0])
                 survivors.sort(key=self._sort_key)
                 for word in survivors:
                     if word.lemma not in selected:
@@ -532,18 +555,14 @@ class LessonOrchestrator:
                     if len(selected) >= target_count:
                         break
 
-            batch = [by_lemma[lemma] for lemma in selected if lemma in by_lemma]
+            # Expand each selected lemma to all its sense-items so a noun and its
+            # verb homograph are both taught (neither sense is silently dropped).
+            batch = [item for lemma in selected for item in by_lemma.get(lemma, [])]
             if not batch:
                 continue
 
             new_lemmas = {w.lemma for w in batch}
-            batch_verbs = [
-                verb_lookup[w.lemma] for w in batch if w.lemma in verb_lookup
-            ]
-            non_verb_batch = [w for w in batch if w.lemma not in verb_lookup]
-            new_forms: set[str] = set()
-            for verb in batch_verbs:
-                new_forms |= _verb_surface_forms(verb)
+            non_verb_batch, batch_verbs, new_forms = _split_batch(batch, verb_lookup)
 
             theme_name = theme_plan.theme.strip() or "misc"
             plans.append(
@@ -655,13 +674,9 @@ class LessonOrchestrator:
                 new_lemmas = {w.lemma for w in batch}
 
                 # Resolve verb stubs back to Verb objects; collect their surface forms.
-                batch_verbs = [
-                    verb_lookup[w.lemma] for w in batch if w.lemma in verb_lookup
-                ]
-                non_verb_batch = [w for w in batch if w.lemma not in verb_lookup]
-                new_forms: set[str] = set()
-                for verb in batch_verbs:
-                    new_forms |= _verb_surface_forms(verb)
+                non_verb_batch, batch_verbs, new_forms = _split_batch(
+                    batch, verb_lookup
+                )
 
                 plans.append(
                     LessonPlan(

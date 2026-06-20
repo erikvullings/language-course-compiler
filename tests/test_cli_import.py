@@ -74,6 +74,59 @@ def test_import_writes_word_and_verb_yaml(tmp_path):
     }
 
 
+def test_import_with_budgets_reassigns_cefr(tmp_path):
+    """`--budgets` reassigns CEFR by cumulative frequency; NT2Lex is the floor."""
+    from course_compiler.cli import _parse_budgets
+
+    assert _parse_budgets("A1=1,A2=2") == {"A1": 1, "A2": 2}
+    assert _parse_budgets(None) is None
+    assert _parse_budgets("") is None
+
+    jsonl = tmp_path / "nl.jsonl"
+    jsonl.write_text(
+        "\n".join(
+            json.dumps({"pos": "noun", "word": w, "senses": [{"glosses": ["x"]}]})
+            for w in ["kat", "hond"]
+        ),
+        encoding="utf-8",
+    )
+    # NT2Lex: both A1. Frequency: kat more frequent than hond.
+    nt2lex = tmp_path / "nt2lex.tsv"
+    nt2lex.write_text(
+        "word\tF@A1\tF@A2\tF@B1\tF@B2\tF@C1\n"
+        "kat\t5\t-\t-\t-\t-\n"
+        "hond\t5\t-\t-\t-\t-\n",
+        encoding="utf-8",
+    )
+    out = tmp_path / "courses" / "nl"
+
+    # Without a real cBpack we cannot rank; assert the flag is plumbed by checking
+    # that a single-slot A1 budget forces one item up to A2 (deterministic by id).
+    rc = main(
+        [
+            "import",
+            "--kaikki",
+            str(jsonl),
+            "--nt2lex",
+            str(nt2lex),
+            "--out",
+            str(out),
+            "--budgets",
+            "A1=1,A2=2",
+        ]
+    )
+
+    assert rc == 0
+    levels = {
+        yaml.safe_load((out / "words" / f"{name}.yaml").read_text())["lemma"]: yaml.safe_load(
+            (out / "words" / f"{name}.yaml").read_text()
+        ).get("cefr")
+        for name in ["kat", "hond"]
+    }
+    # Two A1-floored items, one A1 slot then one A2 slot: tie-break is deterministic.
+    assert sorted(levels.values()) == ["A1", "A2"]
+
+
 def test_lemmas_with_same_safe_stem_do_not_overwrite(tmp_path):
     # "a b" and "a.b" both sanitize to "a_b"; both must survive as files.
     jsonl = tmp_path / "nl.jsonl"

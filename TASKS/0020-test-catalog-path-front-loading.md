@@ -1,6 +1,6 @@
 # 0020 Test/verify front-loading on the catalog path
 
-Status: open
+Status: done
 Priority: low
 Owner: Erik Vullings
 Agent: unassigned
@@ -32,3 +32,10 @@ the non-catalog default path. Confirm it works end-to-end and lock it with a tes
 ## Agent Notes
 
 - Carved out of 0016 follow-ups, 2026-06-20.
+- Done 2026-06-20 (Claude). `_distribute`'s weighted branch was already correct;
+  locked it with two tests in `tests/test_orchestrator.py`:
+  `test_catalog_path_front_loads_when_configured` (100 words / 10 themes,
+  `first_lesson_words=40` → first lesson largest, tapers over the front-load
+  window, every word covered exactly once, no zero-size lesson) and
+  `test_catalog_path_is_even_split_without_front_load` (regression: even 10×10
+  split when `first_lesson_words` is unset). No production change needed.

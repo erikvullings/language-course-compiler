@@ -1,6 +1,6 @@
 # 0019 Distinguish noun/verb homographs as separate items
 
-Status: open
+Status: done
 Priority: high
 Owner: Erik Vullings
 Agent: unassigned
@@ -47,3 +47,28 @@ compound — see 0018). Settle here.
 
 - Proposed 2026-06-20 (Erik): "if I learn the noun 'antwoord', I may never learn
   the verb — treat them distinctly."
+- Done 2026-06-20 (Claude): item identity is now `(lemma, pos)` inside the
+  orchestrator. Implementation:
+  - `_is_verb_item(word, verb_lookup)` decides verb-vs-noun by the item's own POS
+    (`pos == VERB and lemma in verb_lookup`), replacing the old
+    `lemma not in verb_lookup` test that dropped a noun whenever a same-form verb
+    existed. `_split_batch` centralizes the verb/non-verb/forms split.
+  - `_group_by_lemma` makes the per-path `by_lemma` a multimap
+    (`dict[str, list[Word]]`), so the noun stub and verb stub for a shared form
+    both survive de-dup. Selecting a lemma expands to **all** its senses.
+  - All three planning paths updated: `_plan_from_blueprints`,
+    `_plan_with_theme_sequence` (catalog), and the default theme path in `plan()`.
+  - `models.py` untouched (stays language-agnostic); change is identity only,
+    no new schema. Validator unchanged — it reasons on shared surface forms, and
+    once both senses are taught the noun lemma + verb forms are already in the
+    allowed/forms sets.
+- **Counting policy for 0017 (settled here):** a homograph's second sense **counts**
+  as a separate item against the cumulative frequency budget. It shares the form
+  but carries new meaning, so it is genuine new learning (unlike a derivable
+  compound, see 0018, which should *not* count). Practically: noun+verb land in
+  the same lesson via the catalog/blueprint paths (lemma expansion), so each adds
+  to that lesson's new-item total; in the default/leftover chunking they may split
+  across lessons. Either way both appear in the plan.
+- Tests added in `tests/test_orchestrator.py` (section "noun/verb homographs"):
+  both senses taught across catalog/blueprint/default paths, single-sense lemmas
+  not duplicated, both forms pass validation once taught, and determinism.

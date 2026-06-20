@@ -1,6 +1,6 @@
 # 0017 Level assignment by cumulative frequency budget
 
-Status: open
+Status: done
 Priority: high
 Owner: Erik Vullings
 Agent: unassigned
@@ -49,3 +49,26 @@ derivable compounds per 0018 (a compound doesn't consume budget).
 
 - Proposed 2026-06-20. Do after 0019 (item identity) and before 0018 (compounds
   need the per-level known set this defines).
+- Done 2026-06-20 (Claude). Implementation:
+  - New generic module `src/course_compiler/leveling.py`: `LevelItem(key, rank,
+    floor)` + `assign_levels(items, budgets)`. Greedy fill: items sorted by
+    `(rank, key)` (deterministic), each placed in the lowest budgeted level at or
+    above its floor that still has capacity; level capacity = the cumulative
+    budget increment. Floors are minimums — an item rolls *forward* when its floor
+    level is full. Items that find no slot (beyond the top budget) are omitted.
+    Stays language-agnostic: budgets are a plain `{level: cumulative_count}` dict.
+  - Wired into the Dutch converter: `reassign_cefr_by_budget(words, verbs,
+    budgets)` uses each item's existing NT2Lex `cefr` as the floor and rewrites
+    `cefr` in place (clears it when excluded). `convert` and `convert_iterables`
+    gained an optional `budgets` param; `convert` now scans the whole lexicon
+    before assigning levels, then writes YAML/JSON with final levels.
+  - Each `(lemma, pos)` is a separate budget item (noun + verb homograph counted
+    independently) per [[0019]]. `convert` keys items by object position to avoid
+    the `word.id == normalize(lemma)` collision across POS.
+  - CLI: `course import --budgets 'A1=750,A2=2000,B1=3500,B2=5500'` (parsed by
+    `_parse_budgets`). Omitting it keeps NT2Lex levels (back-compat).
+  - Tests: `tests/test_leveling.py` (the 5 plan bullets + roll-forward, unranked,
+    floor-above-budgets), plus converter + CLI integration tests.
+- NOT done here (deferred to 0018): excluding derivable compounds from budget
+  consumption. `assign_levels` counts every item it's given; 0018 will filter
+  compounds out of the item list before calling it.

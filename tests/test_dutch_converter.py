@@ -139,6 +139,113 @@ def test_convert_iterables_routes_and_enriches():
     assert [v.id for v in verbs] == ["lopen"]
 
 
+def test_convert_iterables_reassigns_cefr_by_budget():
+    """With budgets, CEFR is assigned by cumulative frequency (NT2Lex = floor)."""
+    from course_compiler.models import Frequency
+
+    # huis is the more frequent noun; lopen the verb. NT2Lex tags both A1 (floor).
+    frequencies = {
+        "huis": Frequency(rank=1),
+        "lopen": Frequency(rank=2),
+    }
+    cefr = {"huis": "A1", "lopen": "A1"}
+    words, verbs = dutch.convert_iterables(
+        [NOUN, STRONG_VERB],
+        frequencies=frequencies,
+        cefr=cefr,
+        budgets={"A1": 1, "A2": 2},
+    )
+    # Only one A1 slot: the most frequent item (huis) gets A1, lopen rolls to A2.
+    assert words[0].cefr == "A1"
+    assert verbs[0].cefr == "A2"
+
+
+def test_convert_iterables_budget_floor_is_respected():
+    """An item attested at B1 is never placed below B1 even if very frequent."""
+    from course_compiler.models import Frequency
+
+    frequencies = {"huis": Frequency(rank=1), "lopen": Frequency(rank=2)}
+    cefr = {"huis": "B1", "lopen": "A1"}  # huis floored at B1
+    words, verbs = dutch.convert_iterables(
+        [NOUN, STRONG_VERB],
+        frequencies=frequencies,
+        cefr=cefr,
+        budgets={"A1": 1, "A2": 2, "B1": 3},
+    )
+    assert words[0].cefr == "B1"  # floor respected despite top frequency
+    assert verbs[0].cefr == "A1"
+
+
+def test_convert_iterables_without_budgets_keeps_nt2lex_levels():
+    """Back-compat: no budgets -> CEFR stays the NT2Lex-attested level."""
+    cefr = {"huis": "A2", "lopen": "B1"}
+    words, verbs = dutch.convert_iterables(
+        [NOUN, STRONG_VERB], cefr=cefr
+    )
+    assert words[0].cefr == "A2"
+    assert verbs[0].cefr == "B1"
+
+
+def _noun(word: str) -> dict:
+    return {"pos": "noun", "word": word, "senses": [{"glosses": ["x"]}]}
+
+
+def test_transparent_compound_does_not_consume_budget_but_is_levelled():
+    """koffiepot = koffie+pot: introduced (levelled) but frees a budget slot."""
+    from course_compiler.models import Frequency
+
+    entries = [_noun("koffie"), _noun("pot"), _noun("koffiepot"), _noun("thee")]
+    frequencies = {
+        "koffie": Frequency(rank=1),
+        "pot": Frequency(rank=2),
+        "koffiepot": Frequency(rank=3),
+        "thee": Frequency(rank=4),
+    }
+    cefr = {w: "A1" for w in ["koffie", "pot", "koffiepot", "thee"]}
+
+    words, _ = dutch.convert_iterables(
+        entries,
+        frequencies=frequencies,
+        cefr=cefr,
+        budgets={"A1": 3},
+        linkers=("s", "en", "e", "n"),
+    )
+    levels = {w.lemma: w.cefr for w in words}
+    # Compound is levelled from its parts (max of koffie/pot = A1), not counted.
+    assert levels["koffiepot"] == "A1"
+    # Because the compound didn't consume a slot, 'thee' still fits in the budget.
+    assert levels["thee"] == "A1"
+    assert levels["koffie"] == "A1"
+    assert levels["pot"] == "A1"
+
+
+def test_opaque_compound_still_consumes_budget():
+    """handschoen is opaque (glove): it counts as a new word despite splitting."""
+    from course_compiler.models import Frequency
+
+    entries = [_noun("hand"), _noun("schoen"), _noun("handschoen"), _noun("muts")]
+    frequencies = {
+        "hand": Frequency(rank=1),
+        "schoen": Frequency(rank=2),
+        "handschoen": Frequency(rank=3),
+        "muts": Frequency(rank=4),
+    }
+    cefr = {w: "A1" for w in ["hand", "schoen", "handschoen", "muts"]}
+
+    words, _ = dutch.convert_iterables(
+        entries,
+        frequencies=frequencies,
+        cefr=cefr,
+        budgets={"A1": 3},
+        linkers=("s", "en", "e", "n"),
+        opaque={"handschoen"},
+    )
+    levels = {w.lemma: w.cefr for w in words}
+    # handschoen counts, taking the 3rd A1 slot; the rarer 'muts' is excluded.
+    assert levels["handschoen"] == "A1"
+    assert levels["muts"] is None
+
+
 def test_load_wordnet_synonyms(tmp_path):
     xml = tmp_path / "wn.xml"
     xml.write_text(

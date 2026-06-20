@@ -38,6 +38,27 @@ _LANG_NAMES: dict[str, str] = {
 }
 
 
+def _parse_budgets(spec: str | None) -> dict[str, int] | None:
+    """Parse a ``"A1=750,A2=2000,..."`` CEFR budget spec into a dict.
+
+    Returns ``None`` when *spec* is empty so the importer keeps NT2Lex levels.
+    """
+    if not spec:
+        return None
+    budgets: dict[str, int] = {}
+    for part in spec.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        level, _, count = part.partition("=")
+        level = level.strip().upper()
+        try:
+            budgets[level] = int(count.strip())
+        except ValueError:
+            raise SystemExit(f"Invalid budget entry: {part!r} (expected LEVEL=COUNT)")
+    return budgets or None
+
+
 def _load_words_from_lexicon(lexicon_dir: Path):
     from course_compiler.models import Word
 
@@ -120,6 +141,18 @@ def _load_entries_from_layout(lexicon_dir: Path, stem: str) -> dict[str, dict]:
         entry_id = str(loaded.get("id") or path.stem)
         entries[entry_id] = loaded
     return entries
+
+
+def _discover_lesson_levels(course_dir: Path) -> list[str]:
+    """Return CEFR levels that have a ``<course>/<LEVEL>/lessons`` dir, in order."""
+    from course_compiler.leveling import CEFR_ORDER
+
+    found = {
+        level_dir.parent.name.upper()
+        for level_dir in course_dir.glob("*/lessons")
+        if level_dir.is_dir() and level_dir.parent.name.upper() in CEFR_ORDER
+    }
+    return [level for level in CEFR_ORDER if level in found]
 
 
 def _load_lessons_for_export(lessons_dir: Path) -> dict[str, dict]:
@@ -453,6 +486,22 @@ def build_parser() -> argparse.ArgumentParser:
     imp.add_argument("--frequency", help="Path to wordfreq cBpack file")
     imp.add_argument("--nt2lex", help="Path to NT2Lex .tsv resource (CEFR levels)")
     imp.add_argument("--out", default="courses/nl", help="Output course directory")
+    imp.add_argument(
+        "--budgets",
+        help=(
+            "Reassign CEFR by cumulative frequency budget, e.g. "
+            "'A1=750,A2=2000,B1=3500,B2=5500'. NT2Lex level is used as a floor. "
+            "Omit to keep the NT2Lex-attested level."
+        ),
+    )
+    imp.add_argument(
+        "--compounds",
+        action="store_true",
+        help=(
+            "With --budgets, introduce transparent compounds (e.g. koffie+pot) "
+            "without consuming budget; their level is derived from their parts."
+        ),
+    )
     imp.add_argument("--limit", type=int, help="Only process the first N entries")
 
     exp = sub.add_parser("export", help="Export a course into split JSON bundles")
@@ -704,6 +753,8 @@ def main(argv: list[str] | None = None) -> int:
             wordnet_path=args.wordnet,
             frequency_path=args.frequency,
             nt2lex_path=args.nt2lex,
+            budgets=_parse_budgets(args.budgets),
+            detect_compounds=args.compounds,
             limit=args.limit,
         )
         print(
@@ -720,17 +771,34 @@ def main(argv: list[str] | None = None) -> int:
         verbs = _load_entries_from_layout(course_dir, "verbs")
         grammar = _load_entries_from_layout(course_dir, "grammar")
         exercises = _load_entries_from_layout(course_dir, "exercises")
-        # Lessons live under <course-dir>/<LEVEL>/lessons (level-scoped). Fall back
-        # to a legacy flat <course-dir>/lessons when no level dirs are present.
-        lessons = _load_lessons_for_export(course_dir / "lessons")
-        if not lessons:
-            for level_dir in sorted(course_dir.glob("*/lessons")):
-                lessons.update(_load_lessons_for_export(level_dir))
+
+        # Lessons live under <course-dir>/<LEVEL>/lessons (level-scoped). When such
+        # level dirs exist, export per level so ids that repeat across levels
+        # (every level restarts at lesson001) don't overwrite each other. A legacy
+        # flat <course-dir>/lessons is exported as today (single, unleveled bundle).
+        levels = _discover_lesson_levels(course_dir)
+        lesson_count = 0
+        if levels:
+            for level in levels:
+                level_lessons = _load_lessons_for_export(
+                    course_dir / level / "lessons"
+                )
+                for lesson_id, payload in sorted(level_lessons.items()):
+                    payload.setdefault("id", lesson_id)
+                    payload["level"] = level
+                    _write_json(lessons_out / level / f"{lesson_id}.json", payload)
+                    lesson_count += 1
+        else:
+            lessons = _load_lessons_for_export(course_dir / "lessons")
+            for lesson_id, payload in sorted(lessons.items()):
+                _write_json(lessons_out / f"{lesson_id}.json", payload)
+            lesson_count = len(lessons)
 
         manifest = {
             "courseLanguage": args.lang,
             "compilerVersion": __version__,
             "version": args.version,
+            "levels": levels,
         }
 
         _write_json(out_dir / "manifest.json", manifest)
@@ -738,13 +806,12 @@ def main(argv: list[str] | None = None) -> int:
         _write_json(out_dir / "verbs.json", verbs)
         _write_json(out_dir / "grammar.json", grammar)
         _write_json(out_dir / "exercises.json", exercises)
-        for lesson_id, payload in sorted(lessons.items()):
-            _write_json(lessons_out / f"{lesson_id}.json", payload)
 
         print(
             f"Exported course bundles into {out_dir} "
             f"(words={len(words)}, verbs={len(verbs)}, grammar={len(grammar)}, "
-            f"exercises={len(exercises)}, lessons={len(lessons)})"
+            f"exercises={len(exercises)}, lessons={lesson_count}, "
+            f"levels={levels or ['(flat)']})"
         )
         return 0
 

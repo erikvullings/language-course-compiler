@@ -1,6 +1,6 @@
 # 0018 Compound / derivable-word detection (introduce but don't count)
 
-Status: open
+Status: done
 Priority: medium
 Owner: Erik Vullings
 Agent: unassigned
@@ -46,3 +46,27 @@ airplane; `handschoen` = hand+shoe = glove) are NOT free and should still count.
 
 - Proposed 2026-06-20 (Erik): "compound words can be introduced in the lessons,
   but they should not be counted as new words."
+- Done 2026-06-20 (Claude). Implementation:
+  - New generic module `src/course_compiler/compounds.py`: `split_compound(word,
+    known_lemmas, *, linkers, min_part_len)` — greedy longest-leading-part DP over
+    the known-lemma set, with optional linking morphemes tried between parts; the
+    word itself is excluded so it never "splits" into one copy of itself; returns
+    `[]` unless ≥2 parts. `is_derivable_compound(...)` adds an `opaque` set so
+    opaque compounds (e.g. `handschoen`) report False and keep counting.
+    Language-pluggable: linkers are a caller argument, nothing in `models.py`.
+  - Integrated with the 0017 budget pass: `reassign_cefr_by_budget` gained
+    `linkers`/`opaque`. Transparent compounds are dropped from the counting set so
+    they don't consume budget, then levelled to `max(level of parts)` so they can
+    still be introduced/allowed. Dutch linkers `("en","s","e","n")` live in
+    `dutch.py` as `DUTCH_LINKERS`.
+  - `convert_iterables` takes `linkers`/`opaque`; `convert` takes
+    `detect_compounds`/`opaque`. CLI: `course import --budgets ... --compounds`.
+  - Tests: `tests/test_compounds.py` (splitter bullets + opaque + min-part-len +
+    determinism) and two converter integration tests (transparent frees a slot &
+    is levelled; opaque still counts).
+- NOT done (deliberately deferred): the transparency *confirmation* step
+  (curated list / LLM) to weed out short-fragment false positives like
+  `balkon`→`bal+kon` or particle-prefixed `aanval`→`aan+vallen`. The hook exists
+  (`opaque` set + `min_part_len`); populating a real opaque list against the live
+  lexicon is follow-up data work, not code. Splitter currently has no verb-stem /
+  particle awareness, so run with a vetted `opaque` list on real data.

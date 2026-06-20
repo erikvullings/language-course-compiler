@@ -86,6 +86,17 @@ These shape every change — violating them is a bug:
   narrative. Both are opt-in/config so output stays reproducible and
   language-agnostic.
 - **`frequency.py`** — reader for wordfreq `cBpack` files (generic).
+- **`leveling.py`** — generic CEFR assignment by **cumulative frequency budget**
+  (`assign_levels`): items fill levels most-frequent-first up to each level's
+  budget increment; a per-item floor (e.g. a resource's attested level) is a
+  minimum that lets an item roll forward when its level is full; items past the
+  top budget are excluded. Budgets are config, not code. The Dutch converter calls
+  this (`reassign_cefr_by_budget`) with each `(lemma, pos)` as a separate item.
+- **`compounds.py`** — generic, language-pluggable compound splitter
+  (`split_compound` / `is_derivable_compound`): a word splitting into ≥2 known
+  lemmas (linkers passed in by the caller) is a **transparent** compound and is
+  introduced without consuming budget; `opaque` words still count. The converter
+  supplies Dutch linkers and levels transparent compounds to `max(level of parts)`.
 - **`settings.py`** — `Settings.load(env=...)` reads config via python-dotenv.
 - **`cli.py`** — `course` entry point (`ask`, `import`; grows per `TASKS/`).
 
