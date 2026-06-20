@@ -70,6 +70,20 @@ def _load_words_from_lexicon(lexicon_dir: Path):
     raise FileNotFoundError(f"neither {words_json} nor {words_yaml_dir} found")
 
 
+def _load_verbs_from_lexicon(lexicon_dir: Path):
+    """Load verbs from ``verbs.json`` or ``verbs/*.yaml``; empty list if none."""
+    from course_compiler.models import Verb
+
+    language = lexicon_dir.name
+    raw = _load_entries_from_layout(lexicon_dir, "verbs")
+    verbs = []
+    for entry in raw.values():
+        if "language" not in entry:
+            entry = {"language": language, **entry}
+        verbs.append(Verb.model_validate(entry))
+    return verbs
+
+
 def _write_json(path: Path, data: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
@@ -573,6 +587,8 @@ def main(argv: list[str] | None = None) -> int:
             )
             return 1
 
+        verbs = _load_verbs_from_lexicon(lexicon_dir)
+
         # Theme assigner — LLM-backed with disk cache next to the lexicon.
         from course_compiler.generation.base import create_lemmatizer
         from course_compiler.generation.cache import LLMCache
@@ -641,7 +657,9 @@ def main(argv: list[str] | None = None) -> int:
             predefined_themes_path=predefined_themes_path,
         )
 
-        plans = orchestrator.plan(words, cefr=args.cefr, language=language_name)
+        plans = orchestrator.plan(
+            words, cefr=args.cefr, verbs=verbs, language=language_name
+        )
         if args.preview:
             print(json.dumps(_lesson_blueprint(plans), ensure_ascii=False, indent=2))
             if not args.approve:
@@ -651,9 +669,10 @@ def main(argv: list[str] | None = None) -> int:
             words,
             language=language_name,
             cefr=args.cefr,
+            verbs=verbs,
         )
 
-        out_dir = Path(args.out) if args.out else lexicon_dir / "lessons"
+        out_dir = Path(args.out) if args.out else lexicon_dir / args.cefr / "lessons"
         out_dir.mkdir(parents=True, exist_ok=True)
         for lesson in lessons:
             payload = Lesson(
@@ -701,7 +720,12 @@ def main(argv: list[str] | None = None) -> int:
         verbs = _load_entries_from_layout(course_dir, "verbs")
         grammar = _load_entries_from_layout(course_dir, "grammar")
         exercises = _load_entries_from_layout(course_dir, "exercises")
+        # Lessons live under <course-dir>/<LEVEL>/lessons (level-scoped). Fall back
+        # to a legacy flat <course-dir>/lessons when no level dirs are present.
         lessons = _load_lessons_for_export(course_dir / "lessons")
+        if not lessons:
+            for level_dir in sorted(course_dir.glob("*/lessons")):
+                lessons.update(_load_lessons_for_export(level_dir))
 
         manifest = {
             "courseLanguage": args.lang,

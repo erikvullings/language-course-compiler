@@ -6,7 +6,6 @@ a sequence of generated lessons for a target CEFR level.
 
 from __future__ import annotations
 
-import math
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -300,20 +299,32 @@ class LessonOrchestrator:
         frac = (lesson_number - 1) / span
         return max(1, round(first + frac * (steady - first)))
 
-    def _schedule_slices(
-        self, total: int, start_lesson: int = 1
-    ) -> list[tuple[int, int]]:
-        """Cut ``total`` ordered items into per-lesson ``(start, end)`` ranges
-        using the (possibly front-loaded) budget schedule."""
-        slices: list[tuple[int, int]] = []
-        start = 0
-        lesson = start_lesson
-        while start < total:
-            end = min(start + self._budget_for(lesson), total)
-            slices.append((start, end))
-            start = end
-            lesson += 1
-        return slices
+    def _distribute(self, total: int, lessons: int) -> list[tuple[int, int]]:
+        """Split ``total`` ordered items into exactly ``lessons`` contiguous
+        ``(start, end)`` ranges that together cover everything.
+
+        Even split by default; front-loaded (early lessons larger) when
+        ``first_lesson_words`` is configured. Used by the catalog path so every
+        configured theme becomes one lesson and no vocabulary is dropped.
+        """
+        if lessons <= 0 or total <= 0:
+            return []
+        if lessons >= total:
+            return [(i, i + 1) for i in range(total)]
+
+        if self._first_lesson_words is None:
+            bounds = [i * total // lessons for i in range(lessons + 1)]
+        else:
+            weights = [max(1, self._budget_for(i + 1)) for i in range(lessons)]
+            wsum = sum(weights)
+            bounds = [0]
+            acc = 0
+            for w in weights:
+                acc += w
+                bounds.append(round(acc / wsum * total))
+            bounds[-1] = total
+
+        return [(bounds[i], bounds[i + 1]) for i in range(lessons)]
 
     def _plan_from_blueprints(
         self,
@@ -419,16 +430,11 @@ class LessonOrchestrator:
         if not all_content:
             return plans
 
-        implied_lessons = max(1, math.ceil(len(all_content) / self._words_per_lesson))
-        if len(theme_sequence) > implied_lessons:
-            lesson_count = min(len(theme_sequence), len(all_content))
-            boundaries = [
-                i * len(all_content) // lesson_count for i in range(lesson_count + 1)
-            ]
-            slices = [(boundaries[i], boundaries[i + 1]) for i in range(lesson_count)]
-        else:
-            # Front-loaded budget: early themes get more words (see _budget_for).
-            slices = self._schedule_slices(len(all_content))
+        # One lesson per configured theme: distribute ALL content across the
+        # themes so nothing is dropped (front-loaded when configured). The lesson
+        # count is min(themes, words); words_per_lesson does not cap this path.
+        lesson_count = min(len(theme_sequence), len(all_content))
+        slices = self._distribute(len(all_content), lesson_count)
 
         by_lemma = {w.lemma: w for w in all_content}
         by_lemma_lower = {lemma.lower(): w for lemma, w in by_lemma.items()}

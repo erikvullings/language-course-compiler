@@ -508,6 +508,26 @@ def test_plan_spreads_content_across_all_predefined_themes_when_more_than_implie
     assert [len(p.new_words) for p in plans] == [1, 1, 1, 1]
 
 
+def test_predefined_themes_cover_all_content_even_when_few_themes():
+    """One lesson per theme distributes ALL vocabulary; nothing is dropped."""
+    words = [_word(f"w{i:02d}", rank=i) for i in range(1, 11)]  # 10 words
+    provider = _StubProvider()
+    generator = LessonGenerator(provider, _IdentityLemmatizer())
+    assigner = _StubThemeAssigner({"misc": [w.lemma for w in words]})
+    orc = LessonOrchestrator(
+        generator,
+        assigner,
+        words_per_lesson=2,  # would, if naively chunked, cover only 2*2=4 words
+        predefined_themes={"A1": ["T1", "T2"]},
+    )
+
+    plans = orc.plan(words, cefr="A1")
+
+    assert [p.theme for p in plans] == ["T1", "T2"]
+    all_lemmas = [w.lemma for p in plans for w in p.new_words]
+    assert len(all_lemmas) == len(set(all_lemmas)) == 10  # every word, once
+
+
 def test_plan_predefined_themes_prefer_proposed_vocabulary_filtered_to_lexicon():
     """LLM proposes theme words; orchestrator keeps only lexicon hits, freq-ranked."""
     words = [_word("koffie", rank=2), _word("thee", rank=1), _word("water", rank=3)]
@@ -537,8 +557,9 @@ def test_plan_predefined_themes_prefer_proposed_vocabulary_filtered_to_lexicon()
 
     plans = orc.plan(words, cefr="A1", language="Dutch")
 
-    # Out-of-lexicon proposal dropped; survivors ranked by frequency (thee=1 < koffie=2).
-    assert [w.lemma for w in plans[0].new_words] == ["thee", "koffie"]
+    # Out-of-lexicon proposal ('espresso') dropped; the three in-lexicon words are
+    # kept, frequency-ranked (thee=1 < koffie=2 < water=3).
+    assert [w.lemma for w in plans[0].new_words] == ["thee", "koffie", "water"]
     all_lemmas = {w.lemma for p in plans for w in p.new_words}
     assert "espresso" not in all_lemmas
     # The proposer was consulted with the lesson's target count and language.

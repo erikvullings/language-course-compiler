@@ -105,6 +105,80 @@ def _write_minimal_lexicon_json(course_dir):
     )
 
 
+def _write_minimal_verbs_json(course_dir):
+    payload = [
+        {
+            "id": "lopen",
+            "language": "nl",
+            "lemma": "lopen",
+            "infinitive": "lopen",
+            "cefr": "A1",
+            "frequency": {"rank": 3},
+            "present": {"ik": "loop", "jij": "loopt"},
+        }
+    ]
+    (course_dir / "verbs.json").write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
+def test_generate_lessons_includes_verbs(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(
+        "course_compiler.cli.create_provider",
+        lambda settings: _GenerateLessonsProvider(),
+    )
+    course_dir = tmp_path / "courses" / "nl"
+    _write_minimal_lexicon_json(course_dir)
+    _write_minimal_verbs_json(course_dir)
+
+    rc = main(
+        [
+            "generate-lessons",
+            "--lang",
+            "nl",
+            "--cefr",
+            "A1",
+            "--lexicon",
+            str(course_dir),
+            "--preview",
+        ]
+    )
+
+    assert rc == 0
+    blueprint = json.loads(capsys.readouterr().out)
+    all_seeds = {s for lesson in blueprint["lessons"] for s in lesson["seedLemmas"]}
+    assert "lopen" in all_seeds  # the verb is now part of the curriculum
+
+
+def test_generate_lessons_writes_under_cefr_subdir_by_default(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "course_compiler.cli.create_provider",
+        lambda settings: _GenerateLessonsProvider(),
+    )
+    course_dir = tmp_path / "courses" / "nl"
+    _write_minimal_lexicon(course_dir)
+
+    rc = main(
+        [
+            "generate-lessons",
+            "--lang",
+            "nl",
+            "--cefr",
+            "A1",
+            "--lexicon",
+            str(course_dir),
+            "--preview",
+            "--approve",
+        ]
+    )
+
+    assert rc == 0
+    # Default output is now level-scoped: courses/nl/A1/lessons/, not courses/nl/lessons/.
+    assert (course_dir / "A1" / "lessons" / "lesson001.json").exists()
+    assert not (course_dir / "lessons").exists()
+
+
 def _write_themes_file(path, a1_theme: str):
     path.write_text(
         yaml.safe_dump(
