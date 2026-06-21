@@ -26,7 +26,11 @@ from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
 from collections.abc import Set as AbstractSet
 from pathlib import Path
 
-from course_compiler.compounds import is_derivable_compound, split_compound
+from course_compiler.compounds import (
+    build_known_parts,
+    is_derivable_with_known,
+    split_with_known,
+)
 from course_compiler.frequency import load_frequencies
 from course_compiler.leveling import CEFR_ORDER, LevelItem, assign_levels
 from course_compiler.models import (
@@ -438,6 +442,9 @@ def reassign_cefr_by_budget(
     lesson without inflating the new-word count (cf. task 0018).
     """
     known = {obj.lemma for obj in (*words, *verbs)}
+    # Build the candidate-part set ONCE; rebuilding it per word turns the compound
+    # pass into O(items × lexicon) (tens of billions of ops on a full import).
+    known_parts = build_known_parts(known) if linkers else frozenset()
 
     items: list[LevelItem] = []
     by_key: dict[str, Word | Verb] = {}
@@ -450,8 +457,8 @@ def reassign_cefr_by_budget(
             lemma_of[key] = obj.lemma
             rank = obj.frequency.rank if obj.frequency else None
             items.append(LevelItem(key=key, rank=rank, floor=obj.cefr))
-            if linkers and is_derivable_compound(
-                obj.lemma, known, linkers=linkers, opaque=opaque
+            if linkers and is_derivable_with_known(
+                obj.lemma, known_parts, linkers=linkers, opaque=opaque
             ):
                 transparent.add(key)
 
@@ -473,7 +480,7 @@ def reassign_cefr_by_budget(
 
     for key in transparent:
         obj = by_key[key]
-        parts = split_compound(obj.lemma, known, linkers=linkers)
+        parts = split_with_known(obj.lemma, known_parts, linkers=linkers)
         part_levels = [lemma_level[p] for p in parts if p in lemma_level]
         if part_levels:
             obj.cefr = max(part_levels, key=CEFR_ORDER.index)

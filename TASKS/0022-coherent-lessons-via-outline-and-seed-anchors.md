@@ -115,3 +115,15 @@ metadata), translated/realized by the LLM into the target language.
   Nature/Animals padded with off-theme frequency words. The fix is to re-import
   with `--budgets` (task 0017) so A1 holds the most frequent words. Documented in
   the README.
+- 2026-06-21 perf #3: a full `--budgets --compounds` import took ~30 min. Cause:
+  `split_compound` rebuilt the ~120k-lemma candidate-part set on **every** call,
+  and the budget pass calls it once per item → O(items × lexicon) ≈ 1.6e10 ops.
+  Fixed by `build_known_parts` (build the set once) + `split_with_known` /
+  `is_derivable_with_known` (no per-call rebuild); the converter builds the set
+  once. Benchmarked: 120k words now ~0.15s (was tens of minutes).
+- 2026-06-21 UX #4: `generate-lessons` wrote nothing until all ~80 lessons were
+  generated, so a long first run looked hung. Added `LessonOrchestrator.
+  generate_iter` (yields `(plan, lesson)`); the CLI writes + prints each lesson as
+  it is produced and prints a "planning…" notice. `generate()` now delegates to it
+  (back-compat). First run is still inherently many model calls (planning queries
+  the model per theme, generation per lesson); the cache makes reruns fast.
