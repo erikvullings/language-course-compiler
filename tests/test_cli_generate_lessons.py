@@ -151,7 +151,9 @@ def test_generate_lessons_includes_verbs(tmp_path, monkeypatch, capsys):
     assert "lopen" in all_seeds  # the verb is now part of the curriculum
 
 
-def test_generate_lessons_writes_under_cefr_subdir_by_default(tmp_path, monkeypatch):
+def test_generate_lessons_writes_under_lessons_level_subdir_by_default(
+    tmp_path, monkeypatch
+):
     monkeypatch.setattr(
         "course_compiler.cli.create_provider",
         lambda settings: _GenerateLessonsProvider(),
@@ -174,9 +176,9 @@ def test_generate_lessons_writes_under_cefr_subdir_by_default(tmp_path, monkeypa
     )
 
     assert rc == 0
-    # Default output is now level-scoped: courses/nl/A1/lessons/, not courses/nl/lessons/.
-    assert (course_dir / "A1" / "lessons" / "lesson001.json").exists()
-    assert not (course_dir / "lessons").exists()
+    # Default output is level-scoped under lessons/: courses/nl/lessons/A1/.
+    assert (course_dir / "lessons" / "A1" / "lesson001.json").exists()
+    assert not (course_dir / "A1").exists()
 
 
 def _write_themes_file(path, a1_theme: str):

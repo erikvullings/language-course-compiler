@@ -37,8 +37,10 @@ a multi-level course.
 - Carved out of 0016 follow-ups, 2026-06-20.
 - Done 2026-06-20 (Claude). Bundle shape chosen: **per-level lesson dirs** in the
   export. `cli.py` export handler now:
-  - `_discover_lesson_levels(course_dir)` finds `<course>/<LEVEL>/lessons` dirs
-    whose parent is a real CEFR level (ordered by `leveling.CEFR_ORDER`).
+  - `_discover_lesson_levels(course_dir)` finds `<course>/lessons/<LEVEL>` dirs
+    named after a real CEFR level (ordered by `leveling.CEFR_ORDER`). (Layout
+    updated 2026-06-20: lessons are written under `lessons/<LEVEL>/` rather than
+    `<LEVEL>/lessons/`, matching the generator's output dir.)
   - When levels exist, each level's lessons are written to
     `export/lessons/<LEVEL>/<id>.json` with a `"level"` field added to the payload,
     so A1/lesson001 and A2/lesson001 no longer collide.
