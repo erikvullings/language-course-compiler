@@ -102,3 +102,16 @@ metadata), translated/realized by the LLM into the target language.
 - Remaining prose quality (coherence, conjugation) depends on the LLM; the local
   `gemma` model is the weak link. Selection + anchors are now deterministic and
   correct, so a stronger model (or OpenAI) should yield good text.
+- 2026-06-21 follow-up #2: filled `seedWords` for all A1/A2/B1 lessons, and fixed
+  the "seed stealing" bug — an earlier theme's frequency fallback could grab a
+  concrete noun (e.g. `hond`) that a later theme is anchored on, starving it.
+  `_plan_with_theme_sequence` now builds a global `seed_owner` map (first theme
+  whose seeds resolve to a lemma owns it) and skips reserved-for-a-later-theme
+  lemmas in the proposer/frequency fill steps; coverage is preserved (a later
+  theme may still take a lemma an earlier owner left unused). Verified: Animals
+  now keeps `hond` instead of Nature stealing it.
+- Genuinely unfixable in selection: themes whose core nouns sit above the level in
+  the NT2Lex grading (e.g. `boom, koe, vogel, markt` are A2) leave A1 themes like
+  Nature/Animals padded with off-theme frequency words. The fix is to re-import
+  with `--budgets` (task 0017) so A1 holds the most frequent words. Documented in
+  the README.
