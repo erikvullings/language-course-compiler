@@ -91,6 +91,8 @@ course import \
   --wordnet   data/nl/odwn_orbn_gwg-LMF_1.3.xml \
   --frequency data/nl/large_nl.msgpack \
   --nt2lex    data/nl/NT2Lex-extracted/NT2Lex-main/resource/NT2Lex-CGN+ODWN-v01.tsv \
+  --budgets 'A1=750,A2=2000,B1=3500,B2=5500' \
+  --compounds \
   --out       courses/nl
 ```
 

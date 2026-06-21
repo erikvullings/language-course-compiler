@@ -54,8 +54,10 @@ def _parse_budgets(spec: str | None) -> dict[str, int] | None:
         level = level.strip().upper()
         try:
             budgets[level] = int(count.strip())
-        except ValueError:
-            raise SystemExit(f"Invalid budget entry: {part!r} (expected LEVEL=COUNT)")
+        except ValueError as exc:
+            raise SystemExit(
+                f"Invalid budget entry: {part!r} (expected LEVEL=COUNT)"
+            ) from exc
     return budgets or None
 
 
@@ -719,20 +721,28 @@ def main(argv: list[str] | None = None) -> int:
             if not args.approve:
                 return 0
 
-        lessons = orchestrator.generate(
-            words,
-            language=language_name,
-            cefr=args.cefr,
-            verbs=verbs,
-        )
-
         out_dir = (
             Path(args.out)
             if args.out
             else lexicon_dir / "lessons" / args.cefr.upper()
         )
         out_dir.mkdir(parents=True, exist_ok=True)
-        for lesson in lessons:
+
+        # Stream: write and report each lesson as it is generated so a long run
+        # shows progress and leaves usable partial output if interrupted.
+        print(
+            "Planning and generating lessons (first run queries the model per "
+            "theme and per lesson; results are cached for fast reruns)…",
+            file=sys.stderr,
+            flush=True,
+        )
+        count = 0
+        for plan, lesson in orchestrator.generate_iter(
+            words,
+            language=language_name,
+            cefr=args.cefr,
+            verbs=verbs,
+        ):
             payload = Lesson(
                 id=lesson.lesson_id,
                 language=args.lang,
@@ -748,8 +758,15 @@ def main(argv: list[str] | None = None) -> int:
                 out_dir / f"{lesson.lesson_id}.json",
                 payload.model_dump(by_alias=True, exclude_none=True, mode="json"),
             )
+            count += 1
+            print(
+                f"  [{count}] {lesson.lesson_id} {plan.theme} "
+                f"({lesson.attempts} attempt(s))",
+                file=sys.stderr,
+                flush=True,
+            )
 
-        print(f"Generated {len(lessons)} lessons into {out_dir}")
+        print(f"Generated {count} lessons into {out_dir}")
         return 0
 
     if args.command == "import":

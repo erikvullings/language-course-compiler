@@ -352,6 +352,23 @@ def test_generate_returns_one_lesson_per_plan():
     assert len(lessons) == 1
 
 
+def test_generate_iter_streams_plan_and_lesson_pairs():
+    """generate_iter yields (plan, lesson) one at a time for incremental writing."""
+    words = [_word(f"w{i}", rank=i) for i in range(1, 6)]
+    orc = _make_orchestrator(
+        {"misc": [f"w{i}" for i in range(1, 6)]}, words_per_lesson=2
+    )
+    pairs = list(orc.generate_iter(words, language="Dutch", cefr="A1", model="stub"))
+    assert pairs  # at least one lesson
+    for plan, lesson in pairs:
+        assert plan.lesson_id == lesson.lesson_id  # paired correctly
+    # Same lessons as the batch API, preserving order.
+    batch = orc.generate(words, language="Dutch", cefr="A1", model="stub")
+    assert [lesson.lesson_id for _p, lesson in pairs] == [
+        lesson.lesson_id for lesson in batch
+    ]
+
+
 def _verb(infinitive: str, cefr: str = "A1", rank: int = 1, **forms: str) -> Verb:
     present = forms or {"ik": f"{infinitive}t", "jij": f"{infinitive}t"}
     return Verb(

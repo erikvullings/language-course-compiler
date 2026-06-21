@@ -7,6 +7,7 @@ a sequence of generated lessons for a target CEFR level.
 from __future__ import annotations
 
 import re
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -798,7 +799,7 @@ class LessonOrchestrator:
 
         return plans
 
-    def generate(
+    def generate_iter(
         self,
         words: list[Word],
         *,
@@ -807,8 +808,12 @@ class LessonOrchestrator:
         verbs: list[Verb] | None = None,
         model: str | None = None,
         temperature: float = 0.7,
-    ) -> list[GeneratedLesson]:
-        """Plan then generate all lessons, returning :class:`GeneratedLesson` objects."""
+    ) -> Iterator[tuple[LessonPlan, GeneratedLesson]]:
+        """Plan, then generate lessons one at a time, yielding ``(plan, lesson)``.
+
+        Streaming so callers can persist and report each lesson as it is produced
+        instead of waiting for the whole (potentially long) batch to finish.
+        """
         # Build a full CEFR lookup from words and verbs so the validator can classify
         # extra words the LLM might introduce.
         cefr_lookup: dict[str, str] = {
@@ -819,7 +824,6 @@ class LessonOrchestrator:
                 cefr_lookup[verb.infinitive] = verb.cefr
 
         plans = self.plan(words, cefr=cefr, verbs=verbs, language=language)
-        lessons: list[GeneratedLesson] = []
         for plan in plans:
             new_word_lemmas = [w.lemma for w in plan.new_words] + [
                 v.infinitive for v in plan.new_verbs
@@ -837,5 +841,27 @@ class LessonOrchestrator:
                 function_lemmas=plan.function_lemmas | plan.allowed_forms,
                 cefr_lookup=cefr_lookup,
             )
-            lessons.append(lesson)
-        return lessons
+            yield plan, lesson
+
+    def generate(
+        self,
+        words: list[Word],
+        *,
+        language: str,
+        cefr: str,
+        verbs: list[Verb] | None = None,
+        model: str | None = None,
+        temperature: float = 0.7,
+    ) -> list[GeneratedLesson]:
+        """Plan then generate all lessons, returning :class:`GeneratedLesson` objects."""
+        return [
+            lesson
+            for _plan, lesson in self.generate_iter(
+                words,
+                language=language,
+                cefr=cefr,
+                verbs=verbs,
+                model=model,
+                temperature=temperature,
+            )
+        ]
