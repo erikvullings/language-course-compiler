@@ -756,6 +756,43 @@ def test_seed_words_resolve_to_lexicon_via_english_glosses():
     assert {w.lemma for w in plans[0].new_words} == {"straat", "naam", "huis"}
 
 
+def test_seed_words_are_reserved_from_earlier_themes():
+    """An earlier theme's frequency fallback must not steal a later theme's anchor."""
+    words = [
+        _word("hond", rank=1, en="dog"),  # high frequency, but anchors the Pets theme
+        _word("nu", rank=2, en="now"),
+        _word("hier", rank=3, en="here"),
+        _word("regen", rank=4, en="rain"),
+    ]
+    generator = LessonGenerator(_StubProvider(), _IdentityLemmatizer())
+    assigner = _StubProposingThemeAssigner({"misc": []}, proposals_by_theme={})
+    orc = LessonOrchestrator(
+        generator,
+        assigner,
+        words_per_lesson=10,
+        predefined_themes={
+            "A1": [
+                # First theme's seed doesn't resolve, so it would otherwise pad with
+                # the most frequent word (hond) — which belongs to the Pets theme.
+                LessonThemePlan(
+                    theme="Abstract", seed_lemmas=[], english_seed_words=["sunshine"]
+                ),
+                LessonThemePlan(
+                    theme="Pets", seed_lemmas=[], english_seed_words=["dog"]
+                ),
+            ]
+        },
+    )
+
+    plans = orc.plan(words, cefr="A1", language="Dutch")
+
+    lemmas0 = {w.lemma for w in plans[0].new_words}
+    lemmas1 = {w.lemma for w in plans[1].new_words}
+    assert "hond" not in lemmas0  # not stolen by the earlier theme
+    assert "hond" in lemmas1  # reserved for its owning (Pets) theme
+    assert lemmas0 | lemmas1 == {"hond", "nu", "hier", "regen"}  # coverage preserved
+
+
 def test_catalog_outline_and_seed_words_flow_through():
     """An outline reaches the LessonPlan; English seed words reach the proposer."""
     words = [_word("huis", rank=1), _word("straat", rank=2)]

@@ -531,6 +531,18 @@ class LessonOrchestrator:
         proposer = getattr(self._assigner, "propose_theme_vocabulary", None)
         selector = getattr(self._assigner, "select_seed_lemmas_for_theme", None)
 
+        # Reserve each theme's resolvable seed words globally: a lemma is "owned" by
+        # the first theme whose seeds resolve to it, so an earlier theme's frequency
+        # fallback can't steal a concrete noun a later theme is anchored on (e.g.
+        # 'Nature' grabbing 'hond' before 'Animals'). A theme may still take a lemma
+        # owned by an *earlier* theme that didn't use it, so coverage is preserved.
+        seed_owner: dict[str, int] = {}
+        for theme_index, plan_for_owner in enumerate(theme_sequence):
+            for lemma in _resolve_seed_words(
+                all_content, plan_for_owner.english_seed_words
+            ):
+                seed_owner.setdefault(lemma, theme_index)
+
         for index, (start, end) in enumerate(slices):
             if index >= len(theme_sequence):
                 break
@@ -589,6 +601,9 @@ class LessonOrchestrator:
                     items = by_lemma.get(raw.strip()) or by_lemma_lower.get(key)
                     if not items or items[0].lemma in used_lemmas:
                         continue
+                    owner = seed_owner.get(items[0].lemma)
+                    if owner is not None and owner > index:
+                        continue  # reserved for a later theme's seed
                     seen_lower.add(key)
                     # Use the first (most frequent) sense as the frequency proxy;
                     # all senses are pulled in when the lemma is batched below.
@@ -635,6 +650,9 @@ class LessonOrchestrator:
                 for lemma in candidate_lemmas + ordered_lemmas:
                     if lemma in used_lemmas or lemma in selected:
                         continue
+                    owner = seed_owner.get(lemma)
+                    if owner is not None and owner > index:
+                        continue  # reserved for a later theme's seed
                     selected.append(lemma)
                     if len(selected) >= target_count:
                         break

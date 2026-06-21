@@ -19,6 +19,8 @@ Implemented so far:
 - Provider-agnostic LLM module (`course_compiler.llm`) — Ollama and OpenAI, sync + async
 - Canonical, language-agnostic lexicon schema (`course_compiler.models`)
 - Dutch importer (`course_compiler.converters.dutch`) — kaikki.org, ODWN, wordfreq, NT2Lex
+- CEFR level assignment by cumulative frequency budget (`course_compiler.leveling`)
+  and transparent-compound detection (`course_compiler.compounds`)
 - Lesson generation pipeline (`course_compiler.generation`):
   - Pluggable `Lemmatizer` registry (mirrors the LLM factory pattern)
   - Disk-based LLM response cache for reproducible, offline-safe generation
@@ -97,6 +99,35 @@ This writes canonical YAML entries into `courses/nl/words/` and `courses/nl/verb
 `courses/nl/words.json` and `courses/nl/verbs.json` indexes for faster loading in
 generation/export commands.
 
+#### CEFR level assignment (frequency budget + compounds)
+
+By default each lemma keeps its NT2Lex earliest-attested level. NT2Lex's
+earliest-attested grading dumps a large mid-frequency tail into A2, so the per
+level word counts are uneven and hard to control. Pass `--budgets` to instead
+assign levels by a **cumulative frequency budget** — each level holds the *N* most
+frequent items, with the NT2Lex level kept as a *floor* (a word is never placed
+below its attested level, but may roll forward when its level's budget is full):
+
+```bash
+course import \
+  --kaikki data/nl/kaikki.org-dictionary-Dutch.jsonl \
+  --frequency data/nl/large_nl.msgpack \
+  --nt2lex data/nl/NT2Lex-extracted/.../NT2Lex-CGN+ODWN-v01.tsv \
+  --budgets 'A1=750,A2=2000,B1=3500,B2=5500' \
+  --compounds \
+  --out courses/nl
+```
+
+`--budgets LEVEL=COUNT,...` are cumulative counts (so a learner knows ~2000 words
+by the end of A2). This gives early levels a richer, more usable concrete
+vocabulary than the raw NT2Lex tags — recommended before generating lessons.
+
+`--compounds` introduces transparent compounds (e.g. `koffie`+`pot` → `koffiepot`)
+**without** consuming budget: the learner already knows the parts, so the compound
+is levelled to the highest level among its parts rather than counting as a new
+word. A `(lemma, part-of-speech)` is the unit, so noun/verb homographs (e.g.
+`eten` = food / to eat) count separately and are taught as distinct items.
+
 ### Generate lessons
 
 ```bash
@@ -104,7 +135,7 @@ course generate-lessons --lang nl --cefr A1
 ```
 
 `--lang` is the only required flag. Defaults: lexicon at `courses/<lang>`,
-output at `<lexicon>/<CEFR>/lessons` (e.g. `courses/nl/A1/lessons`), language
+output at `<lexicon>/lessons/<CEFR>` (e.g. `courses/nl/lessons/A1`), language
 name derived from the lang code. Both words and verbs from the lexicon are used.
 Override any of these explicitly:
 
@@ -114,7 +145,7 @@ course generate-lessons \
   --lexicon courses/nl \
   --language-name Dutch \
   --words-per-lesson 10 \
-  --out courses/nl/A1/lessons
+  --out courses/nl/lessons/A1
 ```
 
 When a theme catalog is used, each configured theme becomes exactly one lesson
@@ -167,17 +198,42 @@ Without `--themes-file`, `generate-lessons` auto-discovers in this order:
 2. `themes.yaml` in the selected lexicon directory (for example `courses/nl/themes.yaml`)
 3. bundled `src/course_compiler/generation/themes.yaml`
 
-Note: the catalog controls lesson **theme names/order** and optional
-**communicative goals**. Seed words are selected automatically: the LLM proposes
-theme-relevant vocabulary, the compiler keeps only the words present in the CEFR
-lexicon (frequency-ranked), and lesson text length scales with the accumulated
-(recombinant) vocabulary so early lessons stay short and natural.
+The catalog controls lesson **theme names/order** and optional **communicative
+goals**, and may carry two optional **English** authoring hints per lesson (kept
+in English so the catalog stays language-agnostic):
 
-One lesson file per lesson is written to `courses/<lang>/<CEFR>/lessons/` as
+```yaml
+A1:
+  lesson001:
+    theme: Greetings
+    communicativeGoals: [greet someone, introduce yourself, say goodbye]
+    seedWords: [hello, name, neighbour, street, goodbye]   # concrete anchors
+    outline: >                                             # a brief scenario
+      Two neighbours meet on the street, greet each other, introduce
+      themselves by name, and say goodbye.
+```
+
+- **`seedWords`** resolve to lexicon entries via their English glosses and are
+  chosen as the highest-priority words for the lesson — so early lessons get
+  concrete, scene-grounding nouns instead of high-frequency function words. Each
+  theme's seeds are reserved, so an earlier theme can't "steal" a later theme's
+  anchor. Seeds whose word isn't at the target level fall back to LLM proposal,
+  then frequency.
+- **`outline`** is passed to the writer so the lesson reads as one coherent
+  scene/dialogue rather than loose sentences.
+
+Both are optional; omitting them falls back to LLM-proposed, lexicon-filtered seed
+words. Lesson text length scales with the accumulated (recombinant) vocabulary so
+early lessons stay short and natural, and validation only rejects words *above*
+the target CEFR level (any in-level word is allowed) so the text reads naturally.
+
+One lesson file per lesson is written to `courses/<lang>/lessons/<CEFR>/` as
 `lesson001.json`, `lesson002.json`, … Run once per CEFR level to build a
 full A1 → B2 course. LLM responses (theme clustering and lesson text) are
 cached in `courses/nl/.llm_cache/` so subsequent runs are fast and
-byte-identical.
+byte-identical. The cache key includes the model name and the full prompt, so
+changing the model or the catalog automatically regenerates affected lessons —
+you rarely need `--no-cache`.
 
 To regenerate lessons from scratch (ignoring cache):
 
@@ -281,12 +337,15 @@ course export --lang nl --course-dir courses/nl --out courses/nl/export
 
 This writes:
 
-- `manifest.json`
+- `manifest.json` (includes the list of CEFR `levels` present)
 - `words.json`
 - `verbs.json`
 - `grammar.json`
 - `exercises.json`
-- `lessons/lesson001.json`, `lessons/lesson002.json`, ...
+- lessons — for a multi-level course, per level:
+  `lessons/A1/lesson001.json`, `lessons/A2/lesson001.json`, … (each payload carries
+  its `level`, so ids that repeat across levels don't collide). A legacy
+  single-level course still exports flat `lessons/lesson001.json`, ...
 
 ## Using the LLM module directly
 
