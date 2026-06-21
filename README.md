@@ -91,12 +91,12 @@ course import \
   --wordnet   data/nl/odwn_orbn_gwg-LMF_1.3.xml \
   --frequency data/nl/large_nl.msgpack \
   --nt2lex    data/nl/NT2Lex-extracted/NT2Lex-main/resource/NT2Lex-CGN+ODWN-v01.tsv \
-  --budgets 'A1=750,A2=2000,B1=3500,B2=5500' \
-  --compounds \
   --out       courses/nl
 ```
 
-This writes canonical YAML entries into `courses/nl/words/` and `courses/nl/verbs/`
+This keeps each lemma's **attested NT2Lex level** (recommended for generating
+lessons — see the caveat below) and writes canonical YAML entries into
+`courses/nl/words/` and `courses/nl/verbs/`
 (use `--limit N` for a quick smoke run). It also writes aggregate
 `courses/nl/words.json` and `courses/nl/verbs.json` indexes for faster loading in
 generation/export commands.
@@ -121,8 +121,16 @@ course import \
 ```
 
 `--budgets LEVEL=COUNT,...` are cumulative counts (so a learner knows ~2000 words
-by the end of A2). This gives early levels a richer, more usable concrete
-vocabulary than the raw NT2Lex tags — recommended before generating lessons.
+by the end of A2). This gives controlled, even level sizes.
+
+> **Caveat — do not use `--budgets`/`--compounds` for lesson generation.** The
+> frequency budget orders levels by raw frequency, so pedagogically basic words
+> roll *above* A1 (e.g. `buurman`, `goedemorgen`), and `--compounds` lets the many
+> transparent Dutch compounds bypass the budget and flood a level. Both make the
+> theme catalog unable to use its own seed words and cause the vocabulary
+> validator to reject otherwise-natural lesson text. Prefer the plain attested
+> NT2Lex levels above (no `--budgets`, no `--compounds`); the generator caps each
+> lesson to `--words-per-lesson` regardless, so level size is not a problem.
 
 `--compounds` introduces transparent compounds (e.g. `koffie`+`pot` → `koffiepot`)
 **without** consuming budget: the learner already knows the parts, so the compound
