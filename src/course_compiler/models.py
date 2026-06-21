@@ -141,6 +141,10 @@ class Lesson(_Model):
     text: str
     attempts: int = 1
     tolerated: list[str] = []
+    #: True when ``text`` is placeholder content written after the provider failed
+    #: or validation could not be satisfied — lets ``--regenerate-fallbacks`` find
+    #: these lessons without guessing from the title.
+    fallback: bool = False
 
 
 def to_yaml(model: BaseModel) -> str:

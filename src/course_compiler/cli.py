@@ -107,6 +107,26 @@ def _load_verbs_from_lexicon(lexicon_dir: Path):
     return verbs
 
 
+def _fallback_lesson_ids(out_dir: Path) -> set[str]:
+    """Lesson ids in *out_dir* whose saved JSON is placeholder/fallback content.
+
+    Prefers the persisted ``fallback`` flag; also treats a literal ``"Untitled"``
+    title as a fallback so lessons written before the flag existed are still found.
+    """
+    ids: set[str] = set()
+    for path in sorted(out_dir.glob("lesson*.json")):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(data, dict):
+            continue
+        if data.get("fallback") is True or data.get("title") == "Untitled":
+            lesson_id = data.get("id") or path.stem
+            ids.add(str(lesson_id))
+    return ids
+
+
 def _write_json(path: Path, data: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
@@ -481,6 +501,21 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Path to predefined lesson themes YAML (overrides auto-discovery)",
     )
+    gen.add_argument(
+        "--only",
+        nargs="+",
+        metavar="LESSON_ID",
+        default=None,
+        help="Regenerate only these lesson ids (e.g. --only lesson016 lesson019); "
+        "all other lessons are left untouched. Implies --no-cache.",
+    )
+    gen.add_argument(
+        "--regenerate-fallbacks",
+        action="store_true",
+        help="Regenerate only the lessons that previously fell back to placeholder "
+        "text (provider failure / unmet validation), found in the output directory. "
+        "Implies --no-cache so the failing cached attempt is not replayed.",
+    )
 
     imp = sub.add_parser("import", help="Import lexical sources into canonical YAML")
     imp.add_argument("--language", default="nl", choices=["nl"], help="Source language")
@@ -649,8 +684,11 @@ def main(argv: list[str] | None = None) -> int:
         from course_compiler.generation.base import create_lemmatizer
         from course_compiler.generation.cache import LLMCache
 
+        # Targeted regeneration must not replay the cached (often failing) first
+        # attempt, so --only / --regenerate-fallbacks imply no caching.
+        partial_regen = bool(args.only) or args.regenerate_fallbacks
         cache_dir = lexicon_dir / ".llm_cache"
-        cache = None if args.no_cache else LLMCache(cache_dir)
+        cache = None if (args.no_cache or partial_regen) else LLMCache(cache_dir)
         assigner = DeterministicThemeAssigner()
 
         lemmatizer = create_lemmatizer(args.lang)
@@ -732,11 +770,39 @@ def main(argv: list[str] | None = None) -> int:
         )
         out_dir.mkdir(parents=True, exist_ok=True)
 
+        # Resolve which lessons to (re)generate. Default: all. --only takes explicit
+        # ids; --regenerate-fallbacks scans the output for prior placeholder lessons.
+        plan_ids = {p.lesson_id for p in plans}
+        only_set: set[str] | None = None
+        if args.only:
+            only_set = set(args.only)
+            missing = sorted(only_set - plan_ids)
+            if missing:
+                print(
+                    f"Error: --only lesson id(s) not in the plan for {args.cefr}: "
+                    f"{', '.join(missing)}",
+                    file=sys.stderr,
+                )
+                return 1
+        elif args.regenerate_fallbacks:
+            only_set = _fallback_lesson_ids(out_dir)
+            if not only_set:
+                print(
+                    f"No fallback lessons found in {out_dir}; nothing to regenerate.",
+                    file=sys.stderr,
+                )
+                return 0
+            print(
+                f"Regenerating {len(only_set)} fallback lesson(s): "
+                f"{', '.join(sorted(only_set))}",
+                file=sys.stderr,
+            )
+
         # Stream: write and report each lesson as it is generated so a long run
         # shows progress and leaves usable partial output if interrupted.
+        scope = "all lessons" if only_set is None else f"{len(only_set)} selected lesson(s)"
         print(
-            "Planning and generating lessons (first run queries the model per "
-            "theme and per lesson; results are cached for fast reruns)…",
+            f"Planning (deterministic, no LLM) and generating {scope}…",
             file=sys.stderr,
             flush=True,
         )
@@ -747,6 +813,7 @@ def main(argv: list[str] | None = None) -> int:
             language=language_name,
             cefr=args.cefr,
             verbs=verbs,
+            only=only_set,
         ):
             payload = Lesson(
                 id=lesson.lesson_id,
@@ -758,6 +825,7 @@ def main(argv: list[str] | None = None) -> int:
                 text=lesson.content,
                 attempts=lesson.attempts,
                 tolerated=sorted(lesson.tolerated),
+                fallback=lesson.fallback,
             )
             _write_json(
                 out_dir / f"{lesson.lesson_id}.json",
@@ -780,7 +848,7 @@ def main(argv: list[str] | None = None) -> int:
                 f"WARNING: {failed}/{count} lesson(s) fell back to placeholder text "
                 "because the LLM provider failed (timeout/out-of-memory). Check that "
                 "the model is loaded and the Ollama context is large enough, then "
-                "rerun to regenerate just those lessons.",
+                "rerun with --regenerate-fallbacks to retry just those lessons.",
                 file=sys.stderr,
             )
         return 0

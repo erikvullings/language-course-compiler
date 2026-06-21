@@ -7,7 +7,7 @@ a sequence of generated lessons for a target CEFR level.
 from __future__ import annotations
 
 import re
-from collections.abc import Iterator
+from collections.abc import Collection, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -814,11 +814,18 @@ class LessonOrchestrator:
         verbs: list[Verb] | None = None,
         model: str | None = None,
         temperature: float = 0.7,
+        only: Collection[str] | None = None,
     ) -> Iterator[tuple[LessonPlan, GeneratedLesson]]:
         """Plan, then generate lessons one at a time, yielding ``(plan, lesson)``.
 
         Streaming so callers can persist and report each lesson as it is produced
         instead of waiting for the whole (potentially long) batch to finish.
+
+        ``only`` restricts generation to the given lesson ids (the rest are planned
+        but skipped, so the LLM is only called for the selected lessons). Each
+        plan's ``allowed_lemmas`` is already accumulated across all prior lessons,
+        so a single lesson regenerates with exactly the vocabulary it would have
+        had in a full run.
         """
         # Build a full CEFR lookup from words and verbs so the validator can classify
         # extra words the LLM might introduce.
@@ -831,6 +838,8 @@ class LessonOrchestrator:
 
         plans = self.plan(words, cefr=cefr, verbs=verbs, language=language)
         for plan in plans:
+            if only is not None and plan.lesson_id not in only:
+                continue
             new_word_lemmas = [w.lemma for w in plan.new_words] + [
                 v.infinitive for v in plan.new_verbs
             ]

@@ -239,11 +239,14 @@ the target CEFR level (any in-level word is allowed) so the text reads naturally
 
 One lesson file per lesson is written to `courses/<lang>/lessons/<CEFR>/` as
 `lesson001.json`, `lesson002.json`, … Run once per CEFR level to build a
-full A1 → B2 course. LLM responses (theme clustering and lesson text) are
-cached in `courses/nl/.llm_cache/` so subsequent runs are fast and
-byte-identical. The cache key includes the model name and the full prompt, so
-changing the model or the catalog automatically regenerates affected lessons —
-you rarely need `--no-cache`.
+full A1 → B2 course. Lesson text (the only LLM step — planning is deterministic
+and offline) is cached in `courses/nl/.llm_cache/`, keyed by the prompt, so
+reruns are fast and byte-identical.
+
+> **Note:** the cache key does *not* include the model name, so switching
+> `OLLAMA_MODEL` does **not** invalidate the cache. To compare two models on the
+> same lessons, regenerate with `--no-cache` (otherwise the first model's cached
+> responses are replayed).
 
 To regenerate lessons from scratch (ignoring cache):
 
@@ -256,6 +259,34 @@ Or manually clear the cache:
 ```bash
 rm -rf courses/nl/.llm_cache
 ```
+
+#### Regenerate specific lessons
+
+A run reports any lessons that fell back to placeholder text (the provider timed
+out or validation could not be satisfied after the retry budget). Rather than
+rerunning the whole level, regenerate just those:
+
+```bash
+course generate-lessons --lang nl --cefr A1 --regenerate-fallbacks
+```
+
+This scans the output directory for fallback lessons (those carry a `"fallback":
+true` flag in their JSON; a literal `"Untitled"` title is also treated as one for
+lessons written before the flag existed) and regenerates only them, leaving every
+other lesson file untouched.
+
+To regenerate an explicit set of lessons by id:
+
+```bash
+course generate-lessons --lang nl --cefr A1 --only lesson016 lesson019
+```
+
+Both flags **imply `--no-cache`** for the selected lessons, so the previous
+(failing) cached attempt is not replayed — the lesson is genuinely rewritten.
+Each lesson is planned with the full vocabulary it would have accumulated in a
+complete run, so a single regenerated lesson is identical in scope to its place
+in the sequence. `--only` ids must exist in the level's plan, otherwise the
+command errors without generating anything.
 
 `generate-lessons` prefers `words.json` when present (falling back to
 `words/*.yaml`), so preview mode starts much faster on large lexicons.
