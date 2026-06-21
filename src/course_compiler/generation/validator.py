@@ -76,7 +76,7 @@ class VocabularyValidator:
         extra_function_lemmas: set[str] | None = None,
         cefr_target: str | None = None,
         cefr_lookup: dict[str, str] | None = None,
-        extra_tolerance: float = 0.5,
+        extra_tolerance: float | None = 0.5,
         new_word_count: int = 0,
     ) -> ValidationResult:
         """Validate *text* against *allowed* content-word lemmas.
@@ -90,7 +90,9 @@ class VocabularyValidator:
                 ``extra_tolerance * new_word_count``.
             cefr_lookup: ``{lemma: cefr_level}`` mapping derived from the lexicon.
             extra_tolerance: Fraction of ``new_word_count`` allowed as extras at or
-                below the target CEFR (default 0.5 = 50 %).
+                below the target CEFR (default 0.5 = 50 %). ``None`` means *no cap* —
+                every at/below-CEFR extra is tolerated (coherence over strict
+                prior-only discipline); above-CEFR words are still violations.
             new_word_count: Number of new words the lesson was supposed to introduce.
                 Used to compute the tolerance budget.
 
@@ -121,7 +123,14 @@ class VocabularyValidator:
             # No CEFR info: treat all extras as violations.
             return ValidationResult(violations=frozenset(extras), tolerated=frozenset())
 
-        # Apply tolerance budget to at/below-CEFR extras.
+        # Apply tolerance budget to at/below-CEFR extras. ``None`` = no cap: every
+        # in-level extra is tolerated, so only above-CEFR words remain violations.
+        if extra_tolerance is None:
+            return ValidationResult(
+                violations=above_cefr,
+                tolerated=frozenset(at_or_below),
+            )
+
         budget = math.ceil(extra_tolerance * max(new_word_count, 1))
         tolerated_list = sorted(at_or_below)[:budget]
         excess = frozenset(sorted(at_or_below)[budget:])

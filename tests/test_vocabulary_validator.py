@@ -133,6 +133,23 @@ def test_tolerated_extras_respect_budget():
     assert len(result.violations) == 1
 
 
+def test_unlimited_in_level_tolerance_accepts_all_in_level_extras():
+    """extra_tolerance=None tolerates every in-level extra, but still rejects above-CEFR."""
+    lem = _MapLemmatizer({k: k for k in _CEFR})
+    validator = VocabularyValidator(lem)
+    result = validator.validate(
+        "huis tafel stoel appartement",  # 3 A1 extras + 1 B1 extra
+        {"huis"},
+        cefr_target="A1",
+        cefr_lookup=_CEFR,
+        extra_tolerance=None,  # uncapped for in-level words
+        new_word_count=1,
+    )
+    assert result.tolerated == frozenset({"tafel", "stoel"})
+    assert result.violations == frozenset({"appartement"})  # above CEFR still rejected
+    assert not result.is_valid
+
+
 def test_no_cefr_info_all_extras_are_violations():
     """Without cefr_lookup, every extra is a violation."""
     lem = _MapLemmatizer({"huis": "huis", "tafel": "tafel"})

@@ -93,7 +93,7 @@ def test_export_is_level_aware_and_does_not_overwrite(tmp_path):
     """A1/lesson001 and A2/lesson001 must both survive a multi-level export."""
     course_dir = tmp_path / "courses" / "nl"
     for level, text in (("A1", "Les een, A1."), ("A2", "Les een, A2.")):
-        lessons_dir = course_dir / level / "lessons"
+        lessons_dir = course_dir / "lessons" / level
         lessons_dir.mkdir(parents=True)
         (lessons_dir / "lesson001.json").write_text(
             json.dumps({"id": "lesson001", "text": text}), encoding="utf-8"

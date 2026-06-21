@@ -64,6 +64,8 @@ _PROPOSE_VOCAB_SYSTEM_PROMPT = (
     "language, NOT from any provided list. "
     "Give base dictionary forms (lemmas), lower-case, in the target language. "
     "Prefer concrete, high-frequency, everyday words at or below the CEFR level. "
+    "If 'anchor_concepts_english' is provided, make sure the target-language "
+    "translations of those concrete concepts are among your proposals. "
     "Do not repeat any already-taught lemma. "
     "Return about 5×n candidates so the course can select the best ones. "
     'Respond as JSON only with shape: {"vocabulary": [str]}.'
@@ -72,11 +74,19 @@ _PROPOSE_VOCAB_SYSTEM_PROMPT = (
 
 @dataclass(frozen=True)
 class LessonThemePlan:
-    """LLM-proposed lesson theme with seed lemmas for prompting the writer."""
+    """LLM-proposed lesson theme with seed lemmas for prompting the writer.
+
+    ``english_seed_words`` and ``outline`` are optional **English** authoring hints
+    from the theme catalog (language-agnostic): the seed words anchor vocabulary
+    selection toward concrete nouns; the outline is a brief scenario that shapes a
+    coherent narrative. Both are realized into the target language by the LLM.
+    """
 
     theme: str
     seed_lemmas: list[str]
     communicative_goals: list[str] = field(default_factory=list)
+    english_seed_words: list[str] = field(default_factory=list)
+    outline: str = ""
 
 
 class ThemeAssigner(Protocol):
@@ -109,6 +119,7 @@ class ThemeAssigner(Protocol):
         target_count: int,
         already_used: list[str],
         language: str = "",
+        seed_words: list[str] | None = None,
     ) -> list[str]: ...
 
 
@@ -291,12 +302,15 @@ class LLMThemeAssigner:
         target_count: int,
         already_used: list[str],
         language: str = "",
+        seed_words: list[str] | None = None,
     ) -> list[str]:
         """Ask the LLM to *generate* ~5×n theme-relevant lemmas from its own knowledge.
 
         Unlike :meth:`select_seed_lemmas_for_theme`, no candidate list is supplied —
         the LLM proposes communicatively central words for the theme, which the
-        caller then filters against the lexicon. Cached for reproducibility; returns
+        caller then filters against the lexicon. ``seed_words`` are optional English
+        anchor concepts (from the theme catalog) that bias the proposal toward
+        concrete, scene-grounding vocabulary. Cached for reproducibility; returns
         ``[]`` on provider/parse error so callers can fall back.
         """
         if target_count < 1:
@@ -310,6 +324,7 @@ class LLMThemeAssigner:
             "target_count": target_count,
             "oversample_count": target_count * 5,
             "already_used_lemmas": already_used,
+            "anchor_concepts_english": seed_words or [],
         }
         raw_messages = [
             {"role": "system", "content": _PROPOSE_VOCAB_SYSTEM_PROMPT},

@@ -5,7 +5,11 @@ from __future__ import annotations
 import pytest
 
 from course_compiler.generation.base import Lemmatizer
-from course_compiler.generation.lesson import LessonGenerator, _target_length
+from course_compiler.generation.lesson import (
+    LessonGenerator,
+    _parse_lesson_structure,
+    _target_length,
+)
 from course_compiler.llm.base import (
     LLMError,
     LLMProvider,
@@ -90,6 +94,22 @@ def _lemmatizer(words: list[str]) -> _MapLemmatizer:
 # ---------------------------------------------------------------------------
 
 
+def test_parse_strips_echoed_title_placeholder():
+    """Weak models echo the literal '## Lesson Title' header; strip that prefix."""
+    title, _, _ = _parse_lesson_structure(
+        "## Lesson Title: Begroetingen\n\n**New words:** hallo\nHallo daar."
+    )
+    assert title == "Begroetingen"
+
+
+def test_parse_drops_bare_title_placeholder():
+    """A bare echoed placeholder yields a neutral default, not 'Lesson Title'."""
+    title, _, _ = _parse_lesson_structure(
+        "## Lesson Title\n\n**New words:** hallo\nHallo daar."
+    )
+    assert title != "Lesson Title"
+
+
 def test_target_length_new_word_limited_when_vocab_is_ample():
     # With a large allowed vocabulary, length is driven by the new-word budget.
     assert _target_length(10, 1000) == "150 words"
@@ -135,6 +155,24 @@ def test_generate_theme_in_user_prompt():
         "lesson001", ["huis"], {"huis"}, language="Dutch", theme="home", model="stub"
     )
     assert "home" in provider._calls[0][1].content
+
+
+def test_generate_outline_in_prompt_and_forces_narrative():
+    """A lesson outline is included in the prompt and switches to narrative format."""
+    provider = _StubProvider(["## T\n**New words:** huis\nhuis"])
+    gen = LessonGenerator(provider, _lemmatizer(["huis"]))
+    gen.generate(
+        "lesson001",
+        ["huis"],
+        {"huis"},  # tiny vocab that would otherwise use the example format
+        language="Dutch",
+        theme="home",
+        outline="Two neighbours meet and talk about their house.",
+        model="stub",
+    )
+    full_prompt = " ".join(m.content for m in provider._calls[0]).lower()
+    assert "two neighbours meet" in full_prompt
+    assert "narrative" in provider._calls[0][0].content.lower()
 
 
 def test_early_lesson_uses_example_format_when_vocab_is_small():

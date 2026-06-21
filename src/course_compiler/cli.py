@@ -144,13 +144,14 @@ def _load_entries_from_layout(lexicon_dir: Path, stem: str) -> dict[str, dict]:
 
 
 def _discover_lesson_levels(course_dir: Path) -> list[str]:
-    """Return CEFR levels that have a ``<course>/<LEVEL>/lessons`` dir, in order."""
+    """Return CEFR levels that have a ``<course>/lessons/<LEVEL>`` dir, in order."""
     from course_compiler.leveling import CEFR_ORDER
 
+    lessons_root = course_dir / "lessons"
     found = {
-        level_dir.parent.name.upper()
-        for level_dir in course_dir.glob("*/lessons")
-        if level_dir.is_dir() and level_dir.parent.name.upper() in CEFR_ORDER
+        level_dir.name.upper()
+        for level_dir in lessons_root.glob("*")
+        if level_dir.is_dir() and level_dir.name.upper() in CEFR_ORDER
     }
     return [level for level in CEFR_ORDER if level in found]
 
@@ -647,7 +648,11 @@ def main(argv: list[str] | None = None) -> int:
         assigner = LLMThemeAssigner(provider, model=None, cache=cache)
 
         lemmatizer = create_lemmatizer(args.lang)
-        generator = LessonGenerator(provider, lemmatizer, cache=cache)
+        # Coherence over strict prior-only discipline: tolerate every in-level word
+        # (reject only above-CEFR), so the writer can produce natural narrative text.
+        generator = LessonGenerator(
+            provider, lemmatizer, cache=cache, extra_tolerance=None
+        )
         selected_theme_catalog: Path | None = None
         if args.themes_file is not None:
             requested = Path(args.themes_file)
@@ -721,7 +726,11 @@ def main(argv: list[str] | None = None) -> int:
             verbs=verbs,
         )
 
-        out_dir = Path(args.out) if args.out else lexicon_dir / args.cefr / "lessons"
+        out_dir = (
+            Path(args.out)
+            if args.out
+            else lexicon_dir / "lessons" / args.cefr.upper()
+        )
         out_dir.mkdir(parents=True, exist_ok=True)
         for lesson in lessons:
             payload = Lesson(
@@ -772,7 +781,7 @@ def main(argv: list[str] | None = None) -> int:
         grammar = _load_entries_from_layout(course_dir, "grammar")
         exercises = _load_entries_from_layout(course_dir, "exercises")
 
-        # Lessons live under <course-dir>/<LEVEL>/lessons (level-scoped). When such
+        # Lessons live under <course-dir>/lessons/<LEVEL> (level-scoped). When such
         # level dirs exist, export per level so ids that repeat across levels
         # (every level restarts at lesson001) don't overwrite each other. A legacy
         # flat <course-dir>/lessons is exported as today (single, unleveled bundle).
@@ -781,7 +790,7 @@ def main(argv: list[str] | None = None) -> int:
         if levels:
             for level in levels:
                 level_lessons = _load_lessons_for_export(
-                    course_dir / level / "lessons"
+                    course_dir / "lessons" / level
                 )
                 for lesson_id, payload in sorted(level_lessons.items()):
                     payload.setdefault("id", lesson_id)

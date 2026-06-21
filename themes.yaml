@@ -1,3 +1,11 @@
+# Lesson theme catalog (language-agnostic). Per lesson, two OPTIONAL English
+# authoring hints make generated text read as a coherent story instead of loose
+# sentences (the LLM realizes them into the target language):
+#   seedWords: concrete English anchor words that bias vocabulary selection
+#              toward scene-grounding nouns (so early lessons aren't all light
+#              function words). They resolve to lexicon entries via English glosses.
+#   outline:   a brief English scenario the writer follows for a coherent narrative.
+# Both are optional; omit them to fall back to theme + communicativeGoals only.
 A1:
   lesson001:
     theme: Greetings
@@ -5,6 +13,10 @@ A1:
       - greet someone
       - introduce yourself
       - say goodbye
+    seedWords: [hello, good morning, name, neighbour, street, goodbye]
+    outline: >
+      Two neighbours meet on the street in the morning. They greet each other,
+      introduce themselves by name, ask how the other is, and say goodbye.
 
   lesson002:
     theme: Personal Information
@@ -12,6 +24,11 @@ A1:
       - say your name
       - ask someone's name
       - state your nationality
+    seedWords: [name, city, country, address, age, family]
+    outline: >
+      A new colleague introduces herself to the team: her name, the city and
+      country she comes from, where she lives now, and a little about her
+      family.
 
   lesson003:
     theme: Numbers
@@ -19,6 +36,10 @@ A1:
       - count from 1 to 20
       - ask someone's age
       - give your phone number
+    seedWords: [number, phone, age, year, money, hour]
+    outline: >
+      At a reception desk a man signs up: the clerk asks his age and phone
+      number, and he says the numbers slowly while the clerk writes them down.
 
   lesson004:
     theme: Family
@@ -26,6 +47,11 @@ A1:
       - introduce family members
       - describe relationships
       - ask about family
+    seedWords: [mother, father, brother, sister, child, grandparent]
+    outline: >
+      A girl shows a family photo to a friend and explains who each person is —
+      her mother, father, brother, sister and grandparents — and how old they
+      are.
 
   lesson005:
     theme: Home
@@ -33,6 +59,10 @@ A1:
       - describe your home
       - name rooms
       - describe where you live
+    seedWords: [house, room, kitchen, garden, door, window]
+    outline: >
+      A woman gives a friend a short tour of her house, naming each room — the
+      kitchen, the living room, the bedroom — and the garden behind the door.
 
   lesson006:
     theme: Furniture
@@ -40,6 +70,10 @@ A1:
       - identify furniture
       - describe a room
       - talk about possessions
+    seedWords: [table, chair, bed, lamp, sofa, cupboard]
+    outline: >
+      Two friends arrange a living room together, deciding where the table, the
+      chairs, the sofa and the lamp should go.
 
   lesson007:
     theme: Daily Routine
@@ -47,6 +81,10 @@ A1:
       - describe your day
       - tell what time you wake up
       - talk about habits
+    seedWords: [morning, breakfast, work, evening, sleep, shower]
+    outline: >
+      A man describes an ordinary weekday from waking up and having breakfast,
+      through work, to the evening and going to sleep.
 
   lesson008:
     theme: Time
@@ -54,6 +92,10 @@ A1:
       - tell the time
       - ask the time
       - discuss schedules
+    seedWords: [clock, hour, minute, morning, afternoon, late]
+    outline: >
+      At a station two travellers ask and tell each other the time, look at the
+      clock, and worry a little about being late for the train.
 
   lesson009:
     theme: Days and Months
@@ -61,6 +103,10 @@ A1:
       - name weekdays
       - talk about dates
       - mention birthdays
+    seedWords: [day, week, month, weekend, birthday, calendar]
+    outline: >
+      Two friends look at a calendar to choose a free day at the weekend for a
+      birthday, naming the days of the week and the month.
 
   lesson010:
     theme: Weather
@@ -68,6 +114,11 @@ A1:
       - describe the weather
       - ask about today's weather
       - choose suitable clothing
+    seedWords: [rain, sun, cold, warm, wind, umbrella]
+    outline: >
+      Two people look out of the window, describe today's weather — sun, rain,
+      wind, cold — and decide together what to wear and whether to take an
+      umbrella.
 
   lesson011:
     theme: Seasons
@@ -75,6 +126,7 @@ A1:
       - name the seasons
       - describe seasonal activities
       - express preferences
+    seedWords: [summer, winter, spring, autumn, weather, holiday]
 
   lesson012:
     theme: Food
@@ -82,6 +134,7 @@ A1:
       - name common foods
       - express likes and dislikes
       - describe meals
+    seedWords: [bread, cheese, apple, meat, soup, plate]
 
   lesson013:
     theme: Drinks
@@ -89,6 +142,7 @@ A1:
       - order drinks
       - offer someone a drink
       - describe preferences
+    seedWords: [water, coffee, tea, milk, juice, glass]
 
   lesson014:
     theme: Breakfast
@@ -96,6 +150,7 @@ A1:
       - describe breakfast
       - prepare a meal
       - ask for food
+    seedWords: [bread, egg, coffee, butter, cheese, table]
 
   lesson015:
     theme: Shopping
@@ -103,6 +158,7 @@ A1:
       - ask prices
       - buy groceries
       - pay at the checkout
+    seedWords: [shop, money, price, bag, market, cash]
 
   lesson016:
     theme: Clothes
@@ -110,6 +166,7 @@ A1:
       - describe clothing
       - talk about sizes
       - buy clothes
+    seedWords: [shirt, trousers, shoe, coat, dress, hat]
 
   lesson017:
     theme: Colours
@@ -117,6 +174,7 @@ A1:
       - identify colours
       - describe objects
       - express preferences
+    seedWords: [red, blue, green, yellow, black, white]
 
   lesson018:
     theme: The Body
@@ -124,6 +182,7 @@ A1:
       - name body parts
       - describe appearance
       - report simple pain
+    seedWords: [head, hand, foot, eye, arm, hair]
 
   lesson019:
     theme: Health
@@ -131,6 +190,7 @@ A1:
       - describe symptoms
       - visit a doctor
       - ask for medicine
+    seedWords: [doctor, pain, medicine, fever, illness, hospital]
 
   lesson020:
     theme: At the Pharmacy
@@ -138,6 +198,7 @@ A1:
       - buy medicine
       - ask for advice
       - understand instructions
+    seedWords: [medicine, pill, doctor, pharmacy, cough, advice]
 
   lesson021:
     theme: School
@@ -145,6 +206,7 @@ A1:
       - describe a classroom
       - talk about subjects
       - ask questions
+    seedWords: [school, teacher, book, pen, class, student]
 
   lesson022:
     theme: Work
@@ -152,6 +214,7 @@ A1:
       - describe your job
       - introduce colleagues
       - discuss working hours
+    seedWords: [work, office, job, colleague, boss, salary]
 
   lesson023:
     theme: Office
@@ -159,6 +222,7 @@ A1:
       - identify office objects
       - ask for assistance
       - describe tasks
+    seedWords: [desk, computer, paper, pen, phone, chair]
 
   lesson024:
     theme: Hobbies
@@ -166,6 +230,7 @@ A1:
       - describe hobbies
       - ask about interests
       - invite someone
+    seedWords: [book, music, game, garden, sport, photo]
 
   lesson025:
     theme: Sports
@@ -173,6 +238,7 @@ A1:
       - discuss sports
       - describe activities
       - express ability
+    seedWords: [ball, team, game, field, club, race]
 
   lesson026:
     theme: Music
@@ -180,6 +246,7 @@ A1:
       - discuss music
       - describe preferences
       - talk about concerts
+    seedWords: [song, guitar, concert, band, radio, dance]
 
   lesson027:
     theme: Reading
@@ -187,6 +254,7 @@ A1:
       - discuss books
       - describe reading habits
       - recommend a book
+    seedWords: [book, story, page, library, author, newspaper]
 
   lesson028:
     theme: Television
@@ -194,6 +262,7 @@ A1:
       - discuss programmes
       - express opinions
       - describe viewing habits
+    seedWords: [television, film, program, news, screen, channel]
 
   lesson029:
     theme: Computers
@@ -201,6 +270,7 @@ A1:
       - describe devices
       - use simple computer vocabulary
       - ask for technical help
+    seedWords: [computer, screen, keyboard, mouse, file, internet]
 
   lesson030:
     theme: Mobile Phones
@@ -208,6 +278,7 @@ A1:
       - make a phone call
       - send messages
       - discuss apps
+    seedWords: [phone, message, call, screen, app, battery]
 
   lesson031:
     theme: Friends
@@ -215,6 +286,7 @@ A1:
       - introduce friends
       - describe personalities
       - make plans
+    seedWords: [friend, party, plan, group, evening, fun]
 
   lesson032:
     theme: Visiting Someone
@@ -222,6 +294,7 @@ A1:
       - accept invitations
       - welcome guests
       - offer refreshments
+    seedWords: [door, coffee, guest, chair, cake, visit]
 
   lesson033:
     theme: At a Café
@@ -229,6 +302,7 @@ A1:
       - order food
       - ask for the bill
       - thank the waiter
+    seedWords: [coffee, table, waiter, bill, cake, cup]
 
   lesson034:
     theme: At a Restaurant
@@ -236,6 +310,7 @@ A1:
       - reserve a table
       - order a meal
       - express satisfaction
+    seedWords: [table, menu, waiter, meal, plate, wine]
 
   lesson035:
     theme: Public Transport
@@ -243,6 +318,7 @@ A1:
       - buy tickets
       - ask about departures
       - understand announcements
+    seedWords: [bus, ticket, station, tram, stop, train]
 
   lesson036:
     theme: Cycling
@@ -250,6 +326,7 @@ A1:
       - rent a bicycle
       - ask for directions
       - describe a route
+    seedWords: [bicycle, road, helmet, wheel, path, brake]
 
   lesson037:
     theme: Driving
@@ -257,6 +334,7 @@ A1:
       - discuss driving
       - ask about parking
       - describe traffic
+    seedWords: [car, road, traffic, parking, key, wheel]
 
   lesson038:
     theme: Walking
@@ -264,6 +342,7 @@ A1:
       - give directions
       - ask for directions
       - describe locations
+    seedWords: [street, corner, road, map, sign, square]
 
   lesson039:
     theme: The City
@@ -271,6 +350,7 @@ A1:
       - describe a city
       - locate buildings
       - ask where something is
+    seedWords: [city, street, building, square, shop, park]
 
   lesson040:
     theme: The Village
@@ -278,6 +358,7 @@ A1:
       - describe a village
       - compare places
       - discuss local facilities
+    seedWords: [village, church, road, field, shop, house]
 
   lesson041:
     theme: Nature
@@ -285,6 +366,7 @@ A1:
       - describe nature
       - identify landscapes
       - discuss outdoor activities
+    seedWords: [tree, river, mountain, forest, flower, lake]
 
   lesson042:
     theme: Animals
@@ -292,6 +374,7 @@ A1:
       - name animals
       - describe pets
       - talk about farms
+    seedWords: [dog, cat, cow, horse, bird, farm]
 
   lesson043:
     theme: Holidays
@@ -299,6 +382,7 @@ A1:
       - discuss holiday plans
       - describe vacations
       - book accommodation
+    seedWords: [holiday, beach, hotel, suitcase, sea, sun]
 
   lesson044:
     theme: Hotels
@@ -306,6 +390,7 @@ A1:
       - check in
       - ask about facilities
       - solve simple problems
+    seedWords: [hotel, room, key, bed, reception, breakfast]
 
   lesson045:
     theme: Airports
@@ -313,6 +398,7 @@ A1:
       - check in for a flight
       - understand airport signs
       - ask for information
+    seedWords: [airport, plane, ticket, passport, luggage, gate]
 
   lesson046:
     theme: Trains
@@ -320,6 +406,7 @@ A1:
       - buy train tickets
       - understand platforms
       - ask about delays
+    seedWords: [train, station, ticket, platform, seat, conductor]
 
   lesson047:
     theme: Directions
@@ -327,6 +414,7 @@ A1:
       - understand directions
       - give directions
       - locate landmarks
+    seedWords: [street, corner, map, sign, left, right]
 
   lesson048:
     theme: Money
@@ -334,6 +422,7 @@ A1:
       - exchange money
       - discuss prices
       - pay by card
+    seedWords: [money, coin, card, price, bank, wallet]
 
   lesson049:
     theme: Banking
@@ -341,6 +430,7 @@ A1:
       - withdraw cash
       - ask for assistance
       - understand banking terms
+    seedWords: [bank, money, card, account, cash, machine]
 
   lesson050:
     theme: Post Office
@@ -348,6 +438,7 @@ A1:
       - send a letter
       - buy stamps
       - ask about parcels
+    seedWords: [letter, stamp, parcel, envelope, address, post]
 
   lesson051:
     theme: Emergencies
@@ -355,6 +446,7 @@ A1:
       - ask for help
       - call emergency services
       - describe a problem
+    seedWords: [help, fire, police, ambulance, accident, phone]
 
   lesson052:
     theme: Police
@@ -362,6 +454,7 @@ A1:
       - report theft
       - describe an incident
       - ask for assistance
+    seedWords: [police, thief, wallet, street, officer, report]
 
   lesson053:
     theme: The Doctor
@@ -369,6 +462,7 @@ A1:
       - make an appointment
       - describe symptoms
       - understand advice
+    seedWords: [doctor, appointment, pain, fever, medicine, illness]
 
   lesson054:
     theme: The Dentist
@@ -376,6 +470,7 @@ A1:
       - describe tooth pain
       - make an appointment
       - understand treatment
+    seedWords: [dentist, tooth, pain, appointment, mouth, chair]
 
   lesson055:
     theme: Weekend
@@ -383,6 +478,7 @@ A1:
       - discuss weekend plans
       - invite friends
       - describe activities
+    seedWords: [weekend, friend, park, film, walk, plan]
 
   lesson056:
     theme: Birthdays
@@ -390,6 +486,7 @@ A1:
       - congratulate someone
       - give presents
       - organize a party
+    seedWords: [birthday, cake, present, candle, party, card]
 
   lesson057:
     theme: Celebrations
@@ -397,6 +494,7 @@ A1:
       - describe celebrations
       - invite guests
       - thank people
+    seedWords: [party, guest, food, music, gift, dance]
 
   lesson058:
     theme: Dutch Culture
@@ -404,6 +502,7 @@ A1:
       - discuss traditions
       - compare cultures
       - ask questions
+    seedWords: [bicycle, cheese, tulip, windmill, king, canal]
 
   lesson059:
     theme: Simple Opinions
@@ -411,6 +510,7 @@ A1:
       - express agreement
       - express disagreement
       - explain preferences
+    seedWords: [film, food, book, music, weather, idea]
 
   lesson060:
     theme: Future Plans
@@ -418,6 +518,7 @@ A1:
       - discuss tomorrow
       - make appointments
       - describe intentions
+    seedWords: [tomorrow, plan, trip, appointment, week, job]
 
   lesson061:
     theme: Appearance
@@ -425,6 +526,7 @@ A1:
       - describe people
       - compare appearances
       - identify someone
+    seedWords: [hair, eye, face, beard, glasses, smile]
 
   lesson062:
     theme: Personality
@@ -432,6 +534,7 @@ A1:
       - describe character
       - compliment someone
       - express opinions
+    seedWords: [person, friend, smile, character, mood, neighbour]
 
   lesson063:
     theme: Household Tasks
@@ -439,6 +542,7 @@ A1:
       - describe chores
       - divide tasks
       - ask for help
+    seedWords: [kitchen, dish, floor, laundry, broom, trash]
 
   lesson064:
     theme: Gardening
@@ -446,6 +550,7 @@ A1:
       - identify plants
       - describe gardens
       - discuss outdoor work
+    seedWords: [garden, plant, flower, tree, soil, water]
 
   lesson065:
     theme: Cooking
@@ -453,6 +558,7 @@ A1:
       - follow recipes
       - describe ingredients
       - prepare meals
+    seedWords: [pan, oven, recipe, salt, vegetable, knife]
 
   lesson066:
     theme: Pets
@@ -460,6 +566,7 @@ A1:
       - describe pets
       - discuss care
       - visit a veterinarian
+    seedWords: [dog, cat, fish, bird, cage, vet]
 
   lesson067:
     theme: Shopping for Clothes
@@ -467,6 +574,7 @@ A1:
       - try on clothes
       - compare sizes
       - make purchases
+    seedWords: [shop, dress, size, shirt, shoe, mirror]
 
   lesson068:
     theme: Asking Permission
@@ -474,6 +582,7 @@ A1:
       - ask permission
       - give permission
       - refuse politely
+    seedWords: [door, key, car, phone, window, room]
 
   lesson069:
     theme: Invitations
@@ -481,6 +590,7 @@ A1:
       - invite someone
       - accept invitations
       - decline politely
+    seedWords: [party, dinner, friend, card, evening, invitation]
 
   lesson070:
     theme: Simple Problems
@@ -488,6 +598,7 @@ A1:
       - explain a problem
       - ask for help
       - thank someone
+    seedWords: [problem, help, key, door, phone, money]
 
   lesson071:
     theme: Renting a Home
@@ -495,6 +606,7 @@ A1:
       - ask about rent
       - describe housing
       - arrange a viewing
+    seedWords: [house, rent, room, key, landlord, contract]
 
   lesson072:
     theme: Neighbours
@@ -502,6 +614,7 @@ A1:
       - introduce yourself
       - discuss neighbourhoods
       - ask for help
+    seedWords: [neighbour, street, door, garden, house, noise]
 
   lesson073:
     theme: Environment
@@ -509,6 +622,7 @@ A1:
       - discuss recycling
       - describe nature
       - express responsibility
+    seedWords: [tree, water, waste, plastic, nature, bin]
 
   lesson074:
     theme: Internet
@@ -516,6 +630,7 @@ A1:
       - browse websites
       - discuss online activities
       - ask for Wi-Fi
+    seedWords: [internet, website, computer, password, screen, email]
 
   lesson075:
     theme: Social Media
@@ -523,6 +638,7 @@ A1:
       - describe online communication
       - share information
       - discuss preferences
+    seedWords: [photo, message, friend, phone, profile, post]
 
   lesson076:
     theme: Festivals
@@ -530,6 +646,7 @@ A1:
       - discuss festivals
       - make plans
       - describe traditions
+    seedWords: [festival, music, crowd, food, stage, light]
 
   lesson077:
     theme: Simple Stories
@@ -537,6 +654,7 @@ A1:
       - tell a short story
       - describe events
       - sequence actions
+    seedWords: [story, man, woman, house, day, child]
 
   lesson078:
     theme: Daily News
@@ -544,6 +662,7 @@ A1:
       - discuss simple news
       - express opinions
       - ask questions
+    seedWords: [newspaper, news, story, world, weather, report]
 
   lesson079:
     theme: Review
@@ -551,6 +670,7 @@ A1:
       - review vocabulary
       - review grammar
       - improve fluency
+    seedWords: [word, sentence, story, question, answer, lesson]
 
   lesson080:
     theme: Final Integration
@@ -558,6 +678,7 @@ A1:
       - combine all A1 skills
       - hold simple conversations
       - prepare for A2
+    seedWords: [conversation, friend, day, plan, question, story]
 
 A2:
   lesson001:
@@ -566,6 +687,7 @@ A2:
       - catch up with someone
       - describe recent events
       - ask follow-up questions
+    seedWords: [friend, news, holiday, coffee, week, story]
 
   lesson002:
     theme: Life History
@@ -573,6 +695,7 @@ A2:
       - describe your childhood
       - talk about past experiences
       - compare then and now
+    seedWords: [child, school, family, town, year, memory]
 
   lesson003:
     theme: Education
@@ -580,6 +703,7 @@ A2:
       - describe your education
       - discuss qualifications
       - talk about future studies
+    seedWords: [school, teacher, exam, subject, student, diploma]
 
   lesson004:
     theme: Career
@@ -587,6 +711,7 @@ A2:
       - describe your profession
       - discuss work experience
       - explain responsibilities
+    seedWords: [job, office, work, manager, salary, company]
 
   lesson005:
     theme: Looking for a Job
@@ -594,6 +719,7 @@ A2:
       - read job advertisements
       - describe your skills
       - ask about vacancies
+    seedWords: [job, letter, interview, skill, company, vacancy]
 
   lesson006:
     theme: Job Interview
@@ -601,6 +727,7 @@ A2:
       - introduce yourself professionally
       - answer interview questions
       - discuss availability
+    seedWords: [interview, job, question, suit, office, manager]
 
   lesson007:
     theme: Workplace Communication
@@ -608,6 +735,7 @@ A2:
       - participate in meetings
       - ask for clarification
       - report progress
+    seedWords: [meeting, email, colleague, phone, report, office]
 
   lesson008:
     theme: Working from Home
@@ -615,6 +743,7 @@ A2:
       - describe your workspace
       - discuss advantages
       - solve technical problems
+    seedWords: [computer, desk, home, internet, screen, coffee]
 
   lesson009:
     theme: Housing
@@ -622,6 +751,7 @@ A2:
       - compare homes
       - discuss renting and buying
       - describe neighbourhoods
+    seedWords: [house, apartment, rent, room, neighbour, garden]
 
   lesson010:
     theme: Moving House
@@ -629,6 +759,7 @@ A2:
       - arrange a move
       - discuss utilities
       - describe your new home
+    seedWords: [box, truck, furniture, key, address, house]
 
   lesson011:
     theme: Household Repairs
@@ -636,6 +767,7 @@ A2:
       - report problems
       - arrange repairs
       - explain what happened
+    seedWords: [pipe, lamp, tool, plumber, leak, wall]
 
   lesson012:
     theme: Shopping for Furniture
@@ -643,6 +775,7 @@ A2:
       - compare products
       - discuss prices
       - make purchasing decisions
+    seedWords: [table, sofa, chair, shop, price, lamp]
 
   lesson013:
     theme: Healthy Living
@@ -650,6 +783,7 @@ A2:
       - discuss healthy habits
       - give advice
       - describe routines
+    seedWords: [food, exercise, sleep, water, fruit, walk]
 
   lesson014:
     theme: Visiting the Doctor
@@ -657,6 +791,7 @@ A2:
       - explain symptoms
       - understand recommendations
       - discuss treatment
+    seedWords: [doctor, pain, fever, medicine, appointment, symptom]
 
   lesson015:
     theme: Sports and Exercise
@@ -664,6 +799,7 @@ A2:
       - describe activities
       - discuss fitness
       - compare sports
+    seedWords: [ball, gym, run, team, bike, muscle]
 
   lesson016:
     theme: Mental Well-being
@@ -671,6 +807,7 @@ A2:
       - express emotions
       - discuss stress
       - suggest solutions
+    seedWords: [stress, rest, sleep, friend, walk, smile]
 
   lesson017:
     theme: Cooking
@@ -678,6 +815,7 @@ A2:
       - explain recipes
       - describe cooking methods
       - discuss favourite dishes
+    seedWords: [recipe, pan, oven, vegetable, salt, knife]
 
   lesson018:
     theme: Restaurants
@@ -685,6 +823,7 @@ A2:
       - make reservations
       - deal with problems
       - recommend dishes
+    seedWords: [table, menu, waiter, meal, bill, wine]
 
   lesson019:
     theme: Supermarkets
@@ -692,6 +831,7 @@ A2:
       - compare products
       - discuss prices
       - ask for recommendations
+    seedWords: [trolley, shelf, price, vegetable, checkout, bag]
 
   lesson020:
     theme: Clothing and Fashion
@@ -699,6 +839,7 @@ A2:
       - describe clothing styles
       - discuss preferences
       - compare outfits
+    seedWords: [dress, shirt, shoe, colour, size, jacket]
 
   lesson021:
     theme: Banking
@@ -706,6 +847,7 @@ A2:
       - open an account
       - discuss payments
       - solve banking issues
+    seedWords: [bank, account, card, money, machine, loan]
 
   lesson022:
     theme: Insurance
@@ -713,6 +855,7 @@ A2:
       - understand policies
       - report damage
       - ask for information
+    seedWords: [insurance, car, damage, policy, accident, money]
 
   lesson023:
     theme: Public Services
@@ -720,6 +863,7 @@ A2:
       - contact local authorities
       - request documents
       - ask for assistance
+    seedWords: [office, document, form, queue, clerk, passport]
 
   lesson024:
     theme: Transportation
@@ -727,6 +871,7 @@ A2:
       - compare transport options
       - discuss delays
       - explain travel plans
+    seedWords: [bus, train, ticket, station, car, bike]
 
   lesson025:
     theme: Driving
@@ -734,6 +879,7 @@ A2:
       - describe traffic situations
       - report accidents
       - ask for directions
+    seedWords: [car, road, traffic, accident, parking, speed]
 
   lesson026:
     theme: Cycling
@@ -741,6 +887,7 @@ A2:
       - discuss cycling routes
       - explain road safety
       - rent a bicycle
+    seedWords: [bicycle, road, helmet, route, path, brake]
 
   lesson027:
     theme: Travel Planning
@@ -748,6 +895,7 @@ A2:
       - plan a holiday
       - compare destinations
       - book accommodation
+    seedWords: [map, ticket, hotel, suitcase, trip, holiday]
 
   lesson028:
     theme: Hotels
@@ -755,6 +903,7 @@ A2:
       - solve accommodation issues
       - ask about facilities
       - make requests
+    seedWords: [hotel, room, key, reception, breakfast, bed]
 
   lesson029:
     theme: Airports
@@ -762,6 +911,7 @@ A2:
       - deal with travel problems
       - understand announcements
       - request assistance
+    seedWords: [airport, plane, gate, passport, luggage, ticket]
 
   lesson030:
     theme: Holidays Abroad
@@ -769,6 +919,7 @@ A2:
       - describe experiences
       - compare cultures
       - discuss travel memories
+    seedWords: [beach, sea, hotel, sun, photo, city]
 
   lesson031:
     theme: Family Life
@@ -776,6 +927,7 @@ A2:
       - discuss family relationships
       - describe responsibilities
       - give advice
+    seedWords: [family, child, parent, home, dinner, weekend]
 
   lesson032:
     theme: Raising Children
@@ -783,6 +935,7 @@ A2:
       - discuss education
       - describe routines
       - express opinions
+    seedWords: [child, school, toy, baby, parent, bed]
 
   lesson033:
     theme: Friends
@@ -790,6 +943,7 @@ A2:
       - describe friendships
       - discuss social activities
       - resolve misunderstandings
+    seedWords: [friend, party, plan, coffee, evening, group]
 
   lesson034:
     theme: Celebrations
@@ -797,6 +951,7 @@ A2:
       - organize events
       - invite guests
       - describe traditions
+    seedWords: [party, gift, cake, guest, music, dinner]
 
   lesson035:
     theme: Culture
@@ -804,6 +959,7 @@ A2:
       - discuss customs
       - compare traditions
       - express opinions
+    seedWords: [festival, food, music, costume, country, dance]
 
   lesson036:
     theme: Museums
@@ -811,6 +967,7 @@ A2:
       - discuss exhibitions
       - describe artwork
       - recommend museums
+    seedWords: [museum, painting, ticket, artist, statue, room]
 
   lesson037:
     theme: Cinema
@@ -818,6 +975,7 @@ A2:
       - describe films
       - express opinions
       - recommend movies
+    seedWords: [film, ticket, screen, actor, popcorn, seat]
 
   lesson038:
     theme: Books
@@ -825,6 +983,7 @@ A2:
       - discuss books
       - summarize stories
       - recommend reading
+    seedWords: [book, story, author, page, library, novel]
 
   lesson039:
     theme: Music
@@ -832,6 +991,7 @@ A2:
       - discuss musical tastes
       - describe concerts
       - compare genres
+    seedWords: [song, band, concert, guitar, singer, stage]
 
   lesson040:
     theme: Television and Streaming
@@ -839,6 +999,7 @@ A2:
       - discuss programmes
       - compare services
       - recommend series
+    seedWords: [television, series, screen, episode, remote, film]
 
   lesson041:
     theme: Technology
@@ -846,6 +1007,7 @@ A2:
       - describe devices
       - solve technical issues
       - explain usage
+    seedWords: [phone, computer, screen, app, device, battery]
 
   lesson042:
     theme: Internet Safety
@@ -853,6 +1015,7 @@ A2:
       - discuss online privacy
       - recognize scams
       - ask for technical help
+    seedWords: [password, account, email, virus, internet, scam]
 
   lesson043:
     theme: Social Media
@@ -860,6 +1023,7 @@ A2:
       - discuss online behaviour
       - express opinions
       - compare platforms
+    seedWords: [photo, post, friend, profile, message, phone]
 
   lesson044:
     theme: Nature
@@ -867,6 +1031,7 @@ A2:
       - describe landscapes
       - discuss outdoor activities
       - express preferences
+    seedWords: [forest, river, mountain, tree, lake, animal]
 
   lesson045:
     theme: Weather
@@ -874,6 +1039,7 @@ A2:
       - describe forecasts
       - discuss climate
       - plan activities
+    seedWords: [rain, sun, cloud, wind, snow, storm]
 
   lesson046:
     theme: Environment
@@ -881,6 +1047,7 @@ A2:
       - discuss recycling
       - describe environmental problems
       - suggest improvements
+    seedWords: [waste, plastic, tree, water, bin, pollution]
 
   lesson047:
     theme: Animals
@@ -888,6 +1055,7 @@ A2:
       - describe wildlife
       - discuss pets
       - compare habitats
+    seedWords: [dog, cat, bird, forest, zoo, farm]
 
   lesson048:
     theme: Gardening
@@ -895,6 +1063,7 @@ A2:
       - describe plants
       - explain gardening tasks
       - ask for advice
+    seedWords: [garden, plant, flower, soil, tree, water]
 
   lesson049:
     theme: Volunteering
@@ -902,6 +1071,7 @@ A2:
       - describe volunteer work
       - explain motivations
       - encourage participation
+    seedWords: [volunteer, help, group, food, people, project]
 
   lesson050:
     theme: Community
@@ -909,6 +1079,7 @@ A2:
       - discuss neighbourhood issues
       - participate in local events
       - suggest improvements
+    seedWords: [neighbour, street, park, school, meeting, town]
 
   lesson051:
     theme: Emergencies
@@ -916,6 +1087,7 @@ A2:
       - describe incidents
       - request assistance
       - explain situations
+    seedWords: [fire, ambulance, police, accident, help, phone]
 
   lesson052:
     theme: Police
@@ -923,6 +1095,7 @@ A2:
       - report crimes
       - describe suspects
       - understand procedures
+    seedWords: [police, thief, report, officer, street, car]
 
   lesson053:
     theme: Laws and Rules
@@ -930,6 +1103,7 @@ A2:
       - understand regulations
       - discuss responsibilities
       - ask for clarification
+    seedWords: [law, police, fine, rule, sign, document]
 
   lesson054:
     theme: Money Management
@@ -937,6 +1111,7 @@ A2:
       - discuss budgets
       - compare expenses
       - give financial advice
+    seedWords: [money, budget, bank, card, bill, salary]
 
   lesson055:
     theme: Consumer Rights
@@ -944,6 +1119,7 @@ A2:
       - return products
       - make complaints
       - request refunds
+    seedWords: [shop, receipt, refund, product, complaint, money]
 
   lesson056:
     theme: Hobbies
@@ -951,6 +1127,7 @@ A2:
       - describe hobbies
       - compare activities
       - invite participation
+    seedWords: [book, music, game, sport, garden, photo]
 
   lesson057:
     theme: Learning Languages
@@ -958,6 +1135,7 @@ A2:
       - discuss learning methods
       - describe progress
       - ask for advice
+    seedWords: [word, book, teacher, lesson, language, exam]
 
   lesson058:
     theme: Giving Directions
@@ -965,6 +1143,7 @@ A2:
       - explain routes
       - understand instructions
       - ask follow-up questions
+    seedWords: [street, map, corner, sign, left, right]
 
   lesson059:
     theme: Making Plans
@@ -972,6 +1151,7 @@ A2:
       - arrange appointments
       - negotiate schedules
       - confirm plans
+    seedWords: [calendar, appointment, friend, week, plan, time]
 
   lesson060:
     theme: Solving Problems
@@ -979,6 +1159,7 @@ A2:
       - explain difficulties
       - propose solutions
       - agree on actions
+    seedWords: [problem, help, phone, key, money, plan]
 
   lesson061:
     theme: Describing Experiences
@@ -986,6 +1167,7 @@ A2:
       - tell stories
       - describe memorable events
       - sequence actions
+    seedWords: [trip, holiday, day, story, photo, city]
 
   lesson062:
     theme: Giving Advice
@@ -993,6 +1175,7 @@ A2:
       - recommend actions
       - express concerns
       - explain consequences
+    seedWords: [friend, doctor, problem, money, plan, health]
 
   lesson063:
     theme: Making Comparisons
@@ -1000,6 +1183,7 @@ A2:
       - compare people
       - compare places
       - compare experiences
+    seedWords: [city, house, car, price, size, person]
 
   lesson064:
     theme: Expressing Opinions
@@ -1007,6 +1191,7 @@ A2:
       - agree politely
       - disagree politely
       - justify opinions
+    seedWords: [film, book, food, music, idea, news]
 
   lesson065:
     theme: Future Plans
@@ -1014,6 +1199,7 @@ A2:
       - discuss ambitions
       - describe intentions
       - make predictions
+    seedWords: [year, plan, job, trip, house, family]
 
   lesson066:
     theme: Memories
@@ -1021,6 +1207,7 @@ A2:
       - describe past events
       - express emotions
       - compare experiences
+    seedWords: [child, photo, school, family, holiday, year]
 
   lesson067:
     theme: News
@@ -1028,6 +1215,7 @@ A2:
       - discuss current events
       - summarize news
       - express reactions
+    seedWords: [newspaper, news, world, report, story, television]
 
   lesson068:
     theme: Local History
@@ -1035,6 +1223,7 @@ A2:
       - describe historical events
       - discuss traditions
       - compare past and present
+    seedWords: [town, church, castle, year, war, story]
 
   lesson069:
     theme: Dutch Society
@@ -1042,6 +1231,7 @@ A2:
       - discuss daily life
       - compare cultures
       - describe customs
+    seedWords: [bicycle, canal, cheese, king, market, rain]
 
   lesson070:
     theme: Public Holidays
@@ -1049,6 +1239,7 @@ A2:
       - discuss traditions
       - describe celebrations
       - make plans
+    seedWords: [holiday, king, party, flag, family, day]
 
   lesson071:
     theme: Problem Solving at Work
@@ -1056,6 +1247,7 @@ A2:
       - explain issues
       - suggest solutions
       - report outcomes
+    seedWords: [meeting, problem, colleague, plan, report, boss]
 
   lesson072:
     theme: Telephone Conversations
@@ -1063,6 +1255,7 @@ A2:
       - make appointments
       - leave messages
       - clarify information
+    seedWords: [phone, call, message, appointment, voice, number]
 
   lesson073:
     theme: Emails and Messages
@@ -1070,6 +1263,7 @@ A2:
       - write simple emails
       - request information
       - reply politely
+    seedWords: [email, message, computer, letter, reply, screen]
 
   lesson074:
     theme: Customer Service
@@ -1077,6 +1271,7 @@ A2:
       - ask for support
       - explain problems
       - evaluate service
+    seedWords: [shop, phone, problem, product, help, complaint]
 
   lesson075:
     theme: Planning an Event
@@ -1084,6 +1279,7 @@ A2:
       - organize activities
       - assign responsibilities
       - confirm arrangements
+    seedWords: [party, guest, date, food, music, plan]
 
   lesson076:
     theme: Dreams and Goals
@@ -1091,6 +1287,7 @@ A2:
       - discuss ambitions
       - explain motivations
       - encourage others
+    seedWords: [job, plan, year, money, house, dream]
 
   lesson077:
     theme: Review of Daily Life
@@ -1098,6 +1295,7 @@ A2:
       - integrate vocabulary
       - reinforce grammar
       - improve fluency
+    seedWords: [day, work, home, food, friend, plan]
 
   lesson078:
     theme: Review of Travel and Work
@@ -1105,6 +1303,7 @@ A2:
       - combine travel vocabulary
       - combine workplace language
       - practice conversations
+    seedWords: [trip, office, ticket, job, hotel, meeting]
 
   lesson079:
     theme: Integrated Communication
@@ -1112,6 +1311,7 @@ A2:
       - hold longer conversations
       - express opinions confidently
       - respond naturally
+    seedWords: [conversation, friend, opinion, question, plan, story]
 
   lesson080:
     theme: Preparing for B1
@@ -1119,6 +1319,7 @@ A2:
       - consolidate A2 grammar
       - use expanded vocabulary
       - prepare for independent communication
+    seedWords: [conversation, opinion, plan, story, question, future]
 
 B1:
   lesson001:
@@ -1127,6 +1328,7 @@ B1:
       - introduce yourself in detail
       - describe your background
       - explain personal goals
+    seedWords: [city, job, home, friend, plan, year]
 
   lesson002:
     theme: Personal Development
@@ -1134,6 +1336,7 @@ B1:
       - describe strengths and weaknesses
       - discuss personal growth
       - set future goals
+    seedWords: [goal, skill, plan, year, book, course]
 
   lesson003:
     theme: Education and Lifelong Learning
@@ -1141,6 +1344,7 @@ B1:
       - discuss educational experiences
       - compare learning methods
       - explain future study plans
+    seedWords: [school, course, teacher, exam, diploma, student]
 
   lesson004:
     theme: Career Development
@@ -1148,6 +1352,7 @@ B1:
       - describe career ambitions
       - discuss professional development
       - evaluate work opportunities
+    seedWords: [job, career, company, manager, salary, skill]
 
   lesson005:
     theme: Workplace Communication
@@ -1155,6 +1360,7 @@ B1:
       - participate in meetings
       - express agreement and disagreement
       - summarize discussions
+    seedWords: [meeting, email, colleague, report, phone, boss]
 
   lesson006:
     theme: Leadership and Teamwork
@@ -1162,6 +1368,7 @@ B1:
       - describe leadership styles
       - discuss teamwork
       - resolve conflicts
+    seedWords: [team, meeting, manager, project, colleague, goal]
 
   lesson007:
     theme: Work-Life Balance
@@ -1169,6 +1376,7 @@ B1:
       - discuss priorities
       - explain challenges
       - suggest improvements
+    seedWords: [work, family, time, weekend, stress, sleep]
 
   lesson008:
     theme: Entrepreneurship
@@ -1176,6 +1384,7 @@ B1:
       - describe business ideas
       - explain risks
       - discuss opportunities
+    seedWords: [company, money, idea, customer, product, plan]
 
   lesson009:
     theme: Housing Choices
@@ -1183,6 +1392,7 @@ B1:
       - compare housing options
       - discuss advantages and disadvantages
       - explain preferences
+    seedWords: [house, apartment, rent, city, garden, price]
 
   lesson010:
     theme: Sustainable Living
@@ -1190,6 +1400,7 @@ B1:
       - discuss sustainability
       - describe eco-friendly habits
       - propose improvements
+    seedWords: [energy, waste, water, bike, plastic, tree]
 
   lesson011:
     theme: Family Relationships
@@ -1197,6 +1408,7 @@ B1:
       - discuss family dynamics
       - describe responsibilities
       - express opinions
+    seedWords: [family, parent, child, partner, home, dinner]
 
   lesson012:
     theme: Friendships
@@ -1204,6 +1416,7 @@ B1:
       - describe meaningful friendships
       - discuss trust
       - resolve misunderstandings
+    seedWords: [friend, trust, party, time, group, conversation]
 
   lesson013:
     theme: Raising Children
@@ -1211,6 +1424,7 @@ B1:
       - discuss parenting
       - compare educational approaches
       - give advice
+    seedWords: [child, school, parent, baby, toy, bed]
 
   lesson014:
     theme: Healthy Lifestyle
@@ -1218,6 +1432,7 @@ B1:
       - discuss healthy habits
       - evaluate diets
       - explain routines
+    seedWords: [food, exercise, sleep, fruit, water, gym]
 
   lesson015:
     theme: Mental Health
@@ -1225,6 +1440,7 @@ B1:
       - describe emotions
       - discuss stress management
       - support others
+    seedWords: [stress, sleep, mood, friend, rest, doctor]
 
   lesson016:
     theme: Healthcare
@@ -1232,6 +1448,7 @@ B1:
       - explain medical situations
       - understand treatment options
       - ask detailed questions
+    seedWords: [doctor, hospital, medicine, treatment, nurse, pain]
 
   lesson017:
     theme: Sports and Fitness
@@ -1239,6 +1456,7 @@ B1:
       - discuss exercise routines
       - compare sports
       - describe achievements
+    seedWords: [gym, run, muscle, team, ball, bike]
 
   lesson018:
     theme: Nutrition
@@ -1246,6 +1464,7 @@ B1:
       - discuss healthy eating
       - compare diets
       - explain food choices
+    seedWords: [food, vegetable, fruit, sugar, meat, diet]
 
   lesson019:
     theme: Cooking and Recipes
@@ -1253,6 +1472,7 @@ B1:
       - explain recipes
       - describe cooking techniques
       - recommend dishes
+    seedWords: [recipe, pan, oven, vegetable, knife, spice]
 
   lesson020:
     theme: Restaurants and Reviews
@@ -1260,6 +1480,7 @@ B1:
       - evaluate restaurants
       - write reviews
       - make recommendations
+    seedWords: [restaurant, menu, meal, waiter, bill, review]
 
   lesson021:
     theme: Technology in Daily Life
@@ -1267,6 +1488,7 @@ B1:
       - discuss technology
       - compare devices
       - explain advantages and disadvantages
+    seedWords: [phone, computer, app, screen, device, internet]
 
   lesson022:
     theme: Artificial Intelligence
@@ -1274,6 +1496,7 @@ B1:
       - explain AI applications
       - discuss opportunities
       - express concerns
+    seedWords: [computer, robot, data, machine, screen, program]
 
   lesson023:
     theme: Social Media
@@ -1281,6 +1504,7 @@ B1:
       - discuss online behaviour
       - express opinions
       - evaluate social media
+    seedWords: [photo, post, profile, friend, phone, message]
 
   lesson024:
     theme: Online Privacy
@@ -1288,6 +1512,7 @@ B1:
       - discuss digital privacy
       - explain risks
       - suggest precautions
+    seedWords: [password, data, account, email, internet, phone]
 
   lesson025:
     theme: Shopping Habits
@@ -1295,6 +1520,7 @@ B1:
       - compare products
       - discuss consumer behaviour
       - justify choices
+    seedWords: [shop, price, product, money, bag, card]
 
   lesson026:
     theme: Consumer Rights
@@ -1302,6 +1528,7 @@ B1:
       - make complaints
       - negotiate solutions
       - understand guarantees
+    seedWords: [shop, receipt, refund, product, complaint, guarantee]
 
   lesson027:
     theme: Money Management
@@ -1309,6 +1536,7 @@ B1:
       - discuss budgeting
       - explain financial decisions
       - compare saving strategies
+    seedWords: [money, budget, bank, salary, bill, saving]
 
   lesson028:
     theme: Banking and Finance
@@ -1316,6 +1544,7 @@ B1:
       - discuss investments
       - explain financial products
       - ask for advice
+    seedWords: [bank, account, money, loan, card, interest]
 
   lesson029:
     theme: Travel Experiences
@@ -1323,6 +1552,7 @@ B1:
       - describe memorable trips
       - compare destinations
       - recommend places
+    seedWords: [trip, city, hotel, photo, beach, flight]
 
   lesson030:
     theme: International Travel
@@ -1330,6 +1560,7 @@ B1:
       - discuss cultural differences
       - solve travel problems
       - give travel advice
+    seedWords: [airport, passport, country, flight, hotel, map]
 
   lesson031:
     theme: Public Transport
@@ -1337,6 +1568,7 @@ B1:
       - discuss transportation systems
       - compare alternatives
       - explain preferences
+    seedWords: [train, bus, ticket, station, tram, platform]
 
   lesson032:
     theme: Mobility and Sustainability
@@ -1344,6 +1576,7 @@ B1:
       - discuss sustainable transport
       - evaluate policies
       - propose improvements
+    seedWords: [bike, car, train, energy, road, city]
 
   lesson033:
     theme: Environment
@@ -1351,6 +1584,7 @@ B1:
       - discuss climate change
       - explain environmental issues
       - suggest solutions
+    seedWords: [climate, waste, energy, water, tree, pollution]
 
   lesson034:
     theme: Nature and Wildlife
@@ -1358,6 +1592,7 @@ B1:
       - describe ecosystems
       - discuss conservation
       - express concerns
+    seedWords: [forest, animal, river, bird, mountain, fish]
 
   lesson035:
     theme: Weather and Climate
@@ -1365,6 +1600,7 @@ B1:
       - discuss climate trends
       - describe extreme weather
       - compare regions
+    seedWords: [rain, sun, storm, snow, wind, temperature]
 
   lesson036:
     theme: Volunteering
@@ -1372,6 +1608,7 @@ B1:
       - explain volunteer work
       - discuss motivations
       - encourage participation
+    seedWords: [volunteer, help, group, project, people, food]
 
   lesson037:
     theme: Community Life
@@ -1379,6 +1616,7 @@ B1:
       - discuss neighbourhood issues
       - propose initiatives
       - evaluate community projects
+    seedWords: [neighbour, street, park, meeting, town, school]
 
   lesson038:
     theme: Culture and Traditions
@@ -1386,6 +1624,7 @@ B1:
       - compare traditions
       - discuss cultural identity
       - explain customs
+    seedWords: [festival, food, music, custom, country, dance]
 
   lesson039:
     theme: Museums and Heritage
@@ -1393,6 +1632,7 @@ B1:
       - describe historical sites
       - evaluate exhibitions
       - recommend visits
+    seedWords: [museum, painting, statue, castle, ticket, history]
 
   lesson040:
     theme: Literature
@@ -1400,6 +1640,7 @@ B1:
       - summarize books
       - discuss characters
       - express opinions
+    seedWords: [book, story, author, novel, page, character]
 
   lesson041:
     theme: Film and Television
@@ -1407,6 +1648,7 @@ B1:
       - review films
       - compare genres
       - recommend productions
+    seedWords: [film, screen, actor, series, ticket, scene]
 
   lesson042:
     theme: Music and Performing Arts
@@ -1414,6 +1656,7 @@ B1:
       - discuss performances
       - compare styles
       - describe experiences
+    seedWords: [concert, stage, music, dance, singer, theatre]
 
   lesson043:
     theme: News and Current Events
@@ -1421,6 +1664,7 @@ B1:
       - summarize news
       - discuss events
       - express opinions
+    seedWords: [news, newspaper, world, report, story, television]
 
   lesson044:
     theme: Politics and Society
@@ -1428,6 +1672,7 @@ B1:
       - discuss social issues
       - explain viewpoints
       - compare opinions
+    seedWords: [government, vote, country, law, leader, people]
 
   lesson045:
     theme: Law and Justice
@@ -1435,6 +1680,7 @@ B1:
       - discuss laws
       - explain rights
       - describe legal situations
+    seedWords: [law, court, judge, police, crime, lawyer]
 
   lesson046:
     theme: Education Systems
@@ -1442,6 +1688,7 @@ B1:
       - compare schools
       - evaluate teaching methods
       - discuss reforms
+    seedWords: [school, university, teacher, exam, student, class]
 
   lesson047:
     theme: Science and Discovery
@@ -1449,6 +1696,7 @@ B1:
       - describe scientific developments
       - explain discoveries
       - discuss impacts
+    seedWords: [science, experiment, laboratory, research, data, discovery]
 
   lesson048:
     theme: Innovation
@@ -1456,6 +1704,7 @@ B1:
       - discuss inventions
       - evaluate new ideas
       - explain benefits
+    seedWords: [idea, invention, product, technology, company, design]
 
   lesson049:
     theme: Communication Skills
@@ -1463,6 +1712,7 @@ B1:
       - present ideas clearly
       - persuade others
       - summarize discussions
+    seedWords: [meeting, speech, audience, message, question, idea]
 
   lesson050:
     theme: Solving Problems
@@ -1470,6 +1720,7 @@ B1:
       - analyse situations
       - propose solutions
       - justify decisions
+    seedWords: [problem, plan, solution, team, idea, meeting]
 
   lesson051:
     theme: Making Decisions
@@ -1477,6 +1728,7 @@ B1:
       - compare options
       - explain choices
       - negotiate outcomes
+    seedWords: [choice, plan, option, money, time, decision]
 
   lesson052:
     theme: Giving Presentations
@@ -1484,6 +1736,7 @@ B1:
       - structure information
       - engage an audience
       - answer questions
+    seedWords: [presentation, screen, audience, slide, speech, question]
 
   lesson053:
     theme: Debating Opinions
@@ -1491,6 +1744,7 @@ B1:
       - defend viewpoints
       - challenge arguments
       - reach conclusions
+    seedWords: [debate, opinion, argument, question, idea, point]
 
   lesson054:
     theme: Planning Projects
@@ -1498,6 +1752,7 @@ B1:
       - organize tasks
       - assign responsibilities
       - monitor progress
+    seedWords: [project, plan, team, task, deadline, meeting]
 
   lesson055:
     theme: Dutch Society
@@ -1505,6 +1760,7 @@ B1:
       - discuss social issues
       - compare cultures
       - evaluate traditions
+    seedWords: [bicycle, canal, cheese, king, market, immigration]
 
   lesson056:
     theme: International Perspectives
@@ -1512,6 +1768,7 @@ B1:
       - compare countries
       - discuss globalization
       - describe cultural experiences
+    seedWords: [country, culture, world, language, travel, border]
 
   lesson057:
     theme: Future Challenges
@@ -1519,6 +1776,7 @@ B1:
       - discuss future trends
       - make predictions
       - evaluate possibilities
+    seedWords: [climate, technology, work, energy, world, future]
 
   lesson058:
     theme: Review of B1 Communication
@@ -1526,6 +1784,7 @@ B1:
       - integrate grammar
       - strengthen vocabulary
       - improve fluency
+    seedWords: [conversation, opinion, plan, story, question, idea]
 
   lesson059:
     theme: Integrated Discussions
@@ -1533,6 +1792,7 @@ B1:
       - sustain conversations
       - express nuanced opinions
       - summarize viewpoints
+    seedWords: [discussion, opinion, argument, topic, question, idea]
 
   lesson060:
     theme: Preparing for B2
@@ -1540,3 +1800,4 @@ B1:
       - consolidate B1 skills
       - increase confidence
       - prepare for independent language use
+    seedWords: [conversation, opinion, essay, argument, plan, future]

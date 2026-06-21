@@ -84,7 +84,13 @@ These shape every change — violating them is a bug:
   and the lesson **format adapts to stage** — below `narrative_vocab_threshold`
   allowed words the prompt asks for short example sentences/dialogue instead of a
   narrative. Both are opt-in/config so output stays reproducible and
-  language-agnostic.
+  language-agnostic. For coherence, the theme catalog (`themes.yaml`) may carry
+  two **optional English** hints per lesson — `seedWords` (concrete anchors fed to
+  `propose_theme_vocabulary` so early lessons get scene-grounding nouns) and
+  `outline` (a brief scenario fed to the writer prompt, forcing a narrative); the
+  generation path validates leniently (`extra_tolerance=None` → only above-CEFR
+  words are violations, every in-level word is allowed) so the text reads
+  naturally instead of degrading into over-constrained filler.
 - **`frequency.py`** — reader for wordfreq `cBpack` files (generic).
 - **`leveling.py`** — generic CEFR assignment by **cumulative frequency budget**
   (`assign_levels`): items fill levels most-frequent-first up to each level's

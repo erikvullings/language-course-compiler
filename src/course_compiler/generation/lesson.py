@@ -78,8 +78,9 @@ def _body_instruction(fmt: str, target_length: str) -> str:
             "concrete; each new word should appear in at least one sentence. "
         )
     return (
-        f"Coherent narrative text, approximately {target_length}. "
-        "Introduce each new word naturally in context. "
+        f"A single coherent narrative — a short story or dialogue — approximately "
+        f"{target_length}, that reads naturally from start to finish (not a list of "
+        "unrelated sentences). Introduce each new word naturally in context. "
     )
 
 
@@ -92,10 +93,15 @@ def _system_prompt(
     return (
         f"You are a language-learning content writer. "
         f"Write a short lesson in {language} with this exact structure:\n\n"
-        f"## Lesson Title\n\n"
+        f"## <a short, specific lesson title in {language} — never the words "
+        f"'Lesson Title'>\n\n"
         f"**New words:** comma-separated list of the new lemmas\n\n"
         f"[{_body_instruction(fmt, target_length)}"
-        f"Keep the vocabulary at the stated CEFR level — do not use advanced words. "
+        f"Keep the vocabulary at the stated CEFR level — do not use advanced words, "
+        f"but you may freely use other common words at or below this level so the "
+        f"text reads naturally. "
+        f"Conjugate verbs correctly for their subject and tense — do not leave a "
+        f"verb in its infinitive form unless the grammar requires it. "
         f"{_tense_guidance(cefr)}"
         f"Articles, prepositions, conjunctions, and common pronouns may be used freely.]\n\n"
         f"Return ONLY the lesson structure above with no other commentary."
@@ -126,6 +132,19 @@ def _fallback_content(new_words: list[str], *, lesson_id: str, reason: str) -> s
     return f"{lesson_id}: lesson unavailable ({reason})."
 
 
+def _clean_title(raw: str) -> str:
+    """Strip the echoed ``Lesson Title`` placeholder weak models reproduce verbatim.
+
+    ``"Lesson Title: Begroetingen"`` → ``"Begroetingen"``; a bare ``"Lesson Title"``
+    → ``""`` (so the caller's default kicks in instead of a literal placeholder).
+    """
+    cleaned = raw.strip()
+    low = cleaned.lower()
+    if low.startswith("lesson title"):
+        cleaned = cleaned[len("lesson title") :].lstrip(" :-—").strip()
+    return cleaned
+
+
 def _parse_lesson_structure(
     text: str,
 ) -> tuple[str, list[str], str]:
@@ -147,7 +166,7 @@ def _parse_lesson_structure(
     for line in lines:
         stripped = line.strip()
         if stripped.startswith("##"):
-            title = stripped[2:].strip()
+            title = _clean_title(stripped[2:].strip())
         elif stripped.startswith("**New words:**"):
             new_words_str = stripped[len("**New words:**") :].strip()
         elif stripped:
@@ -183,7 +202,7 @@ class LessonGenerator:
         function_lemmas: set[str] | None = None,
         cache: LLMCache | None = None,
         max_retries: int = 5,
-        extra_tolerance: float = 0.5,
+        extra_tolerance: float | None = 0.5,
         narrative_vocab_threshold: int = 60,
         fail_open_on_llm_error: bool = True,
         fail_open_on_validation_error: bool = True,
@@ -206,11 +225,18 @@ class LessonGenerator:
         target_length: str,
         new_words: list[str],
         fmt: str,
+        outline: str = "",
     ) -> list[Message]:
+        outline_line = (
+            f"Scene outline (write the text so it follows this): {outline}\n"
+            if outline
+            else ""
+        )
         user_content = (
             f"Lesson ID: {lesson_id}\n"
             f"CEFR level: {cefr}\n"
             f"Theme: {theme}\n"
+            f"{outline_line}"
             f"New words to introduce: {', '.join(new_words)}\n\n"
             "Write the lesson now."
         )
@@ -228,6 +254,7 @@ class LessonGenerator:
         language: str,
         cefr: str = "A1",
         theme: str = "general",
+        outline: str = "",
         model: str | None = None,
         temperature: float = 0.7,
         function_lemmas: set[str] | None = None,
@@ -244,6 +271,8 @@ class LessonGenerator:
             cefr: CEFR level (e.g. ``"A1"``). Included in the prompt and used to
                 classify extra words as tolerated vs. violations.
             theme: Semantic theme (e.g. ``"home"``). Included in the prompt.
+            outline: Optional brief scenario (English) shaping a coherent narrative;
+                when present the lesson is written as narrative rather than examples.
             model: LLM model identifier; provider default used if omitted.
             temperature: Sampling temperature forwarded to the provider.
             function_lemmas: Extra per-call exempt lemmas (e.g. verb surface forms).
@@ -254,13 +283,15 @@ class LessonGenerator:
             RuntimeError: If violations persist after ``max_retries``.
         """
         target_length = _target_length(len(new_words), len(allowed_words))
+        # An outline gives the model a concrete scenario, so even an early lesson
+        # can sustain a coherent narrative rather than loose example sentences.
         fmt = (
             FORMAT_NARRATIVE
-            if len(allowed_words) >= self._narrative_vocab_threshold
+            if outline or len(allowed_words) >= self._narrative_vocab_threshold
             else FORMAT_EXAMPLES
         )
         messages = self._build_initial_messages(
-            lesson_id, language, cefr, theme, target_length, new_words, fmt
+            lesson_id, language, cefr, theme, target_length, new_words, fmt, outline
         )
         raw_messages = [m.as_dict() for m in messages]
         resolved_model = model or ""

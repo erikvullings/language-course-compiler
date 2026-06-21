@@ -73,6 +73,54 @@ def _tokens(text: str) -> set[str]:
     return {t.lower() for t in _TOKEN_RE.findall(text) if len(t) > 1}
 
 
+def _gloss_primary_term(gloss: str) -> str:
+    """The primary English term of a translation gloss.
+
+    Glosses look like ``"house"``, ``"street (a paved road)"`` or
+    ``"day (period of 24 hours)"``; the leading term before any parenthesis,
+    comma or semicolon is the headword we match seed words against.
+    """
+    head = gloss.split("(")[0]
+    for sep in (",", ";"):
+        head = head.split(sep)[0]
+    return head.strip().lower()
+
+
+def _resolve_seed_words(words: list[Word], seed_words: list[str]) -> list[str]:
+    """Map English ``seed_words`` to lexicon lemmas via their English glosses.
+
+    Deterministic and independent of any LLM: for each seed, the most frequent
+    word whose primary English gloss equals the seed is chosen (one lemma per
+    seed). Lets a catalog anchor lessons in concrete vocabulary that the
+    frequency fallback would otherwise bury under function words.
+    """
+    if not seed_words:
+        return []
+
+    index: dict[str, list[Word]] = {}
+    for word in words:
+        gloss = word.translations.get("en", "")
+        term = _gloss_primary_term(gloss) if gloss else ""
+        if term:
+            index.setdefault(term, []).append(word)
+
+    def rank(word: Word) -> int:
+        if word.frequency and word.frequency.rank is not None:
+            return word.frequency.rank
+        return 999_999
+
+    resolved: list[str] = []
+    seen: set[str] = set()
+    for seed in seed_words:
+        key = seed.strip().lower()
+        for word in sorted(index.get(key, []), key=rank):
+            if word.lemma not in seen:
+                seen.add(word.lemma)
+                resolved.append(word.lemma)
+                break
+    return resolved
+
+
 def _theme_candidate_pool(
     *,
     remaining_words: list[Word],
@@ -151,6 +199,8 @@ def _load_predefined_themes(path: Path) -> dict[str, list[LessonThemePlan]]:
 
             theme_name = ""
             communicative_goals: list[str] = []
+            english_seed_words: list[str] = []
+            outline = ""
             if isinstance(lesson_data, dict):
                 raw_theme = lesson_data.get("theme")
                 if isinstance(raw_theme, str):
@@ -162,6 +212,16 @@ def _load_predefined_themes(path: Path) -> dict[str, list[LessonThemePlan]]:
                         for goal in raw_goals
                         if isinstance(goal, str) and goal.strip()
                     ]
+                raw_seeds = lesson_data.get("seedWords")
+                if isinstance(raw_seeds, list):
+                    english_seed_words = [
+                        str(word).strip()
+                        for word in raw_seeds
+                        if isinstance(word, str) and word.strip()
+                    ]
+                raw_outline = lesson_data.get("outline")
+                if isinstance(raw_outline, str):
+                    outline = raw_outline.strip()
             elif isinstance(lesson_data, str):
                 theme_name = lesson_data.strip()
 
@@ -173,6 +233,8 @@ def _load_predefined_themes(path: Path) -> dict[str, list[LessonThemePlan]]:
                             theme=theme_name,
                             seed_lemmas=[],
                             communicative_goals=communicative_goals,
+                            english_seed_words=english_seed_words,
+                            outline=outline,
                         ),
                     )
                 )
@@ -254,6 +316,7 @@ class LessonPlan:
     function_lemmas: set[str]
     new_verbs: list[Verb] = field(default_factory=list)
     allowed_forms: set[str] = field(default_factory=set)
+    outline: str = ""
 
 
 class LessonOrchestrator:
@@ -482,11 +545,23 @@ class LessonOrchestrator:
                 communicative_goals=theme_plan.communicative_goals,
             )
 
-            # Primary: the LLM proposes theme-relevant words from its own knowledge;
+            # Highest priority: concrete anchor words resolved from the catalog's
+            # English seed words via the lexicon's English glosses. Deterministic and
+            # independent of LLM quality, so early lessons get scene-grounding nouns
+            # instead of the high-frequency function words the fallback would pick.
+            for lemma in _resolve_seed_words(
+                remaining_words, theme_plan.english_seed_words
+            ):
+                if lemma not in selected:
+                    selected.append(lemma)
+                if len(selected) >= target_count:
+                    break
+
+            # Next: the LLM proposes theme-relevant words from its own knowledge;
             # we keep only those present in our lexicon, ranked by frequency. This
             # gives communicatively coherent vocabulary instead of frequency-noise.
-            if callable(proposer):
-                proposed = proposer(
+            if len(selected) < target_count and callable(proposer):
+                proposer_kwargs = dict(
                     cefr=cefr,
                     theme=theme_plan.theme,
                     communicative_goals=theme_plan.communicative_goals,
@@ -494,6 +569,15 @@ class LessonOrchestrator:
                     already_used=sorted(used_lemmas),
                     language=language,
                 )
+                try:
+                    # English seed-word anchors bias selection toward concrete nouns.
+                    proposed = proposer(
+                        **proposer_kwargs,
+                        seed_words=theme_plan.english_seed_words,
+                    )
+                except TypeError:
+                    # Back-compat with assigners that predate the seed_words arg.
+                    proposed = proposer(**proposer_kwargs)
                 survivors: list[Word] = []
                 seen_lower: set[str] = set()
                 for raw in proposed if isinstance(proposed, list) else []:
@@ -574,6 +658,7 @@ class LessonOrchestrator:
                     function_lemmas=function_lemmas,
                     new_verbs=batch_verbs,
                     allowed_forms=accumulated_forms | new_forms,
+                    outline=theme_plan.outline,
                 )
             )
             accumulated |= new_lemmas
@@ -728,6 +813,7 @@ class LessonOrchestrator:
                 language=language,
                 cefr=cefr,
                 theme=plan.theme,
+                outline=plan.outline,
                 model=model,
                 temperature=temperature,
                 function_lemmas=plan.function_lemmas | plan.allowed_forms,

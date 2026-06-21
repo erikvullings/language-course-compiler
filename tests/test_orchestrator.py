@@ -27,6 +27,7 @@ def _word(
     pos: PartOfSpeech = PartOfSpeech.NOUN,
     cefr: str | None = "A1",
     rank: int = 1,
+    en: str | None = None,
 ) -> Word:
     return Word(
         id=lemma,
@@ -36,6 +37,7 @@ def _word(
         part_of_speech=pos,
         cefr=cefr,
         frequency=Frequency(rank=rank),
+        translations={"en": en} if en else {},
     )
 
 
@@ -117,6 +119,7 @@ class _StubProposingThemeAssigner(_StubThemeAssigner):
         super().__init__(mapping)
         self._proposals_by_theme = proposals_by_theme
         self.propose_calls: list[tuple[str, int, str]] = []
+        self.seed_words_calls: list[list[str]] = []
 
     def propose_theme_vocabulary(
         self,
@@ -127,8 +130,10 @@ class _StubProposingThemeAssigner(_StubThemeAssigner):
         target_count: int,
         already_used: list[str],
         language: str = "",
+        seed_words: list[str] | None = None,
     ) -> list[str]:
         self.propose_calls.append((theme, target_count, language))
+        self.seed_words_calls.append(list(seed_words or []))
         return list(self._proposals_by_theme.get(theme, []))
 
 
@@ -712,6 +717,74 @@ def test_homograph_plan_is_deterministic():
         ]
 
     assert shape(first) == shape(second)
+
+
+def test_seed_words_resolve_to_lexicon_via_english_glosses():
+    """English seedWords select concrete lemmas directly, beating frequency fallback."""
+    # High-frequency fillers (no English gloss match) vs less-frequent concrete nouns.
+    words = [
+        _word("nu", rank=1, en="now"),
+        _word("er", rank=2, en="there"),
+        _word("ja", rank=3, en="yes"),
+        _word("straat", rank=50, en="street (a paved road)"),
+        _word("naam", rank=60, en="name"),
+        _word("huis", rank=70, en="house"),
+    ]
+    generator = LessonGenerator(_StubProvider(), _IdentityLemmatizer())
+    # Proposer returns nothing, so without seedWords selection would fall back to
+    # the most frequent words (nu, er, ja).
+    assigner = _StubProposingThemeAssigner({"misc": []}, proposals_by_theme={})
+    orc = LessonOrchestrator(
+        generator,
+        assigner,
+        words_per_lesson=10,
+        predefined_themes={
+            "A1": [
+                LessonThemePlan(
+                    theme="Home",
+                    seed_lemmas=[],
+                    english_seed_words=["street", "name", "house"],
+                ),
+                LessonThemePlan(theme="Filler", seed_lemmas=[]),
+            ]
+        },
+    )
+
+    plans = orc.plan(words, cefr="A1", language="Dutch")
+
+    # Lesson 1 is anchored by the resolved concrete nouns, not the frequent fillers.
+    assert {w.lemma for w in plans[0].new_words} == {"straat", "naam", "huis"}
+
+
+def test_catalog_outline_and_seed_words_flow_through():
+    """An outline reaches the LessonPlan; English seed words reach the proposer."""
+    words = [_word("huis", rank=1), _word("straat", rank=2)]
+    generator = LessonGenerator(_StubProvider(), _IdentityLemmatizer())
+    assigner = _StubProposingThemeAssigner(
+        {"misc": ["huis", "straat"]},
+        proposals_by_theme={"Home": ["huis", "straat"]},
+    )
+    orc = LessonOrchestrator(
+        generator,
+        assigner,
+        words_per_lesson=10,
+        predefined_themes={
+            "A1": [
+                LessonThemePlan(
+                    theme="Home",
+                    seed_lemmas=[],
+                    communicative_goals=["describe your home"],
+                    english_seed_words=["house", "street"],
+                    outline="A person describes their house on a quiet street.",
+                )
+            ]
+        },
+    )
+
+    plans = orc.plan(words, cefr="A1", language="Dutch")
+
+    assert plans[0].outline == "A person describes their house on a quiet street."
+    assert assigner.seed_words_calls[0] == ["house", "street"]
 
 
 def test_catalog_path_front_loads_when_configured():

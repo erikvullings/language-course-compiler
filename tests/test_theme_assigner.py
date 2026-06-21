@@ -159,6 +159,43 @@ def test_propose_theme_vocabulary_returns_parsed_lemmas():
     assert result == ["brood", "appel", "melk", "koffie"]
 
 
+def test_propose_theme_vocabulary_includes_english_seed_words_in_prompt():
+    """English seed-word anchors are passed to the proposer to bias selection."""
+
+    class _CapturingProvider(LLMProvider):
+        def __init__(self, response: str) -> None:
+            self._response = response
+            self.last_prompt = ""
+
+        def complete(
+            self, prompt: PromptInput, *, model=None, temperature=None, **kwargs
+        ) -> LLMResponse:
+            from course_compiler.llm.base import to_messages
+
+            self.last_prompt = " ".join(m.content for m in to_messages(prompt))
+            return LLMResponse(content=self._response, model=model or "stub", raw={})
+
+        async def acomplete(
+            self, prompt: PromptInput, *, model=None, temperature=None, **kwargs
+        ) -> LLMResponse:
+            return self.complete(prompt, model=model)
+
+    provider = _CapturingProvider(json.dumps({"vocabulary": ["huis"]}))
+    assigner = LLMThemeAssigner(provider, model="stub")
+
+    assigner.propose_theme_vocabulary(
+        cefr="A1",
+        theme="home",
+        communicative_goals=["describe your home"],
+        target_count=3,
+        already_used=[],
+        seed_words=["house", "room", "street"],
+    )
+
+    assert "house" in provider.last_prompt
+    assert "room" in provider.last_prompt
+
+
 def test_propose_theme_vocabulary_returns_empty_on_provider_error():
     class _FailingProvider(LLMProvider):
         def complete(
