@@ -737,6 +737,7 @@ def main(argv: list[str] | None = None) -> int:
             flush=True,
         )
         count = 0
+        failed = 0
         for plan, lesson in orchestrator.generate_iter(
             words,
             language=language_name,
@@ -759,14 +760,25 @@ def main(argv: list[str] | None = None) -> int:
                 payload.model_dump(by_alias=True, exclude_none=True, mode="json"),
             )
             count += 1
+            if lesson.fallback:
+                failed += 1
+            status = " — FALLBACK (provider failed; placeholder text)" if lesson.fallback else ""
             print(
                 f"  [{count}] {lesson.lesson_id} {plan.theme} "
-                f"({lesson.attempts} attempt(s))",
+                f"({len(lesson.new_words)} new words, {lesson.attempts} attempt(s)){status}",
                 file=sys.stderr,
                 flush=True,
             )
 
         print(f"Generated {count} lessons into {out_dir}")
+        if failed:
+            print(
+                f"WARNING: {failed}/{count} lesson(s) fell back to placeholder text "
+                "because the LLM provider failed (timeout/out-of-memory). Check that "
+                "the model is loaded and the Ollama context is large enough, then "
+                "rerun to regenerate just those lessons.",
+                file=sys.stderr,
+            )
         return 0
 
     if args.command == "import":

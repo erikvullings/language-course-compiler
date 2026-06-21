@@ -43,6 +43,9 @@ class GeneratedLesson:
     title: str = ""
     theme: str = ""
     new_words: frozenset[str] = frozenset()
+    #: True when ``content`` is the deterministic placeholder produced after the
+    #: provider failed or validation could not be satisfied — not real lesson text.
+    fallback: bool = False
 
 
 _LOW_CEFR: frozenset[str] = frozenset({"A1", "A2"})
@@ -329,6 +332,7 @@ class LessonGenerator:
                     title="Untitled",
                     theme=theme,
                     new_words=frozenset(new_words),
+                    fallback=True,
                 )
 
             if self._cache is not None and attempt == 1:
@@ -377,6 +381,7 @@ class LessonGenerator:
                 title="Untitled",
                 theme=theme,
                 new_words=frozenset(new_words),
+                fallback=True,
             )
 
         raise RuntimeError(
