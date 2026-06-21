@@ -95,32 +95,34 @@ class ThemeAssigner(Protocol):
     Returns ``{theme_name: [Word, ...]}``.  Every input word must appear in
     exactly one theme; implementors should collect unassigned words under a
     ``"misc"`` key.
+
+    Only :meth:`assign` is required. An assigner *may* additionally provide
+    ``plan_lessons``, ``select_seed_lemmas_for_theme`` or
+    ``propose_theme_vocabulary`` to influence catalog-driven planning; the
+    orchestrator discovers these optionally (via ``getattr``) and falls back to
+    deterministic seed-word + frequency selection when they are absent (see
+    :class:`DeterministicThemeAssigner`).
     """
 
     def assign(self, words: list[Word]) -> dict[str, list[Word]]: ...
 
-    def select_seed_lemmas_for_theme(
-        self,
-        *,
-        cefr: str,
-        theme: str,
-        communicative_goals: list[str],
-        target_count: int,
-        already_used: list[str],
-        candidate_lemmas: list[str],
-    ) -> list[str]: ...
 
-    def propose_theme_vocabulary(
-        self,
-        *,
-        cefr: str,
-        theme: str,
-        communicative_goals: list[str],
-        target_count: int,
-        already_used: list[str],
-        language: str = "",
-        seed_words: list[str] | None = None,
-    ) -> list[str]: ...
+class DeterministicThemeAssigner:
+    """Plan lessons without any LLM calls — the default assigner.
+
+    Implements only :meth:`assign` (a single deterministic bucket, used when no
+    theme catalog is configured). It deliberately omits ``propose_theme_vocabulary``
+    and ``select_seed_lemmas_for_theme`` so the orchestrator's catalog path selects
+    each lesson's vocabulary purely from the catalog's English seed words (resolved
+    via the lexicon's glosses) and frequency ranking — fast, reproducible, offline.
+
+    This replaced LLM-backed theme proposing, which made ~2 model calls per theme
+    (minutes of latency *before any lesson was written*) without improving on
+    seed-word-anchored selection.
+    """
+
+    def assign(self, words: list[Word]) -> dict[str, list[Word]]:
+        return {"general": sorted(words, key=lambda w: w.lemma)}
 
 
 def _strip_fences(text: str) -> str:

@@ -619,7 +619,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "generate-lessons":
         from course_compiler.generation.lesson import LessonGenerator
         from course_compiler.generation.orchestrator import LessonOrchestrator
-        from course_compiler.generation.themes import LLMThemeAssigner
+        from course_compiler.generation.themes import DeterministicThemeAssigner
         from course_compiler.models import Lesson
 
         settings = Settings.load()
@@ -641,13 +641,17 @@ def main(argv: list[str] | None = None) -> int:
 
         verbs = _load_verbs_from_lexicon(lexicon_dir)
 
-        # Theme assigner — LLM-backed with disk cache next to the lexicon.
+        # Deterministic planning: vocabulary is selected from the theme catalog's
+        # seed words + frequency, with no LLM calls in the planner. This plans an
+        # entire level in <1s; LLM time is spent only writing the lessons. (The
+        # previous LLM theme proposer cost ~2 calls/theme — minutes before any
+        # lesson was written — without improving seed-word-anchored selection.)
         from course_compiler.generation.base import create_lemmatizer
         from course_compiler.generation.cache import LLMCache
 
         cache_dir = lexicon_dir / ".llm_cache"
         cache = None if args.no_cache else LLMCache(cache_dir)
-        assigner = LLMThemeAssigner(provider, model=None, cache=cache)
+        assigner = DeterministicThemeAssigner()
 
         lemmatizer = create_lemmatizer(args.lang)
         # Coherence over strict prior-only discipline: tolerate every in-level word
