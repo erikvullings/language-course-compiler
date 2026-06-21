@@ -530,8 +530,14 @@ def test_plan_spreads_content_across_all_predefined_themes_when_more_than_implie
     assert [len(p.new_words) for p in plans] == [1, 1, 1, 1]
 
 
-def test_predefined_themes_cover_all_content_even_when_few_themes():
-    """One lesson per theme distributes ALL vocabulary; nothing is dropped."""
+def test_predefined_themes_cap_lesson_size_and_teach_a_subset():
+    """Each lesson introduces at most ``words_per_lesson`` new words.
+
+    A lexicon larger than ``themes × budget`` is taught as a curated subset
+    (most-frequent-first) rather than crammed into a few enormous lessons — the
+    point of a graded course. (Previously this path distributed *all* vocabulary,
+    which dumped hundreds of new words into early lessons.)
+    """
     words = [_word(f"w{i:02d}", rank=i) for i in range(1, 11)]  # 10 words
     provider = _StubProvider()
     generator = LessonGenerator(provider, _IdentityLemmatizer())
@@ -539,15 +545,19 @@ def test_predefined_themes_cover_all_content_even_when_few_themes():
     orc = LessonOrchestrator(
         generator,
         assigner,
-        words_per_lesson=2,  # would, if naively chunked, cover only 2*2=4 words
+        words_per_lesson=2,
         predefined_themes={"A1": ["T1", "T2"]},
     )
 
     plans = orc.plan(words, cefr="A1")
 
     assert [p.theme for p in plans] == ["T1", "T2"]
+    # Capped at 2 new words per lesson: 2 lessons × 2 = 4 of the 10 words, the most
+    # frequent first; the surplus is simply not taught in this run.
+    assert [len(p.new_words) for p in plans] == [2, 2]
     all_lemmas = [w.lemma for p in plans for w in p.new_words]
-    assert len(all_lemmas) == len(set(all_lemmas)) == 10  # every word, once
+    assert len(all_lemmas) == len(set(all_lemmas)) == 4
+    assert set(all_lemmas) == {"w01", "w02", "w03", "w04"}
 
 
 def test_plan_predefined_themes_prefer_proposed_vocabulary_filtered_to_lexicon():
@@ -579,9 +589,10 @@ def test_plan_predefined_themes_prefer_proposed_vocabulary_filtered_to_lexicon()
 
     plans = orc.plan(words, cefr="A1", language="Dutch")
 
-    # Out-of-lexicon proposal ('espresso') dropped; the three in-lexicon words are
-    # kept, frequency-ranked (thee=1 < koffie=2 < water=3).
-    assert [w.lemma for w in plans[0].new_words] == ["thee", "koffie", "water"]
+    # Out-of-lexicon proposal ('espresso') dropped; the surviving in-lexicon words
+    # are kept frequency-ranked (thee=1 < koffie=2) and capped at words_per_lesson=2,
+    # so 'water' is not reached in this single capped lesson.
+    assert [w.lemma for w in plans[0].new_words] == ["thee", "koffie"]
     all_lemmas = {w.lemma for p in plans for w in p.new_words}
     assert "espresso" not in all_lemmas
     # The proposer was consulted with the lesson's target count and language.

@@ -117,18 +117,29 @@ class VocabularyValidator:
 
         # Classify extras by CEFR level when lookup is available.
         if cefr_target and cefr_lookup is not None:
-            above_cefr = frozenset(e for e in extras if _cefr_exceeds(cefr_lookup.get(e), cefr_target))
+            above_cefr = frozenset(
+                e for e in extras if _cefr_exceeds(cefr_lookup.get(e), cefr_target)
+            )
             at_or_below = extras - above_cefr
         else:
             # No CEFR info: treat all extras as violations.
             return ValidationResult(violations=frozenset(extras), tolerated=frozenset())
 
-        # Apply tolerance budget to at/below-CEFR extras. ``None`` = no cap: every
-        # in-level extra is tolerated, so only above-CEFR words remain violations.
+        # ``None`` tolerance = coherence-first generation: tolerate every extra the
+        # lexicon does *not* know to be above level. Words with no CEFR tag (proper
+        # nouns, rare/un-budgeted lemmas) are unknown, not provably advanced, so
+        # rejecting them would sink otherwise-natural text; only words with a *known*
+        # level strictly above the target remain violations.
         if extra_tolerance is None:
+            known_above = frozenset(
+                e
+                for e in extras
+                if (level := cefr_lookup.get(e)) is not None
+                and _cefr_exceeds(level, cefr_target)
+            )
             return ValidationResult(
-                violations=above_cefr,
-                tolerated=frozenset(at_or_below),
+                violations=known_above,
+                tolerated=frozenset(extras - known_above),
             )
 
         budget = math.ceil(extra_tolerance * max(new_word_count, 1))

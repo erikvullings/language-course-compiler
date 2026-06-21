@@ -515,9 +515,13 @@ class LessonOrchestrator:
         if not all_content:
             return plans
 
-        # One lesson per configured theme: distribute ALL content across the
-        # themes so nothing is dropped (front-loaded when configured). The lesson
-        # count is min(themes, words); words_per_lesson does not cap this path.
+        # One lesson per configured theme. Each lesson introduces at most a
+        # budget-sized batch of new words (``_budget_for``, front-loaded): the
+        # even split across themes is a *ceiling* that keeps small lexicons spread
+        # out, but a large lexicon (e.g. ~20k attested-A1 lemmas) is NOT crammed
+        # into a single lesson — it would overflow the model's context and bury the
+        # theme. Surplus vocabulary beyond ``themes × budget`` is simply not taught
+        # in this run (a curated subset), which is the point of a graded course.
         lesson_count = min(len(theme_sequence), len(all_content))
         slices = self._distribute(len(all_content), lesson_count)
 
@@ -549,7 +553,9 @@ class LessonOrchestrator:
                 break
 
             theme_plan = theme_sequence[index]
-            target_count = max(1, end - start)
+            # Cap the even-split slice at the per-lesson budget so a huge lexicon
+            # yields many small lessons, not a few enormous ones.
+            target_count = min(max(1, end - start), self._budget_for(index + 1))
             selected: list[str] = []
             remaining_words = [w for w in all_content if w.lemma not in used_lemmas]
             candidate_lemmas = _theme_candidate_pool(
