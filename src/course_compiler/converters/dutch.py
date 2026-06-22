@@ -624,7 +624,7 @@ def convert(
 def _write_json_array(path: Path, rows: list[dict]) -> None:
     ordered = sorted(rows, key=lambda row: str(row.get("id", "")))
     path.write_text(
-        json.dumps(ordered, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        json.dumps(ordered, ensure_ascii=True, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
 
@@ -632,7 +632,7 @@ def _write_json_array(path: Path, rows: list[dict]) -> None:
 def _write_json_object(path: Path, rows: dict[str, str]) -> None:
     ordered = {key: rows[key] for key in sorted(rows)}
     path.write_text(
-        json.dumps(ordered, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        json.dumps(ordered, ensure_ascii=True, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
 

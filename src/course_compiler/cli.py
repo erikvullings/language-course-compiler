@@ -11,6 +11,7 @@ import argparse
 import base64
 import hashlib
 import json
+import logging
 import sys
 import time
 from collections.abc import Sequence
@@ -130,7 +131,7 @@ def _fallback_lesson_ids(out_dir: Path) -> set[str]:
 def _write_json(path: Path, data: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
-        json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        json.dumps(data, ensure_ascii=True, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
 
@@ -516,6 +517,12 @@ def build_parser() -> argparse.ArgumentParser:
         "text (provider failure / unmet validation), found in the output directory. "
         "Implies --no-cache so the failing cached attempt is not replayed.",
     )
+    gen.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="Enable DEBUG logging: prints the exact system prompt, user message, "
+        "LLM response, and validation outcome for every lesson attempt.",
+    )
 
     imp = sub.add_parser("import", help="Import lexical sources into canonical YAML")
     imp.add_argument("--language", default="nl", choices=["nl"], help="Source language")
@@ -644,6 +651,13 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    if getattr(args, "verbose", False):
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format="%(levelname)s %(name)s: %(message)s",
+            stream=sys.stderr,
+        )
 
     if args.command == "ask":
         settings = Settings.load()
