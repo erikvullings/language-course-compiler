@@ -86,6 +86,7 @@ class LessonThemePlan:
     seed_lemmas: list[str]
     communicative_goals: list[str] = field(default_factory=list)
     english_seed_words: list[str] = field(default_factory=list)
+    english_verbs: list[str] = field(default_factory=list)
     outline: str = ""
 
 

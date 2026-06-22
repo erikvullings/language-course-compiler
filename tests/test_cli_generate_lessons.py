@@ -22,17 +22,17 @@ class _GenerateLessonsProvider(LLMProvider):
         from course_compiler.llm.base import to_messages
 
         messages = to_messages(prompt)
-        system = messages[0].content if messages else ""
+        user = messages[0].content if messages else ""
 
-        if "language-course planner" in system:
+        if "language-course planner" in user:
             content = json.dumps(
                 {"lessons": [{"theme": "home", "seed_lemmas": ["huis", "deur"]}]}
             )
             return LLMResponse(content=content, model=model or "stub", raw={})
 
-        if "language-learning content writer" in system:
+        if "writer" in user:
             return LLMResponse(
-                content="## Home Lesson\n**New words:** huis, deur\nhuis deur",
+                content="## Home Lesson\nhuis deur",
                 model=model or "stub",
                 raw={},
             )

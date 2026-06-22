@@ -786,6 +786,63 @@ def test_seed_words_resolve_to_lexicon_via_english_glosses():
     assert "er" not in lesson1_lemmas  # seed_owner reservation protects 'er'-less seeds
 
 
+def test_verb_hints_resolve_to_verbs_via_english_glosses():
+    """A catalog ``verbs`` hint selects the matching verb (most frequent) into the lesson."""
+    words = [_word("huis", rank=50, en="house")]
+    # Two verbs glossing 'have'; the most frequent (lower rank) must win.
+    # The 'have' verb lives in a separate file as a stub without seedWords; before
+    # the stub carried its gloss, an English verb hint could never reach it.
+    have = Verb(
+        id="hebben", language="nl", lemma="hebben", infinitive="hebben",
+        cefr="A1", frequency=Frequency(rank=42), present={"ik": "heb"},
+        translations={"en": "to have"},
+    )
+    generator = LessonGenerator(_StubProvider(), _IdentityLemmatizer())
+    assigner = _StubProposingThemeAssigner({"misc": []}, proposals_by_theme={})
+    orc = LessonOrchestrator(
+        generator,
+        assigner,
+        words_per_lesson=10,
+        predefined_themes={
+            "A1": [
+                LessonThemePlan(
+                    theme="Greetings",
+                    seed_lemmas=[],
+                    english_seed_words=["house"],
+                    english_verbs=["have"],
+                )
+            ]
+        },
+    )
+
+    plans = orc.plan(words, cefr="A1", verbs=[have], language="Dutch")
+
+    # The English verb hint resolved to the verb stub via its gloss and was taught.
+    verb_infinitives = {v.infinitive for v in plans[0].new_verbs}
+    assert "hebben" in verb_infinitives
+
+
+def test_catalog_verbs_field_is_parsed(tmp_path):
+    """An English ``verbs`` list in the YAML catalog becomes ``english_verbs``."""
+    from course_compiler.generation.orchestrator import _load_predefined_themes
+
+    catalog = tmp_path / "themes.yaml"
+    catalog.write_text(
+        "A1:\n"
+        "  lesson001:\n"
+        "    theme: Greetings\n"
+        "    seedWords: [hello, name]\n"
+        "    verbs: [be, have, greet]\n",
+        encoding="utf-8",
+    )
+
+    loaded = _load_predefined_themes(catalog)
+
+    plan = loaded["A1"][0]
+    assert plan.english_seed_words == ["hello", "name"]
+    assert plan.english_verbs == ["be", "have", "greet"]
+
+
 def test_seed_words_are_reserved_from_earlier_themes():
     """An earlier theme's frequency fallback must not steal a later theme's anchor."""
     words = [

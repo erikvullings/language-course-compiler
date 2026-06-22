@@ -1,11 +1,16 @@
-# Lesson theme catalog (language-agnostic). Per lesson, two OPTIONAL English
+# Lesson theme catalog (language-agnostic). Per lesson, three OPTIONAL English
 # authoring hints make generated text read as a coherent story instead of loose
 # sentences (the LLM realizes them into the target language):
 #   seedWords: concrete English anchor words that bias vocabulary selection
 #              toward scene-grounding nouns (so early lessons aren't all light
 #              function words). They resolve to lexicon entries via English glosses.
+#   verbs:     English verbs the scene needs (the sentence "engine"); resolved to
+#              the most-frequent matching target verb and taught first, so lessons
+#              are not left with only nouns. Verbs live in a separate lexicon file.
 #   outline:   a brief English scenario the writer follows for a coherent narrative.
-# Both are optional; omit them to fall back to theme + communicativeGoals only.
+# All are optional; omit them to fall back to theme + communicativeGoals only.
+# seedWords/verbs are kept to a single coherent scene (e.g. a morning greeting),
+# not a generic grab-bag, so the narrative stays natural.
 A1:
   lesson001:
     theme: Greetings
@@ -13,7 +18,8 @@ A1:
       - greet someone
       - introduce yourself
       - say goodbye
-    seedWords: [hello, good morning, name, neighbour, street, goodbye]
+    seedWords: [hello, good morning, name, neighbour, street, goodbye, welcome]
+    verbs: [meet, greet, introduce, ask, say]
     outline: >
       Two neighbours meet on the street in the morning. They greet each other,
       introduce themselves by name, ask how the other is, and say goodbye.
@@ -24,7 +30,8 @@ A1:
       - say your name
       - ask someone's name
       - state your nationality
-    seedWords: [name, city, country, address, age, family]
+    seedWords: [name, city, country, address, age, family, colleague, team]
+    verbs: [introduce, come, live]
     outline: >
       A new colleague introduces herself to the team: her name, the city and
       country she comes from, where she lives now, and a little about her
@@ -36,7 +43,8 @@ A1:
       - count from 1 to 20
       - ask someone's age
       - give your phone number
-    seedWords: [number, phone, age, year, money, hour]
+    seedWords: [number, phone, age, year, money, hour, reception, desk, sign]
+    verbs: [ask, say, write]
     outline: >
       At a reception desk a man signs up: the clerk asks his age and phone
       number, and he says the numbers slowly while the clerk writes them down.
@@ -47,7 +55,8 @@ A1:
       - introduce family members
       - describe relationships
       - ask about family
-    seedWords: [mother, father, brother, sister, child, grandparent]
+    seedWords: [mother, father, brother, sister, child, grandparent, show, photo, friend]
+    verbs: [explain]
     outline: >
       A girl shows a family photo to a friend and explains who each person is —
       her mother, father, brother, sister and grandparents — and how old they
@@ -59,7 +68,8 @@ A1:
       - describe your home
       - name rooms
       - describe where you live
-    seedWords: [house, room, kitchen, garden, door, window]
+    seedWords: [house, room, kitchen, garden, door, window, friend, tour, bedroom]
+    verbs: [give]
     outline: >
       A woman gives a friend a short tour of her house, naming each room — the
       kitchen, the living room, the bedroom — and the garden behind the door.
@@ -70,7 +80,8 @@ A1:
       - identify furniture
       - describe a room
       - talk about possessions
-    seedWords: [table, chair, bed, lamp, sofa, cupboard]
+    seedWords: [table, chair, bed, lamp, sofa, cupboard, friend]
+    verbs: [arrange, decide, go]
     outline: >
       Two friends arrange a living room together, deciding where the table, the
       chairs, the sofa and the lamp should go.
@@ -81,7 +92,8 @@ A1:
       - describe your day
       - tell what time you wake up
       - talk about habits
-    seedWords: [morning, breakfast, work, evening, sleep, shower]
+    seedWords: [morning, breakfast, work, evening, shower]
+    verbs: [sleep, describe, wake]
     outline: >
       A man describes an ordinary weekday from waking up and having breakfast,
       through work, to the evening and going to sleep.
@@ -92,7 +104,8 @@ A1:
       - tell the time
       - ask the time
       - discuss schedules
-    seedWords: [clock, hour, minute, morning, afternoon, late]
+    seedWords: [clock, hour, minute, morning, afternoon, late, station, traveller, train]
+    verbs: [ask, tell, look, worry]
     outline: >
       At a station two travellers ask and tell each other the time, look at the
       clock, and worry a little about being late for the train.
@@ -103,7 +116,8 @@ A1:
       - name weekdays
       - talk about dates
       - mention birthdays
-    seedWords: [day, week, month, weekend, birthday, calendar]
+    seedWords: [day, week, month, weekend, birthday, calendar, friend]
+    verbs: [look, choose]
     outline: >
       Two friends look at a calendar to choose a free day at the weekend for a
       birthday, naming the days of the week and the month.
@@ -114,7 +128,8 @@ A1:
       - describe the weather
       - ask about today's weather
       - choose suitable clothing
-    seedWords: [rain, sun, cold, warm, wind, umbrella]
+    seedWords: [rain, sun, cold, warm, wind, umbrella, window]
+    verbs: [look, describe, decide, take]
     outline: >
       Two people look out of the window, describe today's weather — sun, rain,
       wind, cold — and decide together what to wear and whether to take an
@@ -126,7 +141,8 @@ A1:
       - name the seasons
       - describe seasonal activities
       - express preferences
-    seedWords: [summer, winter, spring, autumn, weather, holiday]
+    seedWords: [summer, winter, spring, autumn, weather, holiday, friend, season, love, beach]
+    verbs: [compare, prefer, describe]
     outline: >
       Two friends compare their favourite seasons: one loves summer at the beach,
       the other prefers spring flowers. They describe typical weather and what they
@@ -138,7 +154,8 @@ A1:
       - name common foods
       - express likes and dislikes
       - describe meals
-    seedWords: [bread, cheese, apple, meat, soup, plate]
+    seedWords: [bread, cheese, apple, meat, soup, plate, lunch, mother, fruit, table]
+    verbs: [say, decide]
     outline: >
       At lunch a mother puts bread, cheese, soup and fruit on the table.
       Her child says what he likes and dislikes, and together they decide
@@ -150,7 +167,8 @@ A1:
       - order drinks
       - offer someone a drink
       - describe preferences
-    seedWords: [water, coffee, tea, milk, juice, glass]
+    seedWords: [water, coffee, tea, milk, juice, glass, host, guest, drink]
+    verbs: [offer, choose, explain, raise]
     outline: >
       A host welcomes a guest and offers coffee, tea, juice or water.
       The guest chooses, explains what she usually drinks, and they
@@ -162,7 +180,8 @@ A1:
       - describe breakfast
       - prepare a meal
       - ask for food
-    seedWords: [bread, egg, coffee, butter, cheese, table]
+    seedWords: [bread, egg, coffee, butter, cheese, table, breakfast, slice]
+    verbs: [sit, make, set, ask, want]
     outline: >
       A family sits at the breakfast table. One person makes coffee and
       eggs while another slices bread and sets out butter and cheese;
@@ -174,7 +193,8 @@ A1:
       - ask prices
       - buy groceries
       - pay at the checkout
-    seedWords: [shop, money, price, bag, market, cash]
+    seedWords: [shop, money, price, bag, market, cash, bread, cheese, item]
+    verbs: [ask, pay]
     outline: >
       A woman does her weekly shop at the market: she asks the price of
       bread and cheese, puts items in her bag, and pays with cash at
@@ -186,7 +206,8 @@ A1:
       - describe clothing
       - talk about sizes
       - buy clothes
-    seedWords: [shirt, trousers, shoe, coat, dress, hat]
+    seedWords: [shirt, trousers, shoe, coat, dress, hat, clothing, shop, size, assistant]
+    verbs: [ask, try, decide, buy]
     outline: >
       A man in a clothing shop asks for a shirt in his size. The assistant
       shows him a coat and trousers; he tries them on and decides what to buy.
@@ -197,7 +218,8 @@ A1:
       - identify colours
       - describe objects
       - express preferences
-    seedWords: [red, blue, green, yellow, black, white]
+    seedWords: [red, blue, green, yellow, black, white, children, picture, name, sky]
+    verbs: [paint, argue, look]
     outline: >
       Two children paint a picture together. They name the colours they use —
       red, blue, green, yellow — and argue cheerfully about which colour
@@ -209,7 +231,8 @@ A1:
       - name body parts
       - describe appearance
       - report simple pain
-    seedWords: [head, hand, foot, eye, arm, hair]
+    seedWords: [head, foot, eye, arm, hair, child, parent, name, body, doctor]
+    verbs: [hand, tell, hurt, check, decide, call]
     outline: >
       A child tells a parent where it hurts — head, foot, arm. The parent
       checks the child's eyes and hair, names the body parts aloud, and
@@ -221,7 +244,8 @@ A1:
       - describe symptoms
       - visit a doctor
       - ask for medicine
-    seedWords: [doctor, pain, medicine, fever, illness, hospital]
+    seedWords: [doctor, pain, medicine, fever, illness, hospital, visit]
+    verbs: [describe, feel, examine, explain, tell, take]
     outline: >
       A man with a fever and pain visits his doctor. He describes how he
       feels; the doctor examines him, explains the illness, and tells him
@@ -233,7 +257,8 @@ A1:
       - buy medicine
       - ask for advice
       - understand instructions
-    seedWords: [medicine, pill, doctor, pharmacy, cough, advice]
+    seedWords: [medicine, pill, doctor, pharmacy, advice, instruction]
+    verbs: [cough, explain, recommend, give, take]
     outline: >
       A woman with a cough goes to the pharmacy. She explains her symptoms,
       the pharmacist recommends pills and gives instructions on how and when
@@ -245,7 +270,8 @@ A1:
       - describe a classroom
       - talk about subjects
       - ask questions
-    seedWords: [school, teacher, book, pen, class, student]
+    seedWords: [school, teacher, book, pen, class, student, board, subject, answer]
+    verbs: [look, see, ask]
     outline: >
       On the first day a new student looks around the classroom: she sees
       books, pens and a board. The teacher asks the class which subjects
@@ -257,7 +283,8 @@ A1:
       - describe your job
       - introduce colleagues
       - discuss working hours
-    seedWords: [work, office, job, colleague, boss, salary]
+    seedWords: [work, office, job, colleague, boss, salary, friend]
+    verbs: [tell, describe, explain]
     outline: >
       A man tells a friend about his new job: he describes the office, his
       colleagues and his boss, and explains what hours he works each day.
@@ -268,7 +295,8 @@ A1:
       - identify office objects
       - ask for assistance
       - describe tasks
-    seedWords: [desk, computer, paper, pen, phone, chair]
+    seedWords: [desk, computer, paper, pen, phone, chair, employee, colleague, show, task]
+    verbs: [ask, explain]
     outline: >
       A new employee asks a colleague where things are: the computer, the
       paper and the phone on her desk. The colleague shows her around and
@@ -280,7 +308,8 @@ A1:
       - describe hobbies
       - ask about interests
       - invite someone
-    seedWords: [book, music, game, garden, sport, photo]
+    seedWords: [book, music, game, garden, sport, photo, neighbour, chat, talks, reading]
+    verbs: [fence, take, prefer, discover, make, plan, meet]
     outline: >
       Two neighbours chat at the garden fence. One talks about reading and
       taking photos; the other prefers sport and music. They discover a
@@ -292,7 +321,8 @@ A1:
       - discuss sports
       - describe activities
       - express ability
-    seedWords: [ball, team, game, field, club, race]
+    seedWords: [ball, team, game, field, club, race, friend, football, sport]
+    verbs: [tell, play, run, win, say, can]
     outline: >
       A boy tells his friend about his football club: they play on a big
       field, run races and win games as a team. His friend says which sport
@@ -304,7 +334,8 @@ A1:
       - discuss music
       - describe preferences
       - talk about concerts
-    seedWords: [song, guitar, concert, band, radio, dance]
+    seedWords: [song, guitar, concert, band, radio, friend]
+    verbs: [dance, listen, talk, play, decide, go]
     outline: >
       Two friends listen to the radio and talk about their favourite songs
       and bands. One plays the guitar; they decide to go to a concert
@@ -316,7 +347,8 @@ A1:
       - discuss books
       - describe reading habits
       - recommend a book
-    seedWords: [book, story, page, library, author, newspaper]
+    seedWords: [book, story, page, library, author, newspaper, return, novel, recommendation, talks]
+    verbs: [ask, describe, borrow, read]
     outline: >
       At the library a woman returns a novel and asks for a recommendation.
       The librarian describes a story by a favourite author; the woman
@@ -329,6 +361,7 @@ A1:
       - express opinions
       - describe viewing habits
     seedWords: [television, film, program, news, screen, channel]
+    verbs: [argue, watch, want, take, turn, prefer]
     outline: >
       A family argues about what to watch: one wants the news, another
       wants a film. They take turns saying which channel and programme
@@ -340,7 +373,8 @@ A1:
       - describe devices
       - use simple computer vocabulary
       - ask for technical help
-    seedWords: [computer, screen, keyboard, mouse, file, internet]
+    seedWords: [computer, screen, keyboard, mouse, internet, show]
+    verbs: [file, ask, help, look, check, connect]
     outline: >
       A student cannot open a file on her computer. She asks a classmate
       for help; he looks at the screen, checks the keyboard and mouse,
@@ -352,7 +386,8 @@ A1:
       - make a phone call
       - send messages
       - discuss apps
-    seedWords: [phone, message, call, screen, app, battery]
+    seedWords: [phone, message, screen, app, battery, mother, friend]
+    verbs: [call, send, talk]
     outline: >
       A girl's phone battery is almost dead. She quickly calls her mother
       and sends a message to a friend. They talk about which apps they use
@@ -364,7 +399,8 @@ A1:
       - introduce friends
       - describe personalities
       - make plans
-    seedWords: [friend, party, plan, group, evening, fun]
+    seedWords: [friend, party, group, evening, fun, mother, weekend]
+    verbs: [plan, introduce, describe, make, agree]
     outline: >
       A boy introduces his two best friends to his mother, describing what
       each one is like. The group of three make plans for a fun evening
@@ -376,7 +412,8 @@ A1:
       - accept invitations
       - welcome guests
       - offer refreshments
-    seedWords: [door, coffee, guest, chair, cake, visit]
+    seedWords: [door, coffee, guest, chair, cake, visit, host, show]
+    verbs: [arrive, offer, talk, meet]
     outline: >
       A guest arrives at the door. The host welcomes her, shows her to a
       chair, and offers coffee and cake. They talk about the visit and
@@ -388,7 +425,8 @@ A1:
       - order food
       - ask for the bill
       - thank the waiter
-    seedWords: [coffee, table, waiter, bill, cake, cup]
+    seedWords: [coffee, table, waiter, bill, cake, cup, friend, order, slice]
+    verbs: [sit, come, ask, thank]
     outline: >
       Two friends sit at a café table. The waiter comes; they order coffee
       and a slice of cake. At the end they ask for the bill and thank
@@ -400,7 +438,8 @@ A1:
       - reserve a table
       - order a meal
       - express satisfaction
-    seedWords: [table, menu, waiter, meal, plate, wine]
+    seedWords: [table, menu, waiter, meal, plate, wine, couple, reserve, restaurant, order]
+    verbs: [arrive, look, say]
     outline: >
       A couple phones to reserve a table, then arrives at the restaurant.
       They look at the menu, order their meal from the waiter, and say
@@ -412,7 +451,8 @@ A1:
       - buy tickets
       - ask about departures
       - understand announcements
-    seedWords: [bus, ticket, station, tram, stop, train]
+    seedWords: [bus, ticket, station, tram, train, announcement, friend]
+    verbs: [stop, buy, ask, leave, listen, wait]
     outline: >
       At the station a man buys two tickets for the tram. He asks when
       the next bus leaves, listens to the announcement, and waits at
@@ -424,7 +464,8 @@ A1:
       - rent a bicycle
       - ask for directions
       - describe a route
-    seedWords: [bicycle, road, helmet, wheel, path, brake]
+    seedWords: [bicycle, road, helmet, wheel, path, tourist, route, hill]
+    verbs: [brake, rent, ask, take, describe, remind]
     outline: >
       A tourist rents a bicycle and puts on a helmet. She asks a local
       which path to take; he describes the route along the road and
@@ -436,7 +477,8 @@ A1:
       - discuss driving
       - ask about parking
       - describe traffic
-    seedWords: [car, road, traffic, parking, key, wheel]
+    seedWords: [car, road, traffic, parking, key, wheel, lock]
+    verbs: [drive, ask, take]
     outline: >
       A woman drives into town but the road is busy with traffic. She
       asks a passer-by where to park, takes the key from the ignition,
@@ -448,7 +490,8 @@ A1:
       - give directions
       - ask for directions
       - describe locations
-    seedWords: [street, corner, road, map, sign, square]
+    seedWords: [street, corner, road, map, sign, square, tourist, reach]
+    verbs: [stop, look, ask, describe]
     outline: >
       A tourist is lost and stops to look at a map. He asks a woman on the
       street how to reach the square; she points to the corner and describes
@@ -460,7 +503,8 @@ A1:
       - describe a city
       - locate buildings
       - ask where something is
-    seedWords: [city, street, building, square, shop, park]
+    seedWords: [city, street, building, square, shop, park, show, visitor, centre]
+    verbs: [ask]
     outline: >
       A woman shows a visitor around the city centre: the big square, the
       old buildings, the shops and the park. The visitor asks where each
@@ -472,7 +516,8 @@ A1:
       - describe a village
       - compare places
       - discuss local facilities
-    seedWords: [village, church, road, field, shop, house]
+    seedWords: [village, church, road, field, shop, house, city, guest]
+    verbs: [describe, compare]
     outline: >
       An old man describes his village to a city guest: the church, the
       fields, the one small shop and the quiet road. Together they compare
@@ -484,7 +529,8 @@ A1:
       - describe nature
       - identify landscapes
       - discuss outdoor activities
-    seedWords: [tree, river, mountain, forest, flower, lake]
+    seedWords: [tree, river, mountain, forest, flower, lake, children, name, parent, distance]
+    verbs: [walk, say, want]
     outline: >
       A family walks in the countryside. The children name the trees,
       flowers and the river; the parents point to the mountains and the
@@ -496,7 +542,8 @@ A1:
       - name animals
       - describe pets
       - talk about farms
-    seedWords: [dog, cat, cow, horse, bird, farm]
+    seedWords: [dog, cat, cow, horse, bird, visit, uncle, animal]
+    verbs: [farm, see, compare, explain, live]
     outline: >
       A girl visits her uncle's farm and sees cows, horses and birds.
       She compares them with her pets at home — a dog and a cat — and
@@ -508,7 +555,8 @@ A1:
       - discuss holiday plans
       - describe vacations
       - book accommodation
-    seedWords: [holiday, beach, hotel, suitcase, sea, sun]
+    seedWords: [holiday, beach, hotel, suitcase, sea, sun, colleague, summer, book, trip]
+    verbs: [talk, plan, want, go, describe]
     outline: >
       Two colleagues talk about their summer holiday plans. One wants to
       go to the beach and book a hotel by the sea; the other describes
@@ -520,7 +568,8 @@ A1:
       - check in
       - ask about facilities
       - solve simple problems
-    seedWords: [hotel, room, key, bed, reception, breakfast]
+    seedWords: [hotel, room, key, bed, reception, breakfast, traveller, problem]
+    verbs: [arrive, check, ask, get, call]
     outline: >
       A traveller arrives at the hotel, goes to reception and checks in.
       She asks about breakfast and gets a key; later she calls reception
@@ -532,7 +581,8 @@ A1:
       - check in for a flight
       - understand airport signs
       - ask for information
-    seedWords: [airport, plane, ticket, passport, luggage, gate]
+    seedWords: [airport, plane, ticket, passport, luggage, gate, sign, staff]
+    verbs: [arrive, check, read, find, ask, depart]
     outline: >
       A man arrives at the airport with his ticket and passport. He checks
       in his luggage, reads the signs to find the right gate, and asks a
@@ -544,7 +594,8 @@ A1:
       - buy train tickets
       - understand platforms
       - ask about delays
-    seedWords: [train, station, ticket, platform, seat, conductor]
+    seedWords: [train, station, ticket, platform, seat, conductor, delay, journey]
+    verbs: [buy, look, ask, find, begin]
     outline: >
       A woman buys a ticket at the station and looks for the right platform.
       She asks the conductor about a delay, finds her seat on the train,
@@ -556,7 +607,8 @@ A1:
       - understand directions
       - give directions
       - locate landmarks
-    seedWords: [street, corner, map, sign, left, right]
+    seedWords: [street, corner, map, sign, left, reach, museum, name]
+    verbs: [stop, ask, give, watch, ride]
     outline: >
       A cyclist stops at a corner with a map and asks a local how to reach
       the museum. The local gives clear left-right directions, names the
@@ -568,7 +620,8 @@ A1:
       - exchange money
       - discuss prices
       - pay by card
-    seedWords: [money, coin, card, price, bank, wallet]
+    seedWords: [money, coin, card, price, bank, wallet, tourist, exchange, coffee, purchase]
+    verbs: [ask, pay]
     outline: >
       A tourist goes to the bank to exchange money. She asks about the
       price of things, puts coins in her wallet, and pays for a coffee
@@ -580,7 +633,8 @@ A1:
       - withdraw cash
       - ask for assistance
       - understand banking terms
-    seedWords: [bank, money, card, account, cash, machine]
+    seedWords: [bank, money, card, account, cash, machine, work, problem, assistant]
+    verbs: [explain, help, withdraw]
     outline: >
       A young man uses the cash machine at the bank for the first time.
       When it does not work he goes inside, explains the problem, and an
@@ -592,7 +646,8 @@ A1:
       - send a letter
       - buy stamps
       - ask about parcels
-    seedWords: [letter, stamp, parcel, envelope, address, post]
+    seedWords: [letter, stamp, parcel, envelope, address, office, will]
+    verbs: [post, buy, write, ask, take, arrive]
     outline: >
       A woman goes to the post office with a letter and a parcel. She buys
       stamps, writes the address on the envelope, and asks how long the
@@ -604,7 +659,8 @@ A1:
       - ask for help
       - call emergency services
       - describe a problem
-    seedWords: [help, fire, police, ambulance, accident, phone]
+    seedWords: [fire, police, ambulance, accident, phone, street, emergency, services]
+    verbs: [help, see, ask, describe, happen, arrive]
     outline: >
       A boy sees an accident in the street. He phones the emergency services,
       asks for an ambulance, describes what happened, and stays calm while
@@ -616,7 +672,8 @@ A1:
       - report theft
       - describe an incident
       - ask for assistance
-    seedWords: [police, thief, wallet, street, officer, report]
+    seedWords: [police, thief, wallet, street, officer, station]
+    verbs: [report, tell, look, happen, fill]
     outline: >
       A man's wallet is stolen in the street. He goes to the police station,
       tells an officer what the thief looked like and where it happened,
@@ -628,7 +685,8 @@ A1:
       - make an appointment
       - describe symptoms
       - understand advice
-    seedWords: [doctor, appointment, pain, fever, medicine, illness]
+    seedWords: [doctor, appointment, pain, fever, medicine, illness, surgery, name, advice]
+    verbs: [make, describe, explain, give]
     outline: >
       A woman phones the doctor to make an appointment. At the surgery she
       describes her pain and fever; the doctor names the illness, explains
@@ -640,7 +698,8 @@ A1:
       - describe tooth pain
       - make an appointment
       - understand treatment
-    seedWords: [dentist, tooth, pain, appointment, mouth, chair]
+    seedWords: [dentist, tooth, pain, appointment, mouth, chair, mother]
+    verbs: [explain, try]
     outline: >
       A boy has toothache and his mother phones the dentist for an
       appointment. In the chair the boy points to the painful tooth;
@@ -652,7 +711,8 @@ A1:
       - discuss weekend plans
       - invite friends
       - describe activities
-    seedWords: [weekend, friend, park, film, walk, plan]
+    seedWords: [weekend, friend, park, film, friday, afternoon, saturday, sunday, evening]
+    verbs: [walk, plan, talk, want, suggest, agree]
     outline: >
       On Friday afternoon two friends talk about their weekend. One wants
       to walk in the park; the other suggests a film. They agree on a plan:
@@ -665,6 +725,7 @@ A1:
       - give presents
       - organize a party
     seedWords: [birthday, cake, present, candle, party, card]
+    verbs: [sing, give, talk]
     outline: >
       It is a girl's birthday. Her family sings, lights the candles on the
       cake, and gives her presents. She opens the card, thanks everyone,
@@ -676,7 +737,8 @@ A1:
       - describe celebrations
       - invite guests
       - thank people
-    seedWords: [party, guest, food, music, gift, dance]
+    seedWords: [party, guest, food, music, gift, celebration, house, host]
+    verbs: [dance, prepare, cook, choose, arrive]
     outline: >
       A family prepares for a celebration: they cook food, choose music
       and tidy the house. Guests arrive with gifts; the host thanks each
@@ -688,7 +750,8 @@ A1:
       - discuss traditions
       - compare cultures
       - ask questions
-    seedWords: [bicycle, cheese, tulip, windmill, king, canal]
+    seedWords: [bicycle, cheese, tulip, windmill, king, canal, tradition, country]
+    verbs: [ask, explain, compare]
     outline: >
       A foreign student asks her Dutch classmate about typical Dutch things.
       The classmate explains bicycles, cheese, tulips and canals; the
@@ -700,7 +763,8 @@ A1:
       - express agreement
       - express disagreement
       - explain preferences
-    seedWords: [film, food, book, music, weather, idea]
+    seedWords: [film, food, book, music, weather, idea, neighbour, opinion, restaurant]
+    verbs: [sit, saw, agree]
     outline: >
       Two neighbours sit outside on a sunny day. They share opinions about
       the weather, a film they both saw and the food at a local restaurant —
@@ -712,7 +776,8 @@ A1:
       - discuss tomorrow
       - make appointments
       - describe intentions
-    seedWords: [tomorrow, plan, trip, appointment, week, job]
+    seedWords: [tomorrow, trip, appointment, week, job, friend, tuesday, thursday, calendar]
+    verbs: [plan, tell, check, agree, meet]
     outline: >
       A woman tells a friend what she plans to do next week: a trip on
       Tuesday, a job appointment on Thursday. They check their calendars
@@ -724,7 +789,8 @@ A1:
       - describe people
       - compare appearances
       - identify someone
-    seedWords: [hair, eye, face, beard, glasses, smile]
+    seedWords: [hair, eye, face, beard, glasses, smile, friend, spot, door]
+    verbs: [wait, describe, look, can, walk]
     outline: >
       Two friends wait for a third person at a café. One describes what
       he looks like — short hair, glasses, a beard and a big smile — so
@@ -736,7 +802,8 @@ A1:
       - describe character
       - compliment someone
       - express opinions
-    seedWords: [person, friend, smile, character, mood, neighbour]
+    seedWords: [person, friend, smile, character, mood, neighbour, compliment]
+    verbs: [introduce, describe, talk, make]
     outline: >
       A woman introduces her best friend to a neighbour. She describes his
       warm character and good mood; the neighbour compliments him, and they
@@ -748,7 +815,8 @@ A1:
       - describe chores
       - divide tasks
       - ask for help
-    seedWords: [kitchen, dish, floor, laundry, broom, trash]
+    seedWords: [kitchen, dish, floor, laundry, broom, trash, saturday, wash]
+    verbs: [divide, sweep, take, ask, help]
     outline: >
       Two housemates divide the Saturday chores: one washes the dishes and
       sweeps the floor, the other does the laundry and takes out the trash.
@@ -760,7 +828,8 @@ A1:
       - identify plants
       - describe gardens
       - discuss outdoor work
-    seedWords: [garden, plant, flower, tree, soil, water]
+    seedWords: [garden, flower, tree, soil, water, show, neighbour, name]
+    verbs: [plant, explain, prepare, offer, help]
     outline: >
       An elderly woman shows her garden to a young neighbour. She names the
       flowers and trees, explains how to prepare the soil and water the
@@ -772,7 +841,8 @@ A1:
       - follow recipes
       - describe ingredients
       - prepare meals
-    seedWords: [pan, oven, recipe, salt, vegetable, knife]
+    seedWords: [pan, oven, recipe, salt, vegetable, knife, father, daughter, dinner, vegetables]
+    verbs: [cook, read, chop, add]
     outline: >
       A father and daughter cook dinner together. He reads the recipe aloud
       while she chops vegetables with the knife; together they add salt,
@@ -784,7 +854,8 @@ A1:
       - describe pets
       - discuss care
       - visit a veterinarian
-    seedWords: [dog, cat, fish, bird, cage, vet]
+    seedWords: [dog, cat, fish, bird, cage, vet, mother, waiting, bag, care]
+    verbs: [take, compare, explain]
     outline: >
       A boy's cat is ill, so his mother takes it to the vet. In the waiting
       room a girl has a bird in a cage and a fish in a bag. They compare
@@ -796,7 +867,8 @@ A1:
       - try on clothes
       - compare sizes
       - make purchases
-    seedWords: [shop, dress, size, shirt, shoe, mirror]
+    seedWords: [shop, dress, size, shirt, shoe, mirror, assistant]
+    verbs: [try, look, ask, compare, decide, buy]
     outline: >
       A woman tries on two dresses in a shop. She looks in the mirror,
       asks the assistant for a different size, compares a dress with a
@@ -808,7 +880,8 @@ A1:
       - ask permission
       - give permission
       - refuse politely
-    seedWords: [door, key, car, phone, window, room]
+    seedWords: [door, key, car, phone, window, room, teenager, parent, permission, friend]
+    verbs: [ask, say, explain]
     outline: >
       A teenager asks her parents permission to use the car and to have
       a friend in her room. Her father says yes to one thing and politely
@@ -820,7 +893,8 @@ A1:
       - invite someone
       - accept invitations
       - decline politely
-    seedWords: [party, dinner, friend, card, evening, invitation]
+    seedWords: [party, dinner, friend, card, evening, invitation, friday, pleasure, decline]
+    verbs: [send, invite, accept, plan, suggest]
     outline: >
       A woman sends a card inviting two friends to a dinner party on Friday
       evening. One friend accepts with pleasure; the other declines politely
@@ -832,7 +906,8 @@ A1:
       - explain a problem
       - ask for help
       - thank someone
-    seedWords: [problem, help, key, door, phone, money]
+    seedWords: [problem, key, door, phone, money, lock, neighbour]
+    verbs: [help, find, explain, borrow, call]
     outline: >
       A man locks himself out and cannot find his key. He knocks on a
       neighbour's door, explains the problem and borrows a phone to call
@@ -844,7 +919,8 @@ A1:
       - ask about rent
       - describe housing
       - arrange a viewing
-    seedWords: [house, rent, room, key, landlord, contract]
+    seedWords: [house, room, key, landlord, contract, price, need, view, sign]
+    verbs: [rent, ask, describe, agree]
     outline: >
       A young woman phones a landlord about a room to rent. She asks about
       the price and what is included, describes what she needs, and they
@@ -856,7 +932,8 @@ A1:
       - introduce yourself
       - discuss neighbourhoods
       - ask for help
-    seedWords: [neighbour, street, door, garden, house, noise]
+    seedWords: [neighbour, street, door, garden, house, noise, problem, night]
+    verbs: [move, introduce, talk, ask]
     outline: >
       A new family moves into the street. The man knocks on the neighbour's
       door to introduce himself, they talk about the neighbourhood — the
@@ -868,7 +945,8 @@ A1:
       - discuss recycling
       - describe nature
       - express responsibility
-    seedWords: [tree, water, waste, plastic, nature, bin]
+    seedWords: [tree, water, plastic, nature, bin, friend, park, responsibility]
+    verbs: [waste, clean, pick, talk, protect, agree]
     outline: >
       Two friends clean up a park together. They pick up plastic waste and
       put it in the bin, talk about protecting the trees and the water,
@@ -880,7 +958,8 @@ A1:
       - browse websites
       - discuss online activities
       - ask for Wi-Fi
-    seedWords: [internet, website, computer, password, screen, email]
+    seedWords: [internet, website, computer, password, screen, guest, house, wi-fi]
+    verbs: [email, ask, browse, check, talk]
     outline: >
       A guest at a friend's house asks for the Wi-Fi password. She opens
       her computer, browses a website and checks her email on the screen.
@@ -892,7 +971,8 @@ A1:
       - describe online communication
       - share information
       - discuss preferences
-    seedWords: [photo, message, friend, phone, profile, post]
+    seedWords: [photo, message, friend, phone, profile, teenager, show, grandmother, page, question]
+    verbs: [post, explain, send, ask, laugh]
     outline: >
       A teenager shows her grandmother her phone and explains social media:
       she posts photos, sends messages to friends and has a profile page.
@@ -904,7 +984,8 @@ A1:
       - discuss festivals
       - make plans
       - describe traditions
-    seedWords: [festival, music, crowd, food, stage, light]
+    seedWords: [festival, music, crowd, food, stage, light, friend, tradition]
+    verbs: [plan, go, describe, decide, meet]
     outline: >
       Two friends plan to go to a local festival. They describe the music
       on the big stage, the food stalls, the lights and the crowd. They
@@ -917,6 +998,7 @@ A1:
       - describe events
       - sequence actions
     seedWords: [story, man, woman, house, day, child]
+    verbs: [tell, live, happen]
     outline: >
       A grandparent tells a grandchild a simple story about a man, a woman
       and a child who live in a house. Each day something small happens —
@@ -928,7 +1010,8 @@ A1:
       - discuss simple news
       - express opinions
       - ask questions
-    seedWords: [newspaper, news, story, world, weather, report]
+    seedWords: [newspaper, news, story, world, weather, colleague, coffee, question]
+    verbs: [report, read, say, think, ask]
     outline: >
       Two colleagues share a newspaper at coffee time. They read a short
       news story about the weather in another part of the world, say what
@@ -940,7 +1023,8 @@ A1:
       - review vocabulary
       - review grammar
       - improve fluency
-    seedWords: [word, sentence, story, question, answer, lesson]
+    seedWords: [word, sentence, story, question, answer, lesson, teacher, back, course, progress]
+    verbs: [look, pick, read, ask, feel]
     outline: >
       A teacher and student look back over the course together. The student
       picks favourite words, reads a sentence from an earlier lesson, and
@@ -952,7 +1036,8 @@ A1:
       - combine all A1 skills
       - hold simple conversations
       - prepare for A2
-    seedWords: [conversation, friend, day, plan, question, story]
+    seedWords: [conversation, friend, day, question, story, start, course, street, answer]
+    verbs: [plan, bump, look]
     outline: >
       Two people who met at the start of the course bump into each other in
       the street. They have a full A1 conversation — greetings, plans for the
@@ -966,7 +1051,8 @@ A2:
       - catch up with someone
       - describe recent events
       - ask follow-up questions
-    seedWords: [friend, news, holiday, coffee, week, story]
+    seedWords: [friend, news, holiday, coffee, week, story, question]
+    verbs: [run, catch, describe, ask, keep]
     outline: >
       Two old friends run into each other after months apart. Over coffee they
       catch up: one describes a holiday, the other shares news from the past few
@@ -978,7 +1064,8 @@ A2:
       - describe your childhood
       - talk about past experiences
       - compare then and now
-    seedWords: [child, school, family, town, year, memory]
+    seedWords: [child, school, family, town, year, memory, photo, album, event]
+    verbs: [look, compare, change]
     outline: >
       An adult looks through a family photo album with a younger relative.
       Each photo triggers a memory — childhood in a small town, school years,
@@ -990,7 +1077,8 @@ A2:
       - describe your education
       - discuss qualifications
       - talk about future studies
-    seedWords: [school, teacher, exam, subject, student, diploma]
+    seedWords: [school, teacher, exam, subject, student, diploma, waiting, result, career]
+    verbs: [talk, hop, plan, study]
     outline: >
       Two students waiting for exam results talk about their school careers:
       favourite subjects, best teachers, the diploma they are hoping for, and
@@ -1002,7 +1090,8 @@ A2:
       - describe your profession
       - discuss work experience
       - explain responsibilities
-    seedWords: [job, office, work, manager, salary, company]
+    seedWords: [job, office, work, manager, salary, company, network, event, career, path]
+    verbs: [describe]
     outline: >
       At a networking event a woman describes her career path to a new contact:
       the company she works for, her role and responsibilities, the salary range,
@@ -1014,7 +1103,8 @@ A2:
       - read job advertisements
       - describe your skills
       - ask about vacancies
-    seedWords: [job, letter, interview, skill, company, vacancy]
+    seedWords: [job, letter, interview, skill, company, vacancy, advertisement, experience, role, will]
+    verbs: [read, call, describe, ask, involve, find]
     outline: >
       A man reads job advertisements online and calls a company about a vacancy.
       He describes his skills and experience, asks what the role involves, and
@@ -1026,7 +1116,8 @@ A2:
       - introduce yourself professionally
       - answer interview questions
       - discuss availability
-    seedWords: [interview, job, question, suit, office, manager]
+    seedWords: [interview, job, question, suit, office, manager, company, answer, experience, strength]
+    verbs: [arrive, introduce, discuss]
     outline: >
       A young woman arrives at a company office for a job interview. She
       introduces herself to the manager, answers questions about her experience
@@ -1038,7 +1129,8 @@ A2:
       - participate in meetings
       - ask for clarification
       - report progress
-    seedWords: [meeting, email, colleague, phone, report, office]
+    seedWords: [meeting, colleague, phone, office, team, progress, project, leader, step]
+    verbs: [email, report, ask, summarize, decide]
     outline: >
       At the weekly team meeting a colleague presents progress on a project.
       Others ask for clarification by email or phone; the team leader summarizes
@@ -1050,7 +1142,8 @@ A2:
       - describe your workspace
       - discuss advantages
       - solve technical problems
-    seedWords: [computer, desk, home, internet, screen, coffee]
+    seedWords: [computer, desk, home, internet, screen, coffee, colleague, working, talks, advantage]
+    verbs: [ask, describe, explain, solve]
     outline: >
       A colleague phones to ask how working from home is going. The woman
       describes her desk and screen setup, talks about the advantages of
@@ -1063,7 +1156,8 @@ A2:
       - compare homes
       - discuss renting and buying
       - describe neighbourhoods
-    seedWords: [house, apartment, rent, room, neighbour, garden]
+    seedWords: [house, apartment, room, neighbour, garden, friend, city, centre, advantage]
+    verbs: [rent, discuss, buy, live, compare, weigh]
     outline: >
       Two friends discuss whether to rent or buy. One lives in an apartment
       in the city centre; the other rents a house with a garden further out.
@@ -1075,7 +1169,8 @@ A2:
       - arrange a move
       - discuss utilities
       - describe your new home
-    seedWords: [box, truck, furniture, key, address, house]
+    seedWords: [box, truck, furniture, key, address, house, friend, need]
+    verbs: [call, help, carry, explain, arrange, discuss]
     outline: >
       A woman is moving to a new address. She calls a friend to help carry
       boxes and furniture into the truck, explains how to arrange the new
@@ -1087,7 +1182,8 @@ A2:
       - report problems
       - arrange repairs
       - explain what happened
-    seedWords: [pipe, lamp, tool, plumber, leak, wall]
+    seedWords: [pipe, lamp, tool, plumber, wall, water, problem, working]
+    verbs: [leak, discover, call, describe, explain, happen, wait]
     outline: >
       A man discovers a water leak from a pipe behind the wall. He calls a
       plumber, describes the problem and explains what happened. While he waits
@@ -1099,7 +1195,8 @@ A2:
       - compare products
       - discuss prices
       - make purchasing decisions
-    seedWords: [table, sofa, chair, shop, price, lamp]
+    seedWords: [table, sofa, chair, shop, price, lamp, couple, debate, sale]
+    verbs: [browse, compare, discuss, fit, ask, buy, wait]
     outline: >
       A couple browse a furniture shop for their new home. They compare two
       sofas, discuss which table fits the room, ask about prices, and debate
@@ -1111,7 +1208,8 @@ A2:
       - discuss healthy habits
       - give advice
       - describe routines
-    seedWords: [food, exercise, sleep, water, fruit, walk]
+    seedWords: [food, exercise, water, fruit, doctor, patient, advice, vegetables, routine]
+    verbs: [sleep, walk, give, explain, eat, ask, suggest]
     outline: >
       A doctor gives a patient advice after a check-up. She explains the
       importance of sleep, daily exercise and eating fruit and vegetables,
@@ -1123,7 +1221,8 @@ A2:
       - explain symptoms
       - understand recommendations
       - discuss treatment
-    seedWords: [doctor, pain, fever, medicine, appointment, symptom]
+    seedWords: [doctor, pain, fever, medicine, appointment, symptom, surgery, diagnosis]
+    verbs: [make, describe, examine, explain, discuss]
     outline: >
       A man has had a fever and pain for three days and finally makes an
       appointment. At the surgery he describes his symptoms in detail; the
@@ -1135,7 +1234,8 @@ A2:
       - describe activities
       - discuss fitness
       - compare sports
-    seedWords: [ball, gym, run, team, bike, muscle]
+    seedWords: [ball, gym, team, bike, muscle, colleague, cycle, benefit, health, sport]
+    verbs: [run, talk, keep, fit, play, compare, agree]
     outline: >
       Two colleagues talk about keeping fit. One goes to the gym and runs;
       the other cycles and plays in a team. They compare the benefits for
@@ -1147,7 +1247,8 @@ A2:
       - express emotions
       - discuss stress
       - suggest solutions
-    seedWords: [stress, rest, sleep, friend, walk, smile]
+    seedWords: [stress, rest, friend, smile, notice, colleague]
+    verbs: [sleep, walk, look, talk, feel, listen, suggest]
     outline: >
       A friend notices that her colleague looks tired and stressed. They
       talk honestly about how he feels; she listens, suggests more sleep and
@@ -1159,7 +1260,8 @@ A2:
       - explain recipes
       - describe cooking methods
       - discuss favourite dishes
-    seedWords: [recipe, pan, oven, vegetable, salt, knife]
+    seedWords: [recipe, pan, oven, vegetable, salt, knife, step, vegetables, heating, meal]
+    verbs: [teach, explain, add, discuss, make]
     outline: >
       A woman teaches her flatmate a favourite recipe. She explains each step —
       chopping vegetables with a knife, heating the pan, adding salt — puts
@@ -1171,7 +1273,8 @@ A2:
       - make reservations
       - deal with problems
       - recommend dishes
-    seedWords: [table, menu, waiter, meal, bill, wine]
+    seedWords: [table, menu, waiter, meal, bill, wine, restaurant, reserve, problem, dinner]
+    verbs: [arrive, solve, recommend]
     outline: >
       A man phones a restaurant to reserve a table for four. When they arrive
       the wrong table is ready, and he politely solves the problem with the
@@ -1183,7 +1286,8 @@ A2:
       - compare products
       - discuss prices
       - ask for recommendations
-    seedWords: [trolley, shelf, price, vegetable, checkout, bag]
+    seedWords: [trolley, shelf, price, vegetable, checkout, bag, neighbour, shop, supermarket, debate]
+    verbs: [compare, ask, pay]
     outline: >
       Two neighbours shop at the supermarket with a trolley. They compare
       prices on the shelf, debate which vegetables are best value, and ask
@@ -1195,7 +1299,8 @@ A2:
       - describe clothing styles
       - discuss preferences
       - compare outfits
-    seedWords: [dress, shirt, shoe, colour, size, jacket]
+    seedWords: [dress, shirt, shoe, colour, size, jacket, friend, party, debate, opinion]
+    verbs: [get, compare, discuss, give]
     outline: >
       Two friends get ready for a party and debate what to wear. They compare
       a dress with a jacket and shirt, discuss colours and sizes, and give each
@@ -1207,7 +1312,8 @@ A2:
       - open an account
       - discuss payments
       - solve banking issues
-    seedWords: [bank, account, card, money, machine, loan]
+    seedWords: [bank, account, card, money, machine, loan, cash, work, payment, problem]
+    verbs: [explain, ask, study]
     outline: >
       A student goes to the bank to open her first account. The clerk explains
       the card and how the cash machine works; the student asks about a small
@@ -1219,7 +1325,8 @@ A2:
       - understand policies
       - report damage
       - ask for information
-    seedWords: [insurance, car, damage, policy, accident, money]
+    seedWords: [insurance, car, damage, policy, accident, money, company, cover, procedure, back]
+    verbs: [describe, happen, ask, explain, can, expect]
     outline: >
       A man's car is damaged in an accident. He phones his insurance company,
       describes what happened, and asks what his policy covers. The agent
@@ -1231,7 +1338,8 @@ A2:
       - contact local authorities
       - request documents
       - ask for assistance
-    seedWords: [office, document, form, queue, clerk, passport]
+    seedWords: [office, document, form, queue, clerk, passport, visit, hall, request, need]
+    verbs: [wait, explain, fill, ask, renew]
     outline: >
       A woman visits the town hall to request an official document. She waits
       in the queue, explains what she needs to the clerk, fills in a form, and
@@ -1243,7 +1351,8 @@ A2:
       - compare transport options
       - discuss delays
       - explain travel plans
-    seedWords: [bus, train, ticket, station, car, bike]
+    seedWords: [bus, train, ticket, station, car, bike, colleague, conference, city, option]
+    verbs: [discuss, get, compare, look, decide]
     outline: >
       Two colleagues discuss how to get to a conference in another city. They
       compare the train, bus, bike and car options, look up ticket prices at
@@ -1255,7 +1364,8 @@ A2:
       - describe traffic situations
       - report accidents
       - ask for directions
-    seedWords: [car, road, traffic, accident, parking, speed]
+    seedWords: [car, road, traffic, accident, parking, speed, driver, witness, minor, assistance]
+    verbs: [call, report, ask, find, arrive]
     outline: >
       A driver is stuck in heavy traffic on a busy road and witnesses a minor
       accident. She calls roadside assistance to report it, asks for an
@@ -1267,7 +1377,8 @@ A2:
       - discuss cycling routes
       - explain road safety
       - rent a bicycle
-    seedWords: [bicycle, road, helmet, route, path, brake]
+    seedWords: [bicycle, road, helmet, route, path, tourist, map, cycle, safety, staff]
+    verbs: [brake, rent, study, choose, discuss, check, set]
     outline: >
       Two tourists rent bicycles for the day. They study a map to choose a
       safe route on the cycle path, discuss road safety rules, and the rental
@@ -1279,7 +1390,8 @@ A2:
       - plan a holiday
       - compare destinations
       - book accommodation
-    seedWords: [map, ticket, hotel, suitcase, trip, holiday]
+    seedWords: [map, ticket, hotel, suitcase, trip, holiday, couple, spread, table, price]
+    verbs: [plan, compare, look, think]
     outline: >
       A couple spread a map on the table and plan their holiday. They compare
       two destinations, look up ticket prices and hotels, and finally book
@@ -1291,7 +1403,8 @@ A2:
       - solve accommodation issues
       - ask about facilities
       - make requests
-    seedWords: [hotel, room, key, reception, breakfast, bed]
+    seedWords: [hotel, room, key, reception, breakfast, bed, guest, work, staff]
+    verbs: [check, find, explain, ask, solve]
     outline: >
       A guest checks into a hotel but finds his room key does not work and
       the bed is not made. He goes to reception, explains the problems calmly,
@@ -1303,7 +1416,8 @@ A2:
       - deal with travel problems
       - understand announcements
       - request assistance
-    seedWords: [airport, plane, gate, passport, luggage, ticket]
+    seedWords: [airport, plane, gate, passport, luggage, ticket, flight, delay, announcement, staff]
+    verbs: [arrive, listen, ask]
     outline: >
       A woman's flight is delayed and her luggage did not arrive at the gate.
       She listens carefully to the airport announcements, asks a staff member
@@ -1315,7 +1429,8 @@ A2:
       - describe experiences
       - compare cultures
       - discuss travel memories
-    seedWords: [beach, sea, hotel, sun, photo, city]
+    seedWords: [beach, sea, hotel, sun, photo, city, back, work, holiday, show]
+    verbs: [describe, compare]
     outline: >
       Back at work after a holiday, a man shows colleagues photos on his phone.
       He describes the beach, the sea and the city he visited, compares the
@@ -1327,7 +1442,8 @@ A2:
       - discuss family relationships
       - describe responsibilities
       - give advice
-    seedWords: [family, child, parent, home, dinner, weekend]
+    seedWords: [family, child, parent, home, dinner, weekend, children, bed, responsibility, advice]
+    verbs: [sit, talk, handle, cook, give]
     outline: >
       Two parents sit down after the children are in bed and talk about family
       life: who handles which responsibilities, how they share the cooking and
@@ -1339,7 +1455,8 @@ A2:
       - discuss education
       - describe routines
       - express opinions
-    seedWords: [child, school, toy, baby, parent, bed]
+    seedWords: [child, school, toy, baby, parent, bed, routine, toys, screen, opinion]
+    verbs: [compare, handle, laugh]
     outline: >
       Two parents in a playground compare how they handle daily routines:
       bedtime, toys, screen time and school. They share opinions on education
@@ -1351,7 +1468,8 @@ A2:
       - describe friendships
       - discuss social activities
       - resolve misunderstandings
-    seedWords: [friend, party, plan, coffee, evening, group]
+    seedWords: [friend, party, coffee, evening, group, work, future]
+    verbs: [plan, explain, agree]
     outline: >
       Two friends had a misunderstanding after a party. Over coffee they calmly
       explain how each one felt, work out what went wrong with the plan, and
@@ -1363,7 +1481,8 @@ A2:
       - organize events
       - invite guests
       - describe traditions
-    seedWords: [party, gift, cake, guest, music, dinner]
+    seedWords: [party, gift, cake, guest, music, dinner, list, tradition, must, celebration]
+    verbs: [organize, write, decide, explain, follow]
     outline: >
       A family organizes a dinner party for an anniversary. They write the
       guest list, decide on gifts, music and cake, and explain the traditions
@@ -1375,7 +1494,8 @@ A2:
       - discuss customs
       - compare traditions
       - express opinions
-    seedWords: [festival, food, music, costume, country, dance]
+    seedWords: [festival, food, music, costume, country, exchange, host, tradition, opinion, customs]
+    verbs: [dance, describe, compare]
     outline: >
       An exchange student describes a festival from her home country: the
       costumes, the food, the music and the dancing. Her host family compares
@@ -1387,7 +1507,8 @@ A2:
       - discuss exhibitions
       - describe artwork
       - recommend museums
-    seedWords: [museum, painting, ticket, artist, statue, room]
+    seedWords: [museum, painting, ticket, artist, statue, room, friend, visit, message]
+    verbs: [walk, describe, prefer, discuss, buy, recommend]
     outline: >
       Two friends visit a museum and walk through different rooms. One is drawn
       to a large painting and describes it; the other prefers a statue. They
@@ -1400,7 +1521,8 @@ A2:
       - describe films
       - express opinions
       - recommend movies
-    seedWords: [film, ticket, screen, actor, popcorn, seat]
+    seedWords: [film, ticket, screen, actor, popcorn, seat, friend, love, story, opinion]
+    verbs: [discuss, explain, compare, recommend]
     outline: >
       After a film, two friends discuss it over popcorn. One loved the actor
       and the story; the other was disappointed. They explain their opinions,
@@ -1412,7 +1534,8 @@ A2:
       - discuss books
       - summarize stories
       - recommend reading
-    seedWords: [book, story, author, page, library, novel]
+    seedWords: [book, story, author, page, library, novel, club, meeting, choice, decision]
+    verbs: [discuss, read, summarize, react, recommend]
     outline: >
       At a book club meeting members discuss the novel they read this month.
       One person summarizes the story; others react to the author's choices
@@ -1425,7 +1548,8 @@ A2:
       - discuss musical tastes
       - describe concerts
       - compare genres
-    seedWords: [song, band, concert, guitar, singer, stage]
+    seedWords: [song, band, concert, guitar, singer, stage, friend, music, taste, love]
+    verbs: [compare, prefer, describe, saw, plan, go]
     outline: >
       Two friends compare their music tastes: one loves guitar bands, the
       other prefers solo singers. They describe the last concert each saw —
@@ -1437,7 +1561,8 @@ A2:
       - discuss programmes
       - compare services
       - recommend series
-    seedWords: [television, series, screen, episode, remote, film]
+    seedWords: [television, series, screen, episode, remote, film, middle, stream, services]
+    verbs: [argue, want, watch, compare, recommend]
     outline: >
       Roommates argue over the remote: one wants to watch a television film,
       the other is in the middle of a series. They compare their streaming
@@ -1450,7 +1575,8 @@ A2:
       - describe devices
       - solve technical issues
       - explain usage
-    seedWords: [phone, computer, screen, app, device, battery]
+    seedWords: [phone, computer, screen, app, device, battery, parent, teenager, work, problem]
+    verbs: [ask, help, explain, look, solve, learn]
     outline: >
       A parent asks her teenager to help with a new device. The teenager
       explains how the app works and why the battery drains fast. They look
@@ -1463,7 +1589,8 @@ A2:
       - discuss online privacy
       - recognize scams
       - ask for technical help
-    seedWords: [password, account, email, virus, internet, scam]
+    seedWords: [password, account, virus, internet, show, colleague]
+    verbs: [email, scam, receive, ask, explain, discuss, stay]
     outline: >
       A man receives a suspicious email asking for his account password. He
       shows it to a tech-savvy colleague who explains it is a scam. They
@@ -1476,7 +1603,8 @@ A2:
       - discuss online behaviour
       - express opinions
       - compare platforms
-    seedWords: [photo, post, friend, profile, message, phone]
+    seedWords: [photo, friend, profile, message, phone, colleague, lunch, platform, opinion, debate]
+    verbs: [post, eat, compare, send, follow, say]
     outline: >
       Two colleagues eat lunch and scroll through their phones. They compare
       different platforms — where they post photos, send messages or follow
@@ -1489,7 +1617,8 @@ A2:
       - describe landscapes
       - discuss outdoor activities
       - express preferences
-    seedWords: [forest, river, mountain, tree, lake, animal]
+    seedWords: [forest, river, mountain, tree, lake, animal, trip, friend, reach, landscape]
+    verbs: [describe, talk]
     outline: >
       On a hiking trip two friends reach a viewpoint over a forest lake and
       distant mountains. They describe the landscape, spot an animal in the
@@ -1502,7 +1631,8 @@ A2:
       - describe forecasts
       - discuss climate
       - plan activities
-    seedWords: [rain, sun, cloud, wind, snow, storm]
+    seedWords: [rain, sun, cloud, wind, snow, storm, friend, forecast, weekend, trip]
+    verbs: [check, discuss, weigh, decide, go, stay]
     outline: >
       Two friends check the weather forecast before a weekend trip. The app
       shows clouds, wind and a possible storm. They discuss the climate in
@@ -1515,7 +1645,8 @@ A2:
       - discuss recycling
       - describe environmental problems
       - suggest improvements
-    seedWords: [waste, plastic, tree, water, bin, pollution]
+    seedWords: [plastic, tree, water, bin, pollution, neighbour, meeting, park, problem, environment]
+    verbs: [waste, attend, describe, cut, suggest, agree, plan]
     outline: >
       Neighbours attend a local meeting about pollution in the park. They
       describe the problem — plastic waste in the water, trees being cut down —
@@ -1528,7 +1659,8 @@ A2:
       - describe wildlife
       - discuss pets
       - compare habitats
-    seedWords: [dog, cat, bird, forest, zoo, farm]
+    seedWords: [dog, cat, bird, forest, zoo, visit, weekend, children, parent]
+    verbs: [farm, compare, saw, explain, stay]
     outline: >
       A family visits a zoo and a farm in the same weekend. The children
       compare the animals they saw — birds in the forest, cats on the farm —
@@ -1541,7 +1673,8 @@ A2:
       - describe plants
       - explain gardening tasks
       - ask for advice
-    seedWords: [garden, plant, flower, soil, tree, water]
+    seedWords: [garden, flower, soil, tree, water, neighbour, advice, winter]
+    verbs: [plant, ask, walk, identify, explain, prepare, prune]
     outline: >
       A new homeowner asks her experienced neighbour for gardening advice.
       The neighbour walks through the garden, identifies the plants, explains
@@ -1554,7 +1687,8 @@ A2:
       - describe volunteer work
       - explain motivations
       - encourage participation
-    seedWords: [volunteer, help, group, food, people, project]
+    seedWords: [volunteer, group, food, people, project, coordinator, talks, community, evening, difference]
+    verbs: [help, describe, explain, encourage, take, make]
     outline: >
       A volunteer coordinator talks at a community evening about a local food
       project. She describes what volunteers do, explains why she joined,
@@ -1567,7 +1701,8 @@ A2:
       - discuss neighbourhood issues
       - participate in local events
       - suggest improvements
-    seedWords: [neighbour, street, park, school, meeting, town]
+    seedWords: [neighbour, street, park, school, meeting, town, state, improvement, community, event]
+    verbs: [gather, discuss, describe, suggest, plan, bring]
     outline: >
       Residents gather at a neighbourhood meeting to discuss the state of
       the park near the school. They describe the problems, suggest improvements
@@ -1580,7 +1715,8 @@ A2:
       - describe incidents
       - request assistance
       - explain situations
-    seedWords: [fire, ambulance, police, accident, help, phone]
+    seedWords: [fire, ambulance, police, accident, phone, witness, house, emergency, services, incident]
+    verbs: [help, describe, explain, arrive]
     outline: >
       A woman witnesses a serious accident near her house. She phones the
       emergency services, describes the incident clearly, requests an ambulance
@@ -1593,7 +1729,8 @@ A2:
       - report crimes
       - describe suspects
       - understand procedures
-    seedWords: [police, thief, report, officer, street, car]
+    seedWords: [police, thief, officer, street, car, station, procedure]
+    verbs: [report, describe, suspect, saw, explain, happen]
     outline: >
       A man's car is broken into on his street. He goes to the police station,
       reports the crime to an officer, describes the suspect he saw, and the
@@ -1605,7 +1742,8 @@ A2:
       - understand regulations
       - discuss responsibilities
       - ask for clarification
-    seedWords: [law, police, fine, rule, sign, document]
+    seedWords: [law, police, fine, sign, document, office, responsibility]
+    verbs: [rule, receive, break, know, ask, miss, explain]
     outline: >
       A new resident receives a fine for breaking a local rule she did not
       know about. She goes to the council office, asks for clarification of
@@ -1618,7 +1756,8 @@ A2:
       - discuss budgets
       - compare expenses
       - give financial advice
-    seedWords: [money, budget, bank, card, bill, salary]
+    seedWords: [money, budget, bank, card, bill, salary, advice]
+    verbs: [compare, manage, keep, discuss, organise, give]
     outline: >
       Two students compare how they manage money at the end of the month.
       One always has bills left unpaid; the other keeps a strict budget.
@@ -1631,7 +1770,8 @@ A2:
       - return products
       - make complaints
       - request refunds
-    seedWords: [shop, receipt, refund, product, complaint, money]
+    seedWords: [shop, receipt, refund, product, complaint, money, back, assistant, manager]
+    verbs: [buy, explain, ask, speak, get]
     outline: >
       A woman buys a faulty product and goes back to the shop with her receipt.
       She explains the complaint calmly, asks for a refund, and when the
@@ -1644,7 +1784,8 @@ A2:
       - describe hobbies
       - compare activities
       - invite participation
-    seedWords: [book, music, game, sport, garden, photo]
+    seedWords: [book, music, game, sport, garden, photo, community, centre, hobby, talks]
+    verbs: [describe, explain, compare, invite, try]
     outline: >
       At a community centre open day people describe their hobbies. One man
       talks about photography and sport; a woman explains her passion for
@@ -1657,7 +1798,8 @@ A2:
       - discuss learning methods
       - describe progress
       - ask for advice
-    seedWords: [word, book, teacher, lesson, language, exam]
+    seedWords: [word, book, teacher, lesson, language, exam, learner, method, app, progress]
+    verbs: [meet, compare, describe, ask]
     outline: >
       Two language learners meet at a conversation class. They compare their
       methods — using books, apps and lessons with a teacher — describe
@@ -1670,7 +1812,8 @@ A2:
       - explain routes
       - understand instructions
       - ask follow-up questions
-    seedWords: [street, map, corner, sign, left, right]
+    seedWords: [street, map, corner, sign, left, delivery, driver, route, name, question]
+    verbs: [stop, ask, explain, repeat, make]
     outline: >
       A delivery driver is lost in an unfamiliar part of town. He stops and
       asks for directions; a local woman explains the route carefully using
@@ -1683,7 +1826,8 @@ A2:
       - arrange appointments
       - negotiate schedules
       - confirm plans
-    seedWords: [calendar, appointment, friend, week, plan, time]
+    seedWords: [calendar, appointment, friend, week, time, work, message]
+    verbs: [plan, try, find, meet, check, discover, negotiate]
     outline: >
       Two friends try to find a free time to meet. They check their calendars,
       discover they are both busy most of the week, negotiate a time that
@@ -1695,7 +1839,8 @@ A2:
       - explain difficulties
       - propose solutions
       - agree on actions
-    seedWords: [problem, help, phone, key, money, plan]
+    seedWords: [problem, phone, key, money, couple, need, solution, step]
+    verbs: [help, plan, realize, stay, think, agree, act]
     outline: >
       A couple realizes they have a problem: the key is lost, the phone is
       dead and they need money urgently. They stay calm, help each other
@@ -1707,7 +1852,8 @@ A2:
       - tell stories
       - describe memorable events
       - sequence actions
-    seedWords: [trip, holiday, day, story, photo, city]
+    seedWords: [trip, holiday, day, story, photo, city, dinner, party, discovery, show]
+    verbs: [tell, happen, turn, ask]
     outline: >
       At a dinner party a woman tells the story of an unforgettable day on
       holiday: first this happened, then that — a wrong turn in a foreign
@@ -1719,7 +1865,8 @@ A2:
       - recommend actions
       - express concerns
       - explain consequences
-    seedWords: [friend, doctor, problem, money, plan, health]
+    seedWords: [friend, doctor, problem, money, health, feeling, seeing, consequence, support]
+    verbs: [plan, keep, listen, express, concern, recommend, explain]
     outline: >
       A friend has been feeling unwell for weeks but keeps putting off seeing
       a doctor. Another friend listens, expresses concern, recommends going
@@ -1732,7 +1879,8 @@ A2:
       - compare people
       - compare places
       - compare experiences
-    seedWords: [city, house, car, price, size, person]
+    seedWords: [city, house, car, price, size, person, experience, opinion]
+    verbs: [decide, move, compare, live]
     outline: >
       A family is deciding between two cities to move to. They compare house
       prices and sizes, the two cities as places to live, and share personal
@@ -1744,7 +1892,8 @@ A2:
       - agree politely
       - disagree politely
       - justify opinions
-    seedWords: [film, book, food, music, idea, news]
+    seedWords: [film, book, food, music, idea, news, dinner, friend, story, view]
+    verbs: [discuss, read, agree, justify]
     outline: >
       After dinner four friends discuss a news story they all read. Two agree
       on the main idea; the other two disagree politely. Each one justifies
@@ -1756,7 +1905,8 @@ A2:
       - discuss ambitions
       - describe intentions
       - make predictions
-    seedWords: [year, plan, job, trip, house, family]
+    seedWords: [year, job, trip, house, family, friend, decade, ambition, will]
+    verbs: [plan, turn, talk, describe, intend, predict, look]
     outline: >
       Two friends turn thirty in the same year and talk about the decade
       ahead. They share ambitions — a new job, a house, a family, a big trip —
@@ -1769,7 +1919,8 @@ A2:
       - describe past events
       - express emotions
       - compare experiences
-    seedWords: [child, photo, school, family, holiday, year]
+    seedWords: [child, photo, school, family, holiday, year, picture, memory, celebration, emotion]
+    verbs: [bring, describe, compare]
     outline: >
       Two siblings sort through old family photos. Each picture brings up
       a memory — a school holiday, a family celebration, a difficult year.
@@ -1782,7 +1933,8 @@ A2:
       - discuss current events
       - summarize news
       - express reactions
-    seedWords: [newspaper, news, world, report, story, television]
+    seedWords: [newspaper, news, world, story, television, colleague, morning, coffee, version, debate]
+    verbs: [report, discuss, summarize, saw, compare, react, happen]
     outline: >
       Colleagues discuss the morning news over coffee. One summarizes a story
       from the newspaper; another saw a different report on television. They
@@ -1795,7 +1947,8 @@ A2:
       - describe historical events
       - discuss traditions
       - compare past and present
-    seedWords: [town, church, castle, year, war, story]
+    seedWords: [town, church, castle, year, war, story, tour]
+    verbs: [guide, lead, describe, tell, happen, compare, look]
     outline: >
       A tour guide leads a small group around the old part of town. She
       describes the castle and the church, tells a story about a war that
@@ -1808,7 +1961,8 @@ A2:
       - discuss daily life
       - compare cultures
       - describe customs
-    seedWords: [bicycle, canal, cheese, king, market, rain]
+    seedWords: [bicycle, canal, cheese, king, market, rain, impression, cycle, wheel, birthday]
+    verbs: [describe, sell, celebrate, explain, compare]
     outline: >
       An international student describes her first impressions of life in
       the Netherlands: everyone cycles in the rain, the market sells enormous
@@ -1821,7 +1975,8 @@ A2:
       - discuss traditions
       - describe celebrations
       - make plans
-    seedWords: [holiday, king, party, flag, family, day]
+    seedWords: [holiday, king, party, flag, family, day, friend, tradition, street, television]
+    verbs: [plan, celebrate, discuss, decide, gather, make, know]
     outline: >
       Friends plan how to celebrate a national public holiday. They discuss
       the traditions — flags out, parties in the street, the king on
@@ -1834,7 +1989,8 @@ A2:
       - explain issues
       - suggest solutions
       - report outcomes
-    seedWords: [meeting, problem, colleague, plan, report, boss]
+    seedWords: [meeting, problem, colleague, boss, work, deadline, team, solution, morning, outcome]
+    verbs: [plan, report, come, explain, suggest, agree]
     outline: >
       A serious problem comes up at work just before a deadline. A colleague
       explains the issue to the team in a short meeting, everyone suggests
@@ -1847,7 +2003,8 @@ A2:
       - make appointments
       - leave messages
       - clarify information
-    seedWords: [phone, call, message, appointment, voice, number]
+    seedWords: [phone, message, appointment, voice, number, clinic, line, reach, back]
+    verbs: [call, try, make, leave, clarify, write]
     outline: >
       A man tries to phone a clinic to make an appointment but the line is
       busy. He calls again, reaches a voice message and leaves his number.
@@ -1860,7 +2017,8 @@ A2:
       - write simple emails
       - request information
       - reply politely
-    seedWords: [email, message, computer, letter, reply, screen]
+    seedWords: [message, computer, letter, reply, screen, need, information, course, organization, interest]
+    verbs: [email, write, read, send, confirm]
     outline: >
       A woman needs information about a course and writes a polite email
       from her computer. The organization replies with details on her screen;
@@ -1873,7 +2031,8 @@ A2:
       - ask for support
       - explain problems
       - evaluate service
-    seedWords: [shop, phone, problem, product, help, complaint]
+    seedWords: [shop, phone, problem, product, complaint, customer, service, working, solution, survey]
+    verbs: [help, explain, ask, try, evaluate, give]
     outline: >
       A man phones customer service about a product that stopped working.
       He explains the problem clearly, asks for help, and the agent tries
@@ -1886,7 +2045,8 @@ A2:
       - organize activities
       - assign responsibilities
       - confirm arrangements
-    seedWords: [party, guest, date, food, music, plan]
+    seedWords: [party, guest, date, food, music, colleague, team, responsibility, list, message]
+    verbs: [plan, leave, choose, divide, handle, send, confirm]
     outline: >
       A group of colleagues plan a leaving party for a team member. They
       choose a date, divide responsibilities — one handles food, another
@@ -1899,7 +2059,8 @@ A2:
       - discuss ambitions
       - explain motivations
       - encourage others
-    seedWords: [job, plan, year, money, house, dream]
+    seedWords: [job, year, money, house, school, friend, saving, secret, motivation]
+    verbs: [plan, dream, catch, want, change, explain, encourage]
     outline: >
       Two old school friends catch up and share their dreams. One wants to
       own a house and change jobs within the year; the other is saving money
@@ -1912,7 +2073,8 @@ A2:
       - integrate vocabulary
       - reinforce grammar
       - improve fluency
-    seedWords: [day, work, home, food, friend, plan]
+    seedWords: [day, work, home, food, friend, language, learner, record, voice, diary]
+    verbs: [plan, describe, call, can]
     outline: >
       A language learner records a voice diary at the end of an ordinary day:
       she describes work, the food she ate at home, a phone call with a friend,
@@ -1924,7 +2086,8 @@ A2:
       - combine travel vocabulary
       - combine workplace language
       - practice conversations
-    seedWords: [trip, office, ticket, job, hotel, meeting]
+    seedWords: [trip, office, ticket, job, hotel, meeting, colleague, business, visit, question]
+    verbs: [tell, attend, ask, practise]
     outline: >
       A man tells a colleague about a business trip: the ticket, the hotel,
       the office he visited, the meetings he attended. The colleague asks
@@ -1937,7 +2100,8 @@ A2:
       - hold longer conversations
       - express opinions confidently
       - respond naturally
-    seedWords: [conversation, friend, opinion, question, plan, story]
+    seedWords: [conversation, friend, opinion, question, story, film, news, event]
+    verbs: [plan, sit, express, ask, respond]
     outline: >
       Two friends sit in a café and have a free-flowing conversation: they
       share a story, express opinions about a film and a news event, ask
@@ -1950,7 +2114,8 @@ A2:
       - consolidate A2 grammar
       - use expanded vocabulary
       - prepare for independent communication
-    seedWords: [conversation, opinion, plan, story, question, future]
+    seedWords: [conversation, opinion, story, question, future, teacher, review, course, back, cover]
+    verbs: [plan, look, express, make, come]
     outline: >
       A student and her teacher review the A2 course together. They look back
       at the stories and conversations covered, the student expresses her own
@@ -1964,7 +2129,8 @@ B1:
       - introduce yourself in detail
       - describe your background
       - explain personal goals
-    seedWords: [city, job, home, friend, plan, year]
+    seedWords: [city, job, home, friend, year, language, course, participant, hope]
+    verbs: [plan, introduce, come]
     outline: >
       At the first session of a language course, participants introduce themselves
       in detail: where they come from, what job they do, why they moved to this
@@ -1976,7 +2142,8 @@ B1:
       - describe strengths and weaknesses
       - discuss personal growth
       - set future goals
-    seedWords: [goal, skill, plan, year, book, course]
+    seedWords: [goal, skill, year, book, course, mentor, review, strength, talks, concrete]
+    verbs: [plan, meet, describe, set, read]
     outline: >
       A mentor and a mentee meet to review the past year. The mentee honestly
       describes her strengths and weaknesses, talks about how she has grown,
@@ -1989,7 +2156,8 @@ B1:
       - discuss educational experiences
       - compare learning methods
       - explain future study plans
-    seedWords: [school, course, teacher, exam, diploma, student]
+    seedWords: [school, course, teacher, exam, diploma, student, evening, return, education, talks]
+    verbs: [discuss, describe, demand, inspire, compare, explain]
     outline: >
       Two adults at an evening class discuss why they returned to education.
       One describes a demanding exam; the other talks about a teacher who
@@ -2002,7 +2170,8 @@ B1:
       - describe career ambitions
       - discuss professional development
       - evaluate work opportunities
-    seedWords: [job, career, company, manager, salary, skill]
+    seedWords: [job, career, company, manager, salary, skill, role, trust, friend, responsibility]
+    verbs: [offer, discuss, manage, develop, weigh, move]
     outline: >
       A professional is offered a new role at a different company. She
       discusses the opportunity with a trusted friend: better salary but
@@ -2015,7 +2184,8 @@ B1:
       - participate in meetings
       - express agreement and disagreement
       - summarize discussions
-    seedWords: [meeting, email, colleague, report, phone, boss]
+    seedWords: [meeting, colleague, phone, boss, team, project, conflict, discussion, decision]
+    verbs: [email, report, hold, agree, explain, summarize, send]
     outline: >
       A team holds a project meeting where ideas conflict. One colleague
       agrees with the boss's report; another disagrees and explains why.
@@ -2028,7 +2198,8 @@ B1:
       - describe leadership styles
       - discuss teamwork
       - resolve conflicts
-    seedWords: [team, meeting, manager, project, colleague, goal]
+    seedWords: [team, meeting, manager, project, colleague, goal, style, decision, conflict]
+    verbs: [compare, lead, prefer, involve, discuss]
     outline: >
       Two managers compare how they lead their teams. One prefers a direct
       style; the other involves everyone in decisions. A conflict has arisen
@@ -2041,7 +2212,8 @@ B1:
       - discuss priorities
       - explain challenges
       - suggest improvements
-    seedWords: [work, family, time, weekend, stress, sleep]
+    seedWords: [work, family, time, weekend, stress, friend, priority, improvement, difference]
+    verbs: [sleep, admit, listen, ask, suggest, change, make]
     outline: >
       A man admits to a friend that work has taken over his life: he has no
       time for family or sleep, and weekends are lost to stress. His friend
@@ -2054,7 +2226,8 @@ B1:
       - describe business ideas
       - explain risks
       - discuss opportunities
-    seedWords: [company, money, idea, customer, product, plan]
+    seedWords: [company, money, idea, customer, product, friend, coffee, reach, need, risk]
+    verbs: [plan, describe, identify, want, talk]
     outline: >
       Two friends have an idea for a small company. Over coffee they describe
       the product, identify the customers they want to reach, and talk
@@ -2067,7 +2240,8 @@ B1:
       - compare housing options
       - discuss advantages and disadvantages
       - explain preferences
-    seedWords: [house, apartment, rent, city, garden, price]
+    seedWords: [house, apartment, city, garden, price, couple, must, centre, lifestyle, advantage]
+    verbs: [rent, decide, buy, compare, commute, weigh, try]
     outline: >
       A young couple must decide: rent an apartment in the city centre or
       buy a house with a garden further out. They compare price, commute
@@ -2080,7 +2254,8 @@ B1:
       - discuss sustainability
       - describe eco-friendly habits
       - propose improvements
-    seedWords: [energy, waste, water, bike, plastic, tree]
+    seedWords: [energy, water, bike, plastic, tree, review, impact, cycle, saving, need]
+    verbs: [waste, describe, reduce, identify, improve, propose, change]
     outline: >
       A household reviews its environmental impact. Family members describe
       their eco-friendly habits — cycling instead of driving, reducing plastic,
@@ -2093,7 +2268,8 @@ B1:
       - discuss family dynamics
       - describe responsibilities
       - express opinions
-    seedWords: [family, parent, child, partner, home, dinner]
+    seedWords: [family, parent, child, partner, home, dinner, responsibility, house, children, opinion]
+    verbs: [discuss, feel, express, look]
     outline: >
       Two partners discuss how to share responsibilities at home. One feels
       the other does less around the house and with the children; the other
@@ -2106,7 +2282,8 @@ B1:
       - describe meaningful friendships
       - discuss trust
       - resolve misunderstandings
-    seedWords: [friend, trust, party, time, group, conversation]
+    seedWords: [friend, trust, party, time, group, conversation, friendship, strain]
+    verbs: [happen]
     outline: >
       A misunderstanding at a party has put a friendship under strain. Two
       people have a calm conversation about what happened, why trust is
@@ -2119,7 +2296,8 @@ B1:
       - discuss parenting
       - compare educational approaches
       - give advice
-    seedWords: [child, school, parent, baby, toy, bed]
+    seedWords: [child, school, parent, baby, toy, bed, meeting, approach, screen, philosophy]
+    verbs: [compare, discuss, listen, offer]
     outline: >
       Two parents at a school meeting compare their approaches: one is strict
       about bedtime and screen time; the other is more relaxed. They discuss
@@ -2132,7 +2310,8 @@ B1:
       - discuss healthy habits
       - evaluate diets
       - explain routines
-    seedWords: [food, exercise, sleep, fruit, water, gym]
+    seedWords: [food, exercise, fruit, water, gym, start, health, routine, friend, morning]
+    verbs: [sleep, explain, evaluate]
     outline: >
       A woman starts a new health routine and explains it to a sceptical
       friend: early mornings at the gym, more fruit and water, better sleep.
@@ -2145,7 +2324,8 @@ B1:
       - describe emotions
       - discuss stress management
       - support others
-    seedWords: [stress, sleep, mood, friend, rest, doctor]
+    seedWords: [stress, mood, friend, rest, doctor, colleague, trust, emotion, judge, talks]
+    verbs: [sleep, describe, listen, suggest]
     outline: >
       A colleague has been in a low mood for weeks and finally opens up
       to a trusted friend. She describes her emotions and sleep problems;
@@ -2158,7 +2338,8 @@ B1:
       - explain medical situations
       - understand treatment options
       - ask detailed questions
-    seedWords: [doctor, hospital, medicine, treatment, nurse, pain]
+    seedWords: [doctor, hospital, medicine, treatment, nurse, pain, patient, diagnosis, option, need]
+    verbs: [receive, ask, go, monitor]
     outline: >
       A patient receives an unexpected diagnosis and has a detailed
       conversation with her doctor. She asks about the treatment options,
@@ -2171,7 +2352,8 @@ B1:
       - discuss exercise routines
       - compare sports
       - describe achievements
-    seedWords: [gym, run, muscle, team, ball, bike]
+    seedWords: [gym, muscle, team, ball, bike, friend, routine, train, cycle, tournament]
+    verbs: [run, compare, describe, give]
     outline: >
       Two friends compare their fitness routines: one trains muscles at the
       gym; the other runs and cycles. They describe recent achievements —
@@ -2184,7 +2366,8 @@ B1:
       - discuss healthy eating
       - compare diets
       - explain food choices
-    seedWords: [food, vegetable, fruit, sugar, meat, diet]
+    seedWords: [food, vegetable, fruit, sugar, meat, diet, talks, participant, vegetables, choice]
+    verbs: [compare, eat, explain, respond]
     outline: >
       A nutritionist talks to a group about different diets. Participants
       compare what they eat — meat or no meat, fruit and vegetables, sugar
@@ -2197,7 +2380,8 @@ B1:
       - explain recipes
       - describe cooking techniques
       - recommend dishes
-    seedWords: [recipe, pan, oven, vegetable, knife, spice]
+    seedWords: [recipe, pan, oven, vegetable, knife, spice, host, step, technique, vegetables]
+    verbs: [cook, explain, add, recommend]
     outline: >
       A home cook hosts a small cooking class. She explains the recipe step
       by step — the right knife technique, how hot the pan should be, which
@@ -2210,7 +2394,8 @@ B1:
       - evaluate restaurants
       - write reviews
       - make recommendations
-    seedWords: [restaurant, menu, meal, waiter, bill, review]
+    seedWords: [restaurant, menu, meal, waiter, bill, review, food, service, dessert]
+    verbs: [eat, compare, evaluate, write, wait, recommend]
     outline: >
       Two food lovers eat at a new restaurant and compare notes. They evaluate
       the menu, the meal, the service and the bill. One writes a review on her
@@ -2223,7 +2408,8 @@ B1:
       - discuss technology
       - compare devices
       - explain advantages and disadvantages
-    seedWords: [phone, computer, app, screen, device, internet]
+    seedWords: [phone, computer, app, screen, device, internet, teacher, technology, work, debate]
+    verbs: [ask, live, compare, describe]
     outline: >
       A teacher asks students how technology affects their daily lives. They
       compare devices and apps, describe how they use the internet for work
@@ -2236,7 +2422,8 @@ B1:
       - explain AI applications
       - discuss opportunities
       - express concerns
-    seedWords: [computer, robot, data, machine, screen, program]
+    seedWords: [computer, robot, data, machine, screen, program, interview, researcher, intelligence, process]
+    verbs: [explain, describe, discuss, take, concern]
     outline: >
       A journalist interviews a researcher about artificial intelligence.
       The researcher explains how AI programs process data, describes real
@@ -2250,7 +2437,8 @@ B1:
       - discuss online behaviour
       - express opinions
       - evaluate social media
-    seedWords: [photo, post, profile, friend, phone, message]
+    seedWords: [photo, profile, friend, phone, message, parent, teenager, debate, dinner, table]
+    verbs: [post, explain, manage, express, concern, evaluate, find]
     outline: >
       A parent and a teenager debate social media at the dinner table. The
       teenager explains why she posts photos and manages her profile; the
@@ -2263,7 +2451,8 @@ B1:
       - discuss digital privacy
       - explain risks
       - suggest precautions
-    seedWords: [password, data, account, email, internet, phone]
+    seedWords: [password, data, account, internet, phone, expert, workplace, risk]
+    verbs: [email, give, talk, explain, can, expose, describe]
     outline: >
       A cybersecurity expert gives a short talk at a workplace. She explains
       how personal data and passwords can be exposed on the internet, describes
@@ -2276,7 +2465,8 @@ B1:
       - compare products
       - discuss consumer behaviour
       - justify choices
-    seedWords: [shop, price, product, money, bag, card]
+    seedWords: [shop, price, product, money, bag, card, friend, shopping, style, impulse]
+    verbs: [go, compare, buy, discuss, justify]
     outline: >
       Two friends with very different shopping styles go to a market together.
       One always compares prices and products carefully; the other buys on
@@ -2289,7 +2479,8 @@ B1:
       - make complaints
       - negotiate solutions
       - understand guarantees
-    seedWords: [shop, receipt, refund, product, complaint, guarantee]
+    seedWords: [shop, receipt, refund, product, complaint, customer, return, period, consumer, solution]
+    verbs: [guarantee, refuse, make, negotiate, satisfy, lose]
     outline: >
       A customer returns a product that broke within the guarantee period.
       The shop initially refuses a refund; she makes a clear, firm complaint,
@@ -2302,7 +2493,8 @@ B1:
       - discuss budgeting
       - explain financial decisions
       - compare saving strategies
-    seedWords: [money, budget, bank, salary, bill, saving]
+    seedWords: [money, budget, bank, salary, bill, saving, adviser, review, strategy, approach]
+    verbs: [help, look, explain, build, compare]
     outline: >
       A financial adviser helps a young man review his budget. They look at
       his salary, monthly bills and spending; the adviser explains how to
@@ -2315,7 +2507,8 @@ B1:
       - discuss investments
       - explain financial products
       - ask for advice
-    seedWords: [bank, account, money, loan, card, interest]
+    seedWords: [bank, account, money, loan, card, interest, visit, saving, adviser, investment]
+    verbs: [discuss, explain, consider, ask, decide]
     outline: >
       A woman visits her bank to discuss what to do with her savings. The
       adviser explains different investment products, the interest on a loan
@@ -2328,7 +2521,8 @@ B1:
       - describe memorable trips
       - compare destinations
       - recommend places
-    seedWords: [trip, city, hotel, photo, beach, flight]
+    seedWords: [trip, city, hotel, photo, beach, flight, dinner, party, guest, travel]
+    verbs: [describe, compare, recommend]
     outline: >
       At a dinner party guests share travel stories. One describes a
       memorable city trip and shows photos on his phone; another compares
@@ -2341,7 +2535,8 @@ B1:
       - discuss cultural differences
       - solve travel problems
       - give travel advice
-    seedWords: [airport, passport, country, flight, hotel, map]
+    seedWords: [airport, passport, country, flight, hotel, map, traveller, difference, book]
+    verbs: [explain, expect, handle, control, watch]
     outline: >
       A frequent traveller advises a nervous first-time international flyer.
       She explains what to expect at the airport, how to handle passport
@@ -2354,7 +2549,8 @@ B1:
       - discuss transportation systems
       - compare alternatives
       - explain preferences
-    seedWords: [train, bus, ticket, station, tram, platform]
+    seedWords: [train, bus, ticket, station, tram, platform, city, debate, transport, region]
+    verbs: [compare, discuss, explain, rush]
     outline: >
       Two city planners debate public transport in their region. They compare
       the train, tram and bus networks, discuss ticket prices and platform
@@ -2367,7 +2563,8 @@ B1:
       - discuss sustainable transport
       - evaluate policies
       - propose improvements
-    seedWords: [bike, car, train, energy, road, city]
+    seedWords: [bike, car, train, energy, road, city, discussion, hall, future, speaker]
+    verbs: [examine, move, evaluate, discuss, propose, make]
     outline: >
       A panel discussion at a town hall examines how the city should move
       in the future. Speakers evaluate current transport policies — cars on
@@ -2380,7 +2577,8 @@ B1:
       - discuss climate change
       - explain environmental issues
       - suggest solutions
-    seedWords: [climate, waste, energy, water, tree, pollution]
+    seedWords: [climate, energy, water, tree, pollution, teacher, evening, key, shortage, forest]
+    verbs: [waste, explain, change, lecture, describe, disappear, invite]
     outline: >
       A science teacher explains climate change to a group of adults at
       an evening lecture. She describes the key issues — pollution, water
@@ -2393,7 +2591,8 @@ B1:
       - describe ecosystems
       - discuss conservation
       - express concerns
-    seedWords: [forest, animal, river, bird, mountain, fish]
+    seedWords: [forest, animal, river, bird, mountain, fish, nature, tree, water, work]
+    verbs: [guide, lead, describe, depend, clean, express, concern]
     outline: >
       A nature guide leads a group through a forest near a mountain river.
       He describes the ecosystem — how the birds, fish and other animals
@@ -2406,7 +2605,8 @@ B1:
       - discuss climate trends
       - describe extreme weather
       - compare regions
-    seedWords: [rain, sun, storm, snow, wind, temperature]
+    seedWords: [rain, sun, storm, snow, wind, temperature, climate, trend, event, rise]
+    verbs: [describe, change, compare, explain, mean]
     outline: >
       A meteorologist presents climate trends at a public event. She
       describes how storms, snow and extreme temperatures are changing,
@@ -2419,7 +2619,8 @@ B1:
       - explain volunteer work
       - discuss motivations
       - encourage participation
-    seedWords: [volunteer, help, group, project, people, food]
+    seedWords: [volunteer, group, project, people, food, community, centre, distribution, work, talks]
+    verbs: [help, give, talk, explain, describe, encourage]
     outline: >
       A long-term volunteer gives a talk at a community centre. He explains
       the food distribution project he works on, describes what volunteers
@@ -2432,7 +2633,8 @@ B1:
       - discuss neighbourhood issues
       - propose initiatives
       - evaluate community projects
-    seedWords: [neighbour, street, park, meeting, town, school]
+    seedWords: [neighbour, street, park, meeting, town, school, concrete, initiative, project, work]
+    verbs: [discuss, neglect, propose, evaluate, divide]
     outline: >
       Residents at a neighbourhood meeting discuss two recurring problems:
       unsafe streets near the school and a neglected park. They propose
@@ -2445,7 +2647,8 @@ B1:
       - compare traditions
       - discuss cultural identity
       - explain customs
-    seedWords: [festival, food, music, custom, country, dance]
+    seedWords: [festival, food, music, custom, country, table, tradition, culture, identity, celebration]
+    verbs: [dance, explain, compare, express]
     outline: >
       At a multicultural festival, people from different countries share a
       table. Each person explains a tradition from home — food, music,
@@ -2458,7 +2661,8 @@ B1:
       - describe historical sites
       - evaluate exhibitions
       - recommend visits
-    seedWords: [museum, painting, statue, castle, ticket, history]
+    seedWords: [museum, painting, statue, castle, ticket, history, heritage, visit]
+    verbs: [guide, take, convert, describe, evaluate, recommend]
     outline: >
       A heritage guide takes a group around a castle that has been converted
       into a museum. She describes the history of the site, evaluates the
@@ -2471,7 +2675,8 @@ B1:
       - summarize books
       - discuss characters
       - express opinions
-    seedWords: [book, story, author, novel, page, character]
+    seedWords: [book, story, author, novel, page, character, club, debate, choice, opinion]
+    verbs: [discuss, read, summarize, intend, express, agree]
     outline: >
       A book club discusses a novel they all read. One member summarizes
       the story for a latecomer; others debate the main character's choices
@@ -2484,7 +2689,8 @@ B1:
       - review films
       - compare genres
       - recommend productions
-    seedWords: [film, screen, actor, series, ticket, scene]
+    seedWords: [film, screen, actor, series, ticket, scene, record, podcast, review, work]
+    verbs: [watch, compare, discuss, lead, recommend, type]
     outline: >
       Two critics record a short podcast review after watching a new film.
       They compare it with the director's earlier work, discuss the lead
@@ -2497,7 +2703,8 @@ B1:
       - discuss performances
       - compare styles
       - describe experiences
-    seedWords: [concert, stage, music, dance, singer, theatre]
+    seedWords: [concert, stage, music, singer, theatre, friend, performance, rock, show, presence]
+    verbs: [dance, compare, attend, describe]
     outline: >
       Friends compare two performances they attended: a rock concert and a
       theatre show with dance. They describe the stage, the singer's presence,
@@ -2510,7 +2717,8 @@ B1:
       - summarize news
       - discuss events
       - express opinions
-    seedWords: [news, newspaper, world, report, story, television]
+    seedWords: [news, newspaper, world, story, television, discussion, event, source, opinion]
+    verbs: [report, bring, summarize, compare, discuss, happen, express]
     outline: >
       At a weekly discussion group, members each bring a news story. One
       summarizes a world event from the newspaper; another has seen a
@@ -2523,7 +2731,8 @@ B1:
       - discuss social issues
       - explain viewpoints
       - compare opinions
-    seedWords: [government, vote, country, law, leader, people]
+    seedWords: [government, country, law, leader, people, citizen, debate, election, difference, opinion]
+    verbs: [vote, believe, make, convince, discuss, explain, compare]
     outline: >
       Two citizens debate whether to vote in an upcoming election. One
       believes the government and leaders make a real difference; the other
@@ -2536,7 +2745,8 @@ B1:
       - discuss laws
       - explain rights
       - describe legal situations
-    seedWords: [law, court, judge, police, crime, lawyer]
+    seedWords: [law, court, judge, police, crime, lawyer, system, client, minor, work]
+    verbs: [explain, describe, say, decide]
     outline: >
       A lawyer explains the legal system to a client facing a minor issue
       with the police. She describes how the court works, what the relevant
@@ -2549,7 +2759,8 @@ B1:
       - compare schools
       - evaluate teaching methods
       - discuss reforms
-    seedWords: [school, university, teacher, exam, student, class]
+    seedWords: [school, university, teacher, exam, student, class, country, conference, education, system]
+    verbs: [meet, compare, evaluate, format, discuss, consider, succeed]
     outline: >
       Two teachers from different countries meet at a conference and compare
       their education systems. They evaluate different teaching methods and
@@ -2562,7 +2773,8 @@ B1:
       - describe scientific developments
       - explain discoveries
       - discuss impacts
-    seedWords: [science, experiment, laboratory, research, data, discovery]
+    seedWords: [science, experiment, laboratory, research, data, discovery, researcher, show, potential, impact]
+    verbs: [lecture, describe, explain, discuss]
     outline: >
       A researcher presents her team's recent discovery at a public lecture.
       She describes the experiment in the laboratory, explains what the data
@@ -2575,7 +2787,8 @@ B1:
       - discuss inventions
       - evaluate new ideas
       - explain benefits
-    seedWords: [idea, invention, product, technology, company, design]
+    seedWords: [idea, invention, product, technology, company, design, event, entrepreneur, benefit, will]
+    verbs: [describe, explain, tell, bring, evaluate, ask]
     outline: >
       At a startup pitch event a young entrepreneur presents a new product.
       She describes the invention, explains the technology and the design,
@@ -2588,7 +2801,8 @@ B1:
       - present ideas clearly
       - persuade others
       - summarize discussions
-    seedWords: [meeting, speech, audience, message, question, idea]
+    seedWords: [meeting, speech, audience, message, question, idea, communication, trainer, workshop, participant]
+    verbs: [run, speak, ask, engage, summarize, discuss]
     outline: >
       A communications trainer runs a workshop on effective speaking. She
       asks participants to present an idea to the group, coaches them on
@@ -2601,7 +2815,8 @@ B1:
       - analyse situations
       - propose solutions
       - justify decisions
-    seedWords: [problem, plan, solution, team, idea, meeting]
+    seedWords: [problem, solution, team, idea, meeting, deadline, emergency, decision, manager]
+    verbs: [plan, discover, analyse, angle, propose, agree, justify]
     outline: >
       A team discovers a serious problem the day before a deadline. In an
       emergency meeting they analyse the situation from different angles,
@@ -2614,7 +2829,8 @@ B1:
       - compare options
       - explain choices
       - negotiate outcomes
-    seedWords: [choice, plan, option, money, time, decision]
+    seedWords: [choice, option, money, time, decision, must, renovation, reach]
+    verbs: [plan, make, spend, save, compare, explain, negotiate]
     outline: >
       A family must make a difficult financial decision: spend the money on
       a renovation now or save it for another year. They compare the options,
@@ -2627,7 +2843,8 @@ B1:
       - structure information
       - engage an audience
       - answer questions
-    seedWords: [presentation, screen, audience, slide, speech, question]
+    seedWords: [presentation, screen, audience, speech, question, manager, structure, introduction, key, conclusion]
+    verbs: [slide, give, keep, engage, handle]
     outline: >
       A manager gives a presentation to a mixed audience using slides on
       a screen. She structures her speech clearly — introduction, key points,
@@ -2640,7 +2857,8 @@ B1:
       - defend viewpoints
       - challenge arguments
       - reach conclusions
-    seedWords: [debate, opinion, argument, question, idea, point]
+    seedWords: [debate, opinion, argument, question, idea, point, pair, technology, challenge, reach]
+    verbs: [take, harm, defend, try]
     outline: >
       A formal debate takes place between two pairs of students on the idea
       that technology does more harm than good. Each side defends its opinion,
@@ -2653,7 +2871,8 @@ B1:
       - organize tasks
       - assign responsibilities
       - monitor progress
-    seedWords: [project, plan, team, task, deadline, meeting]
+    seedWords: [project, team, task, deadline, meeting, manager, initiative, responsibility, will, progress]
+    verbs: [plan, set, explain, break, assign, monitor]
     outline: >
       A project manager sets up a new initiative with her team. In the
       kick-off meeting she explains the plan, breaks it into tasks, assigns
@@ -2666,7 +2885,8 @@ B1:
       - discuss social issues
       - compare cultures
       - evaluate traditions
-    seedWords: [bicycle, canal, cheese, king, market, immigration]
+    seedWords: [bicycle, canal, cheese, king, market, immigration, city, cycle, culture, role]
+    verbs: [discuss, live, talk, compare, find]
     outline: >
       A panel of people with different backgrounds discusses what it means
       to live in the Netherlands today. They talk about immigration, the
@@ -2679,7 +2899,8 @@ B1:
       - compare countries
       - discuss globalization
       - describe cultural experiences
-    seedWords: [country, culture, world, language, travel, border]
+    seedWords: [country, culture, world, language, travel, experience, environment]
+    verbs: [border, compare, discuss, change, describe]
     outline: >
       Students from five different countries share their experience of living
       abroad. They compare home cultures with their new environment, discuss
@@ -2692,7 +2913,8 @@ B1:
       - discuss future trends
       - make predictions
       - evaluate possibilities
-    seedWords: [climate, technology, work, energy, world, future]
+    seedWords: [climate, technology, work, energy, world, future, interview, expert, talks, will]
+    verbs: [change, make, evaluate]
     outline: >
       A journalist interviews three experts about the next twenty years. One
       talks about climate and energy; another about how technology will change
@@ -2705,7 +2927,8 @@ B1:
       - integrate grammar
       - strengthen vocabulary
       - improve fluency
-    seedWords: [conversation, opinion, plan, story, question, idea]
+    seedWords: [conversation, opinion, story, question, idea, teacher, review, course, debate, feedback]
+    verbs: [plan, tell, express, ask, give, discuss, help]
     outline: >
       A teacher and a small group review the full B1 course. Each student
       tells a short story from their own life using B1 vocabulary, expresses
@@ -2718,7 +2941,8 @@ B1:
       - sustain conversations
       - express nuanced opinions
       - summarize viewpoints
-    seedWords: [discussion, opinion, argument, topic, question, idea]
+    seedWords: [discussion, opinion, argument, topic, question, idea, learner, choice, challenge]
+    verbs: [hold, express, summarize]
     outline: >
       A group of B1 learners hold a free discussion on a topic of their
       choice. They sustain the conversation for an extended time, express
@@ -2731,7 +2955,8 @@ B1:
       - consolidate B1 skills
       - increase confidence
       - prepare for independent language use
-    seedWords: [conversation, opinion, essay, argument, plan, future]
+    seedWords: [conversation, opinion, essay, argument, future, final, course, learner, talks, language]
+    verbs: [plan, reflect, come, describe, can, hold, argue]
     outline: >
       On the final day of the B1 course, learners reflect on how far they
       have come. Each person describes what they can now do — hold a

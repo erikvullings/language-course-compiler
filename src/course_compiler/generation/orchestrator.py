@@ -85,7 +85,12 @@ def _gloss_primary_term(gloss: str) -> str:
     head = gloss.split("(")[0]
     for sep in (",", ";"):
         head = head.split(sep)[0]
-    return head.strip().lower()
+    term = head.strip().lower()
+    # Verb glosses are often the English infinitive ("to be", "to have"); match
+    # them against bare-infinitive seeds ("be", "have").
+    if term.startswith("to "):
+        term = term[3:].strip()
+    return term
 
 
 def _resolve_seed_words(words: list[Word], seed_words: list[str]) -> list[str]:
@@ -202,6 +207,7 @@ def _load_predefined_themes(path: Path) -> dict[str, list[LessonThemePlan]]:
             theme_name = ""
             communicative_goals: list[str] = []
             english_seed_words: list[str] = []
+            english_verbs: list[str] = []
             outline = ""
             if isinstance(lesson_data, dict):
                 raw_theme = lesson_data.get("theme")
@@ -221,6 +227,13 @@ def _load_predefined_themes(path: Path) -> dict[str, list[LessonThemePlan]]:
                         for word in raw_seeds
                         if isinstance(word, str) and word.strip()
                     ]
+                raw_verbs = lesson_data.get("verbs")
+                if isinstance(raw_verbs, list):
+                    english_verbs = [
+                        str(word).strip()
+                        for word in raw_verbs
+                        if isinstance(word, str) and word.strip()
+                    ]
                 raw_outline = lesson_data.get("outline")
                 if isinstance(raw_outline, str):
                     outline = raw_outline.strip()
@@ -236,6 +249,7 @@ def _load_predefined_themes(path: Path) -> dict[str, list[LessonThemePlan]]:
                             seed_lemmas=[],
                             communicative_goals=communicative_goals,
                             english_seed_words=english_seed_words,
+                            english_verbs=english_verbs,
                             outline=outline,
                         ),
                     )
@@ -274,6 +288,10 @@ def _verb_as_word(verb: Verb) -> Word:
         part_of_speech=PartOfSpeech.VERB,
         frequency=verb.frequency,
         cefr=verb.cefr,
+        # Carry the English gloss so English seed/verb hints can resolve to this
+        # verb via ``_resolve_seed_words`` (verbs live in a separate file and would
+        # otherwise be unreachable from the catalog's English anchors).
+        translations=dict(verb.translations),
     )
 
 
@@ -544,7 +562,8 @@ class LessonOrchestrator:
         seed_owner: dict[str, int] = {}
         for theme_index, plan_for_owner in enumerate(theme_sequence):
             for lemma in _resolve_seed_words(
-                all_content, plan_for_owner.english_seed_words
+                all_content,
+                plan_for_owner.english_verbs + plan_for_owner.english_seed_words,
             ):
                 seed_owner.setdefault(lemma, theme_index)
 
@@ -566,11 +585,14 @@ class LessonOrchestrator:
             )
 
             # Highest priority: concrete anchor words resolved from the catalog's
-            # English seed words via the lexicon's English glosses. Deterministic and
-            # independent of LLM quality, so early lessons get scene-grounding nouns
-            # instead of the high-frequency function words the fallback would pick.
+            # English verb + seed-word hints via the lexicon's English glosses.
+            # Deterministic and independent of LLM quality, so early lessons get the
+            # verbs that drive sentences plus scene-grounding nouns, instead of the
+            # high-frequency function words the fallback would pick. Verbs come first
+            # so the sentence "engine" is reliably taught even under a tight budget.
             for lemma in _resolve_seed_words(
-                remaining_words, theme_plan.english_seed_words
+                remaining_words,
+                theme_plan.english_verbs + theme_plan.english_seed_words,
             ):
                 if lemma not in selected:
                     selected.append(lemma)
@@ -590,10 +612,12 @@ class LessonOrchestrator:
                     language=language,
                 )
                 try:
-                    # English seed-word anchors bias selection toward concrete nouns.
+                    # English verb + seed-word anchors bias the proposal toward the
+                    # lesson's intended verbs and concrete nouns.
                     proposed = proposer(
                         **proposer_kwargs,
-                        seed_words=theme_plan.english_seed_words,
+                        seed_words=theme_plan.english_verbs
+                        + theme_plan.english_seed_words,
                     )
                 except TypeError:
                     # Back-compat with assigners that predate the seed_words arg.
@@ -844,6 +868,19 @@ class LessonOrchestrator:
             new_word_lemmas = [w.lemma for w in plan.new_words] + [
                 v.infinitive for v in plan.new_verbs
             ]
+            # English glosses so the writer uses the intended sense (e.g. the verb
+            # "eten = to eat" rather than the noun "eten = food"), and an explicit
+            # verb list so the prompt can ask the writer to build sentences on them.
+            glosses: dict[str, str] = {}
+            for w in plan.new_words:
+                term = _gloss_primary_term(w.translations.get("en", ""))
+                if term:
+                    glosses[w.lemma] = term
+            for v in plan.new_verbs:
+                term = _gloss_primary_term(v.translations.get("en", ""))
+                if term:
+                    glosses[v.infinitive] = term
+            verb_lemmas = [v.infinitive for v in plan.new_verbs]
             lesson = self._generator.generate(
                 plan.lesson_id,
                 new_word_lemmas,
@@ -856,6 +893,8 @@ class LessonOrchestrator:
                 temperature=temperature,
                 function_lemmas=plan.function_lemmas | plan.allowed_forms,
                 cefr_lookup=cefr_lookup,
+                glosses=glosses,
+                verb_lemmas=verb_lemmas,
             )
             yield plan, lesson
 

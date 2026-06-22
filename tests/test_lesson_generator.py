@@ -96,16 +96,16 @@ def _lemmatizer(words: list[str]) -> _MapLemmatizer:
 
 def test_parse_strips_echoed_title_placeholder():
     """Weak models echo the literal '## Lesson Title' header; strip that prefix."""
-    title, _, _ = _parse_lesson_structure(
-        "## Lesson Title: Begroetingen\n\n**New words:** hallo\nHallo daar."
+    title, _ = _parse_lesson_structure(
+        "## Lesson Title: Begroetingen\n\nHallo daar."
     )
     assert title == "Begroetingen"
 
 
 def test_parse_drops_bare_title_placeholder():
     """A bare echoed placeholder yields a neutral default, not 'Lesson Title'."""
-    title, _, _ = _parse_lesson_structure(
-        "## Lesson Title\n\n**New words:** hallo\nHallo daar."
+    title, _ = _parse_lesson_structure(
+        "## Lesson Title\n\nHallo daar."
     )
     assert title != "Lesson Title"
 
@@ -132,34 +132,34 @@ def test_target_length_floor():
 # ---------------------------------------------------------------------------
 
 
-def test_generate_language_in_system_prompt():
+def test_generate_language_in_prompt():
     provider = _StubProvider(["huis"])
     gen = LessonGenerator(provider, _lemmatizer(["huis"]))
     gen.generate("lesson001", ["huis"], {"huis"}, language="Dutch", model="stub")
     assert "Dutch" in provider._calls[0][0].content
 
 
-def test_generate_cefr_in_user_prompt():
+def test_generate_cefr_in_prompt():
     provider = _StubProvider(["huis"])
     gen = LessonGenerator(provider, _lemmatizer(["huis"]))
     gen.generate(
         "lesson001", ["huis"], {"huis"}, language="Dutch", cefr="A1", model="stub"
     )
-    assert "A1" in provider._calls[0][1].content
+    assert "A1" in provider._calls[0][0].content
 
 
-def test_generate_theme_in_user_prompt():
+def test_generate_theme_in_prompt():
     provider = _StubProvider(["huis"])
     gen = LessonGenerator(provider, _lemmatizer(["huis"]))
     gen.generate(
         "lesson001", ["huis"], {"huis"}, language="Dutch", theme="home", model="stub"
     )
-    assert "home" in provider._calls[0][1].content
+    assert "home" in provider._calls[0][0].content
 
 
 def test_generate_outline_in_prompt_and_forces_narrative():
     """A lesson outline is included in the prompt and switches to narrative format."""
-    provider = _StubProvider(["## T\n**New words:** huis\nhuis"])
+    provider = _StubProvider(["## T\nhuis"])
     gen = LessonGenerator(provider, _lemmatizer(["huis"]))
     gen.generate(
         "lesson001",
@@ -170,35 +170,69 @@ def test_generate_outline_in_prompt_and_forces_narrative():
         outline="Two neighbours meet and talk about their house.",
         model="stub",
     )
-    full_prompt = " ".join(m.content for m in provider._calls[0]).lower()
-    assert "two neighbours meet" in full_prompt
-    assert "narrative" in provider._calls[0][0].content.lower()
+    prompt = provider._calls[0][0].content.lower()
+    assert "two neighbours meet" in prompt
+    assert "narrative" in prompt
+
+
+def test_generate_shows_english_glosses_for_new_words():
+    """New words are annotated with their English meaning to fix the sense."""
+    provider = _StubProvider(["## T\nhuis"])
+    gen = LessonGenerator(provider, _lemmatizer(["huis"]))
+    gen.generate(
+        "lesson001",
+        ["huis", "eten"],
+        {"huis", "eten"},
+        language="Dutch",
+        model="stub",
+        glosses={"huis": "house", "eten": "to eat"},
+    )
+    prompt = provider._calls[0][0].content
+    assert "huis (house)" in prompt
+    assert "eten (to eat)" in prompt
+
+
+def test_generate_lists_verbs_with_build_instruction():
+    """Selected verbs are surfaced with an explicit 'build sentences' instruction."""
+    provider = _StubProvider(["## T\nhuis"])
+    gen = LessonGenerator(provider, _lemmatizer(["huis"]))
+    gen.generate(
+        "lesson001",
+        ["huis", "hebben"],
+        {"huis", "hebben"},
+        language="Dutch",
+        model="stub",
+        verb_lemmas=["hebben"],
+    )
+    prompt = provider._calls[0][0].content.lower()
+    assert "build your sentences around these verbs" in prompt
+    assert "hebben" in prompt
 
 
 def test_early_lesson_uses_example_format_when_vocab_is_small():
     """With little vocabulary to recombine, ask for simple example sentences."""
-    provider = _StubProvider(["## T\n**New words:** huis\nhuis"])
+    provider = _StubProvider(["## T\nhuis"])
     gen = LessonGenerator(provider, _lemmatizer(["huis"]))
     gen.generate("lesson001", ["huis"], {"huis"}, language="Dutch", model="stub")
-    system_prompt = provider._calls[0][0].content.lower()
-    assert "example sentences" in system_prompt
-    assert "narrative" not in system_prompt
+    prompt = provider._calls[0][0].content.lower()
+    assert "example sentences" in prompt
+    assert "short narrative" not in prompt
 
 
 def test_mature_lesson_uses_narrative_format_when_vocab_is_large():
     """Once a base vocabulary exists, ask for a coherent narrative."""
     allowed = {f"w{i}" for i in range(80)}
-    provider = _StubProvider(["## T\n**New words:** w0\nw0"])
+    provider = _StubProvider(["## T\nw0"])
     gen = LessonGenerator(provider, _MapLemmatizer({w: w for w in allowed}))
     gen.generate("lesson050", ["w0"], allowed, language="Dutch", model="stub")
-    system_prompt = provider._calls[0][0].content.lower()
-    assert "narrative" in system_prompt
+    prompt = provider._calls[0][0].content.lower()
+    assert "narrative" in prompt
 
 
 def test_narrative_threshold_is_configurable():
     """Lowering the threshold flips a small-vocab lesson into narrative format."""
     allowed = {"huis", "deur"}
-    provider = _StubProvider(["## T\n**New words:** huis\nhuis"])
+    provider = _StubProvider(["## T\nhuis"])
     gen = LessonGenerator(
         provider, _MapLemmatizer({"huis": "huis", "deur": "deur"}),
         narrative_vocab_threshold=2,
@@ -207,15 +241,15 @@ def test_narrative_threshold_is_configurable():
     assert "narrative" in provider._calls[0][0].content.lower()
 
 
-def test_low_cefr_system_prompt_allows_frequent_simple_past_forms():
+def test_low_cefr_prompt_allows_frequent_simple_past_forms():
     provider = _StubProvider(["huis"])
     gen = LessonGenerator(provider, _lemmatizer(["huis"]))
     gen.generate(
         "lesson001", ["huis"], {"huis"}, language="Dutch", cefr="A1", model="stub"
     )
-    system_prompt = provider._calls[0][0].content
-    assert "Prefer present tense" in system_prompt
-    assert "equivalents of 'was/were'" in system_prompt
+    prompt = provider._calls[0][0].content
+    assert "Prefer present tense" in prompt
+    assert "equivalents of 'was/were'" in prompt
 
 
 def test_allowed_words_not_in_prompt():
@@ -242,7 +276,7 @@ def test_allowed_words_not_in_prompt():
 
 
 def test_generate_returns_valid_content():
-    response = "## Home Lesson\n**New words:** huis, zijn, groot\nhuis zijn groot."
+    response = "## Home Lesson\nhuis zijn groot."
     provider = _StubProvider([response])
     gen = LessonGenerator(provider, _lemmatizer(["huis", "zijn", "groot"]))
     result = gen.generate(
@@ -261,7 +295,7 @@ def test_generate_returns_valid_content():
 def test_extra_word_at_same_cefr_is_tolerated():
     """An extra word at the same CEFR level passes without retry."""
     mapping = {"huis": "huis", "tafel": "tafel"}
-    response = "## Home\n**New words:** huis, tafel\nhuis tafel"
+    response = "## Home\nhuis tafel"
     provider = _StubProvider([response])
     cefr_lookup = {"huis": "A1", "tafel": "A1"}
     gen = LessonGenerator(provider, _MapLemmatizer(mapping))
@@ -283,8 +317,8 @@ def test_extra_word_above_cefr_triggers_retry_with_feedback():
     """A B1 word in an A1 lesson triggers a retry with a feedback message."""
     mapping = {"huis": "huis", "appartement": "appartement"}
     cefr_lookup = {"huis": "A1", "appartement": "B1"}
-    bad_response = "## Home\n**New words:** huis, appartement\nappartement"
-    good_response = "## Home\n**New words:** huis\nhuis"
+    bad_response = "## Home\nappartement"
+    good_response = "## Home\nhuis"
     provider = _StubProvider([bad_response, good_response])
     gen = LessonGenerator(provider, _MapLemmatizer(mapping))
     result = gen.generate(
@@ -307,8 +341,8 @@ def test_retry_feedback_asks_for_minimal_edit_not_rewrite():
     """Feedback anchors on the previous draft (revise, don't regenerate from scratch)."""
     mapping = {"huis": "huis", "appartement": "appartement"}
     cefr_lookup = {"huis": "A1", "appartement": "B1"}
-    bad = "## Home\n**New words:** huis, appartement\nappartement"
-    good = "## Home\n**New words:** huis\nhuis"
+    bad = "## Home\nappartement"
+    good = "## Home\nhuis"
     provider = _StubProvider([bad, good])
     gen = LessonGenerator(provider, _MapLemmatizer(mapping))
     gen.generate(
@@ -320,7 +354,8 @@ def test_retry_feedback_asks_for_minimal_edit_not_rewrite():
         model="stub",
         cefr_lookup=cefr_lookup,
     )
-    feedback = provider._calls[1][3].content.lower()
+    # Second call: [user_prompt, assistant_bad, user_feedback]
+    feedback = provider._calls[1][2].content.lower()
     # Instructs a minimal revision of the previous version, not a fresh rewrite.
     assert "revise" in feedback
     assert "rewrite from scratch" in feedback
@@ -331,8 +366,8 @@ def test_retry_feedback_asks_for_minimal_edit_not_rewrite():
 def test_retry_messages_form_multi_turn_conversation():
     """On retry the conversation appends assistant + user feedback, not a fresh prompt."""
     mapping = {"huis": "huis", "bad": "bad"}
-    bad = "## Title\n**New words:** huis, bad\nText"
-    good = "## Title\n**New words:** huis\nText"
+    bad = "## Title\nbad"
+    good = "## Title\nhuis"
     provider = _StubProvider([bad, good])
     gen = LessonGenerator(provider, _MapLemmatizer(mapping))
     gen.generate(
@@ -342,17 +377,17 @@ def test_retry_messages_form_multi_turn_conversation():
         language="Dutch",
         model="stub",
     )
-    # First call: 2 messages (system + user)
-    assert len(provider._calls[0]) == 2
-    # Second call: 4 messages (system + user + assistant_bad + user_feedback)
-    assert len(provider._calls[1]) == 4
-    assert provider._calls[1][2].role.value == "assistant"
-    assert provider._calls[1][3].role.value == "user"
+    # First call: 1 message (user prompt only)
+    assert len(provider._calls[0]) == 1
+    # Second call: 3 messages (user_prompt + assistant_bad + user_feedback)
+    assert len(provider._calls[1]) == 3
+    assert provider._calls[1][1].role.value == "assistant"
+    assert provider._calls[1][2].role.value == "user"
 
 
 def test_function_words_are_exempt():
     mapping = {"de": "de", "huis": "huis", "is": "zijn"}
-    response = "## Title\n**New words:** huis\nhuis"
+    response = "## Title\nhuis"
     provider = _StubProvider([response])
     gen = LessonGenerator(
         provider, _MapLemmatizer(mapping), function_lemmas={"de", "zijn"}

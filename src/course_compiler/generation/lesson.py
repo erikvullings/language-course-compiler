@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 from course_compiler.generation.base import Lemmatizer
 from course_compiler.generation.cache import LLMCache
 from course_compiler.generation.validator import ValidationResult, VocabularyValidator
 from course_compiler.llm.base import LLMError, LLMProvider, Message, Role
+
+log = logging.getLogger(__name__)
 
 #: Words of lesson text generated per new content word introduced.
 WORDS_PER_NEW_WORD = 15
@@ -67,48 +70,76 @@ FORMAT_EXAMPLES = "examples"
 FORMAT_NARRATIVE = "narrative"
 
 
-def _body_instruction(fmt: str, target_length: str) -> str:
-    """Format-specific instruction for the lesson body.
+def _format_new_words(new_words: list[str], glosses: dict[str, str] | None) -> str:
+    """Render the new-word list, annotating each with its English meaning.
 
-    Early lessons (little recombinant vocabulary) ask for short example sentences
-    or a brief dialogue, which read naturally with sparse vocabulary. Mature
-    lessons ask for a coherent narrative of the target length.
+    Showing ``lemma (meaning)`` keeps the writer on the intended sense — e.g. the
+    verb ``eten (to eat)`` rather than the noun ``eten (food)`` — without leaking
+    any other language into the output, which must stay in the target language.
     """
-    if fmt == FORMAT_EXAMPLES:
-        return (
-            "Several short, simple example sentences (or a brief dialogue), "
-            f"approximately {target_length} in total. Keep sentences short and "
-            "concrete; each new word should appear in at least one sentence. "
-        )
-    return (
-        f"A single coherent narrative — a short story or dialogue — approximately "
-        f"{target_length}, that reads naturally from start to finish (not a list of "
-        "unrelated sentences). Introduce each new word naturally in context. "
-    )
+    if not glosses:
+        return ", ".join(new_words)
+    parts: list[str] = []
+    for word in new_words:
+        meaning = glosses.get(word)
+        parts.append(f"{word} ({meaning})" if meaning else word)
+    return ", ".join(parts)
 
 
-def _system_prompt(
+def _user_prompt(
     language: str,
+    new_words: list[str],
     target_length: str,
-    cefr: str = "",
-    fmt: str = FORMAT_NARRATIVE,
+    cefr: str,
+    theme: str,
+    fmt: str,
+    outline: str = "",
+    glosses: dict[str, str] | None = None,
+    verb_lemmas: list[str] | None = None,
 ) -> str:
-    return (
-        f"You are a language-learning content writer. "
-        f"Write a short lesson in {language} with this exact structure:\n\n"
-        f"## <a short, specific lesson title in {language} — never the words "
-        f"'Lesson Title'>\n\n"
-        f"**New words:** comma-separated list of the new lemmas\n\n"
-        f"[{_body_instruction(fmt, target_length)}"
-        f"Keep the vocabulary at the stated CEFR level — do not use advanced words, "
-        f"but you may freely use other common words at or below this level so the "
-        f"text reads naturally. "
-        f"Conjugate verbs correctly for their subject and tense — do not leave a "
-        f"verb in its infinitive form unless the grammar requires it. "
-        f"{_tense_guidance(cefr)}"
-        f"Articles, prepositions, conjunctions, and common pronouns may be used freely.]\n\n"
-        f"Return ONLY the lesson structure above with no other commentary."
+    if fmt == FORMAT_EXAMPLES:
+        write_instruction = (
+            f"Write several short, simple example sentences or a brief dialogue "
+            f"— not more than {target_length} in total. "
+            "Keep sentences short and concrete; each new word should appear in at least one sentence."
+        )
+    else:
+        write_instruction = (
+            f"Write a short narrative — a story or dialogue — not more than {target_length}, "
+            "that reads naturally from start to finish."
+        )
+
+    theme_line = f'The theme is "{theme}"'
+    if outline:
+        theme_line += f": {outline.strip()}"
+
+    word_line = (
+        f"Try to use these {language} words, or derivatives, naturally in context "
+        f"(the English meaning is given in brackets to fix the intended sense — do "
+        f"not write the English in your text): {_format_new_words(new_words, glosses)}."
     )
+
+    parts = [
+        f"You are a {language} writer. {write_instruction}",
+        f"Keep the vocabulary at the CEFR {cefr} level — do not use advanced words, "
+        f"but you may freely use other common words at or below this level so the text reads naturally. "
+        f"Conjugate verbs correctly for their subject and tense. "
+        f"{_tense_guidance(cefr)}"
+        "Articles, prepositions, conjunctions, and common pronouns may be used freely.",
+        theme_line + ".",
+        word_line,
+    ]
+    if verb_lemmas:
+        parts.append(
+            "Build your sentences around these verbs, conjugated as the context "
+            f"requires: {', '.join(verb_lemmas)}."
+        )
+    parts.append(
+        f"Only output the title and text in {language}, using Markdown with this exact structure:\n\n"
+        "## <SHORT_DESCRIPTIVE_TITLE>\n\n"
+        "<NARRATIVE>"
+    )
+    return "\n\n".join(parts)
 
 
 def _feedback_message(result: ValidationResult, cefr_target: str) -> str:
@@ -148,40 +179,28 @@ def _clean_title(raw: str) -> str:
     return cleaned
 
 
-def _parse_lesson_structure(
-    text: str,
-) -> tuple[str, list[str], str]:
-    """Parse structured lesson markdown into (title, new_words, narrative).
+def _parse_lesson_structure(text: str) -> tuple[str, str]:
+    """Parse structured lesson markdown into (title, narrative).
 
     Expected format:
     ## Lesson Title
-    **New words:** word1, word2, word3
     [Narrative text]
 
-    Returns (title, [lemmas], narrative_text). Gracefully handles malformed input.
+    Returns (title, narrative_text). Gracefully handles malformed input.
     """
     lines = text.strip().split("\n")
     title = ""
-    new_words_str = ""
     narrative_lines: list[str] = []
-    in_narrative = False
 
     for line in lines:
         stripped = line.strip()
         if stripped.startswith("##"):
             title = _clean_title(stripped[2:].strip())
-        elif stripped.startswith("**New words:**"):
-            new_words_str = stripped[len("**New words:**") :].strip()
-        elif stripped:
-            if new_words_str or title:
-                in_narrative = True
-            if in_narrative:
-                narrative_lines.append(line)
+        elif title:
+            narrative_lines.append(line)
 
-    new_words = [w.strip() for w in new_words_str.split(",") if w.strip()]
     narrative = "\n".join(narrative_lines).strip()
-
-    return title or "Untitled Lesson", new_words, narrative or text
+    return title or "Untitled Lesson", narrative or text
 
 
 class LessonGenerator:
@@ -229,23 +248,24 @@ class LessonGenerator:
         new_words: list[str],
         fmt: str,
         outline: str = "",
+        glosses: dict[str, str] | None = None,
+        verb_lemmas: list[str] | None = None,
     ) -> list[Message]:
-        outline_line = (
-            f"Scene outline (write the text so it follows this): {outline}\n"
-            if outline
-            else ""
-        )
-        user_content = (
-            f"Lesson ID: {lesson_id}\n"
-            f"CEFR level: {cefr}\n"
-            f"Theme: {theme}\n"
-            f"{outline_line}"
-            f"New words to introduce: {', '.join(new_words)}\n\n"
-            "Write the lesson now."
-        )
         return [
-            Message(Role.SYSTEM, _system_prompt(language, target_length, cefr, fmt)),
-            Message(Role.USER, user_content),
+            Message(
+                Role.USER,
+                _user_prompt(
+                    language,
+                    new_words,
+                    target_length,
+                    cefr,
+                    theme,
+                    fmt,
+                    outline,
+                    glosses,
+                    verb_lemmas,
+                ),
+            )
         ]
 
     def generate(
@@ -262,6 +282,8 @@ class LessonGenerator:
         temperature: float = 0.7,
         function_lemmas: set[str] | None = None,
         cefr_lookup: dict[str, str] | None = None,
+        glosses: dict[str, str] | None = None,
+        verb_lemmas: list[str] | None = None,
     ) -> GeneratedLesson:
         """Generate and validate lesson content, retrying with feedback on violation.
 
@@ -294,28 +316,39 @@ class LessonGenerator:
             else FORMAT_EXAMPLES
         )
         messages = self._build_initial_messages(
-            lesson_id, language, cefr, theme, target_length, new_words, fmt, outline
+            lesson_id, language, cefr, theme, target_length, new_words, fmt, outline,
+            glosses, verb_lemmas,
         )
         raw_messages = [m.as_dict() for m in messages]
         resolved_model = model or ""
+
+        log.debug(
+            "[%s] Starting generation — cefr=%s theme=%r fmt=%s target=%s "
+            "new_words=%d allowed_words=%d model=%r outline=%s",
+            lesson_id, cefr, theme, fmt, target_length,
+            len(new_words), len(allowed_words), resolved_model,
+            repr(outline[:80] + "…") if len(outline) > 80 else repr(outline),
+        )
+        for msg in messages:
+            log.debug("[%s] %s PROMPT:\n%s", lesson_id, msg.role.value.upper(), msg.content)
 
         for attempt in range(1, self._max_retries + 1):
             # Cache: only the first attempt (deterministic prompt) is cached.
             if attempt == 1 and self._cache is not None:
                 cached = self._cache.get(resolved_model, raw_messages)
                 if cached is not None:
-                    title, parsed_new_words, narrative = _parse_lesson_structure(
-                        cached.content
-                    )
+                    log.debug("[%s] Cache hit — skipping LLM call", lesson_id)
+                    title, narrative = _parse_lesson_structure(cached.content)
                     return GeneratedLesson(
                         lesson_id=lesson_id,
                         content=narrative,
                         attempts=0,
                         title=title,
                         theme=theme,
-                        new_words=frozenset(parsed_new_words),
+                        new_words=frozenset(new_words),
                     )
 
+            log.debug("[%s] Attempt %d/%d — calling LLM", lesson_id, attempt, self._max_retries)
             try:
                 response = self._provider.complete(
                     messages, model=model, temperature=temperature
@@ -323,6 +356,7 @@ class LessonGenerator:
             except LLMError:
                 if not self._fail_open_on_llm_error:
                     raise
+                log.debug("[%s] LLM error on attempt %d — using fallback", lesson_id, attempt)
                 return GeneratedLesson(
                     lesson_id=lesson_id,
                     content=_fallback_content(
@@ -335,13 +369,13 @@ class LessonGenerator:
                     fallback=True,
                 )
 
+            log.debug("[%s] RESPONSE (attempt %d):\n%s", lesson_id, attempt, response.content)
+
             if self._cache is not None and attempt == 1:
                 self._cache.put(resolved_model, raw_messages, response)
 
             # Parse the structured lesson response first, then validate narrative
-            title, parsed_new_words, narrative = _parse_lesson_structure(
-                response.content
-            )
+            title, narrative = _parse_lesson_structure(response.content)
 
             result: ValidationResult = self._validator.validate(
                 narrative,
@@ -354,6 +388,10 @@ class LessonGenerator:
             )
 
             if result.is_valid:
+                log.debug(
+                    "[%s] Validation passed on attempt %d (tolerated=%d)",
+                    lesson_id, attempt, len(result.tolerated),
+                )
                 return GeneratedLesson(
                     lesson_id=lesson_id,
                     content=narrative,
@@ -361,14 +399,21 @@ class LessonGenerator:
                     tolerated=result.tolerated,
                     title=title,
                     theme=theme,
-                    new_words=frozenset(parsed_new_words),
+                    new_words=frozenset(new_words),
                 )
+
+            log.debug(
+                "[%s] Validation failed on attempt %d — violations: %s",
+                lesson_id, attempt, sorted(result.violations),
+            )
+            feedback = _feedback_message(result, cefr)
+            log.debug("[%s] FEEDBACK MESSAGE:\n%s", lesson_id, feedback)
 
             # Append the bad response and a correction message for the next attempt.
             messages = [
                 *messages,
                 Message(Role.ASSISTANT, response.content),
-                Message(Role.USER, _feedback_message(result, cefr)),
+                Message(Role.USER, feedback),
             ]
 
         if self._fail_open_on_validation_error:
