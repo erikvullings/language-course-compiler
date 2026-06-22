@@ -20,6 +20,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import re
 import xml.etree.ElementTree as ET
 from collections import defaultdict
 from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
@@ -193,6 +194,30 @@ def _gender(entry: dict) -> Gender | None:
 _ARTICLE_PREFIXES = ("a ", "an ", "the ", "to ")
 
 
+# Glosses that point at another lemma's form ("inflection of winkelen:", "singular
+# past indicative of eten", "plural of x") describe a form, not a meaning. Such
+# entries are not learnable infinitives — they pollute downstream selection and
+# prompts — so verbs whose only gloss is a form pointer are dropped at import.
+# (The lesson generator carries the same guard; this keeps verbs.json clean too.)
+_FORM_POINTER_RE = re.compile(
+    r"^(?:to\s+)?(?:"
+    r"inflection|inflected form|plural|singular|diminutive|genitive|dative|"
+    r"accusative|nominative|comparative|superlative|participle|past participle|"
+    r"present participle|gerund|imperative|subjunctive|first-person|second-person|"
+    r"third-person|past tense|past indicative|present indicative|"
+    r"alternative form|alternative spelling|obsolete form|obsolete spelling|"
+    r"archaic form|archaic spelling|dated form|misspelling|eye dialect|"
+    r"abbreviation|initialism|acronym|attributive form|verbal noun"
+    r")\b.*\bof\b",
+    re.IGNORECASE,
+)
+
+
+def _is_form_pointer_gloss(gloss: str | None) -> bool:
+    """True when the English gloss is a form reference, not a meaning."""
+    return bool(gloss) and _FORM_POINTER_RE.match(gloss.strip()) is not None
+
+
 def _english_translation(entry: dict) -> str | None:
     """Best single English equivalent, taken from the first usable gloss."""
 
@@ -320,6 +345,10 @@ def verb_from_kaikki(
         return None
     lemma = entry.get("word")
     if not lemma:
+        return None
+    # Drop inflected-form entries (e.g. "winkel" glossed "inflection of winkelen:");
+    # they are not infinitives and only add noise to the verb lexicon.
+    if _is_form_pointer_gloss(_english_translation(entry)):
         return None
     forms = entry.get("forms") or []
 

@@ -127,6 +127,25 @@ def test_weak_verb_is_not_irregular():
     assert verb.past == {"singular": "rende", "plural": "renden"}
 
 
+def test_inflected_form_verb_entry_is_dropped():
+    """A form-pointer gloss ('inflection of …') marks a non-infinitive; skip it."""
+    inflected = {
+        "word": "winkel",
+        "pos": "verb",
+        "forms": [],
+        "senses": [{"glosses": ["inflection of winkelen:"]}],
+    }
+    assert dutch.verb_from_kaikki(inflected) is None
+
+    past_form = {
+        "word": "at",
+        "pos": "verb",
+        "forms": [],
+        "senses": [{"glosses": ["singular past indicative of eten"]}],
+    }
+    assert dutch.verb_from_kaikki(past_form) is None
+
+
 def test_unknown_pos_is_skipped():
     assert dutch.word_from_kaikki({"pos": "name", "word": "Amsterdam", "senses": [{}]}) is None
 

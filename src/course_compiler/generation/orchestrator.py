@@ -93,13 +93,35 @@ def _gloss_primary_term(gloss: str) -> str:
     return term
 
 
-def _resolve_seed_words(words: list[Word], seed_words: list[str]) -> list[str]:
-    """Map English ``seed_words`` to lexicon lemmas via their English glosses.
+# Glosses that merely point at another lemma's form ("inflection of winkelen:",
+# "singular past indicative of eten", "plural of x") are not meanings — they leak
+# noise into prompts and mark entries that should never be taught as new vocabulary.
+_FORM_POINTER_RE = re.compile(
+    r"^(?:to\s+)?(?:"
+    r"inflection|inflected form|plural|singular|diminutive|genitive|dative|"
+    r"accusative|nominative|comparative|superlative|participle|past participle|"
+    r"present participle|gerund|imperative|subjunctive|first-person|second-person|"
+    r"third-person|past tense|past indicative|present indicative|"
+    r"alternative form|alternative spelling|obsolete form|obsolete spelling|"
+    r"archaic form|archaic spelling|dated form|misspelling|eye dialect|"
+    r"abbreviation|initialism|acronym|attributive form|verbal noun"
+    r")\b.*\bof\b",
+    re.IGNORECASE,
+)
 
-    Deterministic and independent of any LLM: for each seed, the most frequent
-    word whose primary English gloss equals the seed is chosen (one lemma per
-    seed). Lets a catalog anchor lessons in concrete vocabulary that the
-    frequency fallback would otherwise bury under function words.
+
+def _is_form_pointer_gloss(gloss: str) -> bool:
+    """True when the English gloss is a form reference, not a meaning."""
+    return bool(gloss) and _FORM_POINTER_RE.match(gloss.strip()) is not None
+
+
+def _resolve_seed_pairs(words: list[Word], seed_words: list[str]) -> list[tuple[str, str]]:
+    """Resolve English ``seed_words`` to ``(seed, lemma)`` pairs via English glosses.
+
+    For each seed, the most frequent word whose primary English gloss equals the
+    seed is chosen (one lemma per seed). Entries whose gloss is a form pointer are
+    ignored. The seed is kept alongside the lemma so callers can later show the
+    intended English meaning in prompts.
     """
     if not seed_words:
         return []
@@ -107,7 +129,9 @@ def _resolve_seed_words(words: list[Word], seed_words: list[str]) -> list[str]:
     index: dict[str, list[Word]] = {}
     for word in words:
         gloss = word.translations.get("en", "")
-        term = _gloss_primary_term(gloss) if gloss else ""
+        if not gloss or _is_form_pointer_gloss(gloss):
+            continue
+        term = _gloss_primary_term(gloss)
         if term:
             index.setdefault(term, []).append(word)
 
@@ -116,16 +140,26 @@ def _resolve_seed_words(words: list[Word], seed_words: list[str]) -> list[str]:
             return word.frequency.rank
         return 999_999
 
-    resolved: list[str] = []
+    pairs: list[tuple[str, str]] = []
     seen: set[str] = set()
     for seed in seed_words:
         key = seed.strip().lower()
         for word in sorted(index.get(key, []), key=rank):
             if word.lemma not in seen:
                 seen.add(word.lemma)
-                resolved.append(word.lemma)
+                pairs.append((key, word.lemma))
                 break
-    return resolved
+    return pairs
+
+
+def _resolve_seed_words(words: list[Word], seed_words: list[str]) -> list[str]:
+    """Map English ``seed_words`` to lexicon lemmas via their English glosses.
+
+    Deterministic and independent of any LLM: lets a catalog anchor lessons in
+    concrete vocabulary that the frequency fallback would otherwise bury under
+    function words.
+    """
+    return [lemma for _, lemma in _resolve_seed_pairs(words, seed_words)]
 
 
 def _theme_candidate_pool(
@@ -337,6 +371,9 @@ class LessonPlan:
     new_verbs: list[Verb] = field(default_factory=list)
     allowed_forms: set[str] = field(default_factory=set)
     outline: str = ""
+    # {lemma: english seed term} for lemmas resolved from the catalog's English
+    # hints, so the writer prompt can show the intended meaning in brackets.
+    seed_glosses: dict[str, str] = field(default_factory=dict)
 
 
 class LessonOrchestrator:
@@ -590,10 +627,14 @@ class LessonOrchestrator:
             # verbs that drive sentences plus scene-grounding nouns, instead of the
             # high-frequency function words the fallback would pick. Verbs come first
             # so the sentence "engine" is reliably taught even under a tight budget.
-            for lemma in _resolve_seed_words(
+            seed_pairs = _resolve_seed_pairs(
                 remaining_words,
                 theme_plan.english_verbs + theme_plan.english_seed_words,
-            ):
+            )
+            # Remember the English meaning each lemma was resolved from, so the
+            # writer prompt shows the intended sense (e.g. "betalen (pay)").
+            seed_glosses = {lemma: term for term, lemma in seed_pairs}
+            for _, lemma in seed_pairs:
                 if lemma not in selected:
                     selected.append(lemma)
                 if len(selected) >= target_count:
@@ -709,6 +750,11 @@ class LessonOrchestrator:
                     new_verbs=batch_verbs,
                     allowed_forms=accumulated_forms | new_forms,
                     outline=theme_plan.outline,
+                    seed_glosses={
+                        lemma: seed_glosses[lemma]
+                        for lemma in new_lemmas
+                        if lemma in seed_glosses
+                    },
                 )
             )
             accumulated |= new_lemmas
@@ -744,7 +790,12 @@ class LessonOrchestrator:
         verb_lookup: dict[str, Verb] = {}
         verb_stubs: list[Word] = []
         for verb in verbs or []:
-            if verb.cefr == cefr:
+            # Skip bogus verb entries that are really inflected forms of another
+            # verb (gloss like "inflection of winkelen:"); they are not learnable
+            # infinitives and would otherwise leak into selection and prompts.
+            if verb.cefr == cefr and not _is_form_pointer_gloss(
+                verb.translations.get("en", "")
+            ):
                 stub = _verb_as_word(verb)
                 verb_stubs.append(stub)
                 verb_lookup[verb.infinitive] = verb
@@ -871,15 +922,19 @@ class LessonOrchestrator:
             # English glosses so the writer uses the intended sense (e.g. the verb
             # "eten = to eat" rather than the noun "eten = food"), and an explicit
             # verb list so the prompt can ask the writer to build sentences on them.
-            glosses: dict[str, str] = {}
-            for w in plan.new_words:
-                term = _gloss_primary_term(w.translations.get("en", ""))
+            # The meaning a lemma was resolved from (the catalog's English hint) is
+            # the most reliable sense, so it wins over the word's own gloss; raw
+            # form-pointer glosses ("inflection of …") are never shown.
+            glosses: dict[str, str] = dict(plan.seed_glosses)
+            for lemma, en in [
+                *((w.lemma, w.translations.get("en", "")) for w in plan.new_words),
+                *((v.infinitive, v.translations.get("en", "")) for v in plan.new_verbs),
+            ]:
+                if lemma in glosses or not en or _is_form_pointer_gloss(en):
+                    continue
+                term = _gloss_primary_term(en)
                 if term:
-                    glosses[w.lemma] = term
-            for v in plan.new_verbs:
-                term = _gloss_primary_term(v.translations.get("en", ""))
-                if term:
-                    glosses[v.infinitive] = term
+                    glosses[lemma] = term
             verb_lemmas = [v.infinitive for v in plan.new_verbs]
             lesson = self._generator.generate(
                 plan.lesson_id,

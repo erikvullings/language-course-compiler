@@ -132,7 +132,7 @@ def _user_prompt(
     if verb_lemmas:
         parts.append(
             "Build your sentences around these verbs, conjugated as the context "
-            f"requires: {', '.join(verb_lemmas)}."
+            f"requires: {_format_new_words(verb_lemmas, glosses)}."
         )
     parts.append(
         f"Only output the title and text in {language}, using Markdown with this exact structure:\n\n"

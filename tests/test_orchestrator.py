@@ -822,6 +822,48 @@ def test_verb_hints_resolve_to_verbs_via_english_glosses():
     assert "hebben" in verb_infinitives
 
 
+def test_form_pointer_verbs_are_excluded_and_seed_glosses_recorded():
+    """Inflected-form verb entries are dropped; resolved lemmas record their meaning."""
+    words = [_word("winkel", rank=50, en="shop")]
+    pay = Verb(
+        id="betalen", language="nl", lemma="betalen", infinitive="betalen",
+        cefr="A1", frequency=Frequency(rank=100), present={"ik": "betaal"},
+        translations={"en": "pay"},
+    )
+    # Bogus verb entry: an inflected form of 'winkelen', not a real infinitive.
+    bogus = Verb(
+        id="winkel", language="nl", lemma="winkel", infinitive="winkel",
+        cefr="A1", frequency=Frequency(rank=60), present={"ik": "winkel"},
+        translations={"en": "inflection of winkelen:"},
+    )
+    generator = LessonGenerator(_StubProvider(), _IdentityLemmatizer())
+    assigner = _StubProposingThemeAssigner({"misc": []}, proposals_by_theme={})
+    orc = LessonOrchestrator(
+        generator,
+        assigner,
+        words_per_lesson=10,
+        predefined_themes={
+            "A1": [
+                LessonThemePlan(
+                    theme="Shopping",
+                    seed_lemmas=[],
+                    english_seed_words=["shop"],
+                    english_verbs=["pay"],
+                )
+            ]
+        },
+    )
+
+    plans = orc.plan(words, cefr="A1", verbs=[pay, bogus], language="Dutch")
+
+    verb_infinitives = {v.infinitive for v in plans[0].new_verbs}
+    assert "betalen" in verb_infinitives
+    assert "winkel" not in verb_infinitives  # form-pointer verb dropped
+    # The English meaning each lemma resolved from is recorded for the prompt.
+    assert plans[0].seed_glosses.get("winkel") == "shop"
+    assert plans[0].seed_glosses.get("betalen") == "pay"
+
+
 def test_catalog_verbs_field_is_parsed(tmp_path):
     """An English ``verbs`` list in the YAML catalog becomes ``english_verbs``."""
     from course_compiler.generation.orchestrator import _load_predefined_themes
