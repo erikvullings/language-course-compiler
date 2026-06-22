@@ -127,6 +127,10 @@ A1:
       - describe seasonal activities
       - express preferences
     seedWords: [summer, winter, spring, autumn, weather, holiday]
+    outline: >
+      Two friends compare their favourite seasons: one loves summer at the beach,
+      the other prefers spring flowers. They describe typical weather and what they
+      like to do each season.
 
   lesson012:
     theme: Food
@@ -135,6 +139,10 @@ A1:
       - express likes and dislikes
       - describe meals
     seedWords: [bread, cheese, apple, meat, soup, plate]
+    outline: >
+      At lunch a mother puts bread, cheese, soup and fruit on the table.
+      Her child says what he likes and dislikes, and together they decide
+      what goes on each plate.
 
   lesson013:
     theme: Drinks
@@ -143,6 +151,10 @@ A1:
       - offer someone a drink
       - describe preferences
     seedWords: [water, coffee, tea, milk, juice, glass]
+    outline: >
+      A host welcomes a guest and offers coffee, tea, juice or water.
+      The guest chooses, explains what she usually drinks, and they
+      raise their glasses together.
 
   lesson014:
     theme: Breakfast
@@ -151,6 +163,10 @@ A1:
       - prepare a meal
       - ask for food
     seedWords: [bread, egg, coffee, butter, cheese, table]
+    outline: >
+      A family sits at the breakfast table. One person makes coffee and
+      eggs while another slices bread and sets out butter and cheese;
+      they ask each other what they want.
 
   lesson015:
     theme: Shopping
@@ -159,6 +175,10 @@ A1:
       - buy groceries
       - pay at the checkout
     seedWords: [shop, money, price, bag, market, cash]
+    outline: >
+      A woman does her weekly shop at the market: she asks the price of
+      bread and cheese, puts items in her bag, and pays with cash at
+      the checkout.
 
   lesson016:
     theme: Clothes
@@ -167,6 +187,9 @@ A1:
       - talk about sizes
       - buy clothes
     seedWords: [shirt, trousers, shoe, coat, dress, hat]
+    outline: >
+      A man in a clothing shop asks for a shirt in his size. The assistant
+      shows him a coat and trousers; he tries them on and decides what to buy.
 
   lesson017:
     theme: Colours
@@ -175,6 +198,10 @@ A1:
       - describe objects
       - express preferences
     seedWords: [red, blue, green, yellow, black, white]
+    outline: >
+      Two children paint a picture together. They name the colours they use —
+      red, blue, green, yellow — and argue cheerfully about which colour
+      looks best for the sky and the grass.
 
   lesson018:
     theme: The Body
@@ -183,6 +210,10 @@ A1:
       - describe appearance
       - report simple pain
     seedWords: [head, hand, foot, eye, arm, hair]
+    outline: >
+      A child tells a parent where it hurts — head, foot, arm. The parent
+      checks the child's eyes and hair, names the body parts aloud, and
+      decides whether to call the doctor.
 
   lesson019:
     theme: Health
@@ -191,6 +222,10 @@ A1:
       - visit a doctor
       - ask for medicine
     seedWords: [doctor, pain, medicine, fever, illness, hospital]
+    outline: >
+      A man with a fever and pain visits his doctor. He describes how he
+      feels; the doctor examines him, explains the illness, and tells him
+      which medicine to take.
 
   lesson020:
     theme: At the Pharmacy
@@ -199,6 +234,10 @@ A1:
       - ask for advice
       - understand instructions
     seedWords: [medicine, pill, doctor, pharmacy, cough, advice]
+    outline: >
+      A woman with a cough goes to the pharmacy. She explains her symptoms,
+      the pharmacist recommends pills and gives instructions on how and when
+      to take them.
 
   lesson021:
     theme: School
@@ -207,6 +246,10 @@ A1:
       - talk about subjects
       - ask questions
     seedWords: [school, teacher, book, pen, class, student]
+    outline: >
+      On the first day a new student looks around the classroom: she sees
+      books, pens and a board. The teacher asks the class which subjects
+      they like and the students answer one by one.
 
   lesson022:
     theme: Work
@@ -215,6 +258,9 @@ A1:
       - introduce colleagues
       - discuss working hours
     seedWords: [work, office, job, colleague, boss, salary]
+    outline: >
+      A man tells a friend about his new job: he describes the office, his
+      colleagues and his boss, and explains what hours he works each day.
 
   lesson023:
     theme: Office
@@ -223,6 +269,10 @@ A1:
       - ask for assistance
       - describe tasks
     seedWords: [desk, computer, paper, pen, phone, chair]
+    outline: >
+      A new employee asks a colleague where things are: the computer, the
+      paper and the phone on her desk. The colleague shows her around and
+      explains her first tasks.
 
   lesson024:
     theme: Hobbies
@@ -231,6 +281,10 @@ A1:
       - ask about interests
       - invite someone
     seedWords: [book, music, game, garden, sport, photo]
+    outline: >
+      Two neighbours chat at the garden fence. One talks about reading and
+      taking photos; the other prefers sport and music. They discover a
+      shared interest and make a plan to meet.
 
   lesson025:
     theme: Sports
@@ -239,6 +293,10 @@ A1:
       - describe activities
       - express ability
     seedWords: [ball, team, game, field, club, race]
+    outline: >
+      A boy tells his friend about his football club: they play on a big
+      field, run races and win games as a team. His friend says which sport
+      he can and cannot play.
 
   lesson026:
     theme: Music
@@ -247,6 +305,10 @@ A1:
       - describe preferences
       - talk about concerts
     seedWords: [song, guitar, concert, band, radio, dance]
+    outline: >
+      Two friends listen to the radio and talk about their favourite songs
+      and bands. One plays the guitar; they decide to go to a concert
+      together and dance.
 
   lesson027:
     theme: Reading
@@ -255,6 +317,10 @@ A1:
       - describe reading habits
       - recommend a book
     seedWords: [book, story, page, library, author, newspaper]
+    outline: >
+      At the library a woman returns a novel and asks for a recommendation.
+      The librarian describes a story by a favourite author; the woman
+      borrows the book and talks about how many pages she reads each day.
 
   lesson028:
     theme: Television
@@ -263,6 +329,10 @@ A1:
       - express opinions
       - describe viewing habits
     seedWords: [television, film, program, news, screen, channel]
+    outline: >
+      A family argues about what to watch: one wants the news, another
+      wants a film. They take turns saying which channel and programme
+      they prefer and why.
 
   lesson029:
     theme: Computers
@@ -271,6 +341,10 @@ A1:
       - use simple computer vocabulary
       - ask for technical help
     seedWords: [computer, screen, keyboard, mouse, file, internet]
+    outline: >
+      A student cannot open a file on her computer. She asks a classmate
+      for help; he looks at the screen, checks the keyboard and mouse,
+      and shows her how to connect to the internet.
 
   lesson030:
     theme: Mobile Phones
@@ -279,6 +353,10 @@ A1:
       - send messages
       - discuss apps
     seedWords: [phone, message, call, screen, app, battery]
+    outline: >
+      A girl's phone battery is almost dead. She quickly calls her mother
+      and sends a message to a friend. They talk about which apps they use
+      most on their screens.
 
   lesson031:
     theme: Friends
@@ -287,6 +365,10 @@ A1:
       - describe personalities
       - make plans
     seedWords: [friend, party, plan, group, evening, fun]
+    outline: >
+      A boy introduces his two best friends to his mother, describing what
+      each one is like. The group of three make plans for a fun evening
+      and agree on a party at the weekend.
 
   lesson032:
     theme: Visiting Someone
@@ -295,6 +377,10 @@ A1:
       - welcome guests
       - offer refreshments
     seedWords: [door, coffee, guest, chair, cake, visit]
+    outline: >
+      A guest arrives at the door. The host welcomes her, shows her to a
+      chair, and offers coffee and cake. They talk about the visit and
+      how nice it is to meet.
 
   lesson033:
     theme: At a Café
@@ -303,6 +389,10 @@ A1:
       - ask for the bill
       - thank the waiter
     seedWords: [coffee, table, waiter, bill, cake, cup]
+    outline: >
+      Two friends sit at a café table. The waiter comes; they order coffee
+      and a slice of cake. At the end they ask for the bill and thank
+      the waiter.
 
   lesson034:
     theme: At a Restaurant
@@ -311,6 +401,10 @@ A1:
       - order a meal
       - express satisfaction
     seedWords: [table, menu, waiter, meal, plate, wine]
+    outline: >
+      A couple phones to reserve a table, then arrives at the restaurant.
+      They look at the menu, order their meal from the waiter, and say
+      how good the food on their plates tastes.
 
   lesson035:
     theme: Public Transport
@@ -319,6 +413,10 @@ A1:
       - ask about departures
       - understand announcements
     seedWords: [bus, ticket, station, tram, stop, train]
+    outline: >
+      At the station a man buys two tickets for the tram. He asks when
+      the next bus leaves, listens to the announcement, and waits at
+      the right stop with his friend.
 
   lesson036:
     theme: Cycling
@@ -327,6 +425,10 @@ A1:
       - ask for directions
       - describe a route
     seedWords: [bicycle, road, helmet, wheel, path, brake]
+    outline: >
+      A tourist rents a bicycle and puts on a helmet. She asks a local
+      which path to take; he describes the route along the road and
+      reminds her to use the brake at the hill.
 
   lesson037:
     theme: Driving
@@ -335,6 +437,10 @@ A1:
       - ask about parking
       - describe traffic
     seedWords: [car, road, traffic, parking, key, wheel]
+    outline: >
+      A woman drives into town but the road is busy with traffic. She
+      asks a passer-by where to park, takes the key from the ignition,
+      and locks the car.
 
   lesson038:
     theme: Walking
@@ -343,6 +449,10 @@ A1:
       - ask for directions
       - describe locations
     seedWords: [street, corner, road, map, sign, square]
+    outline: >
+      A tourist is lost and stops to look at a map. He asks a woman on the
+      street how to reach the square; she points to the corner and describes
+      the signs along the road.
 
   lesson039:
     theme: The City
@@ -351,6 +461,10 @@ A1:
       - locate buildings
       - ask where something is
     seedWords: [city, street, building, square, shop, park]
+    outline: >
+      A woman shows a visitor around the city centre: the big square, the
+      old buildings, the shops and the park. The visitor asks where each
+      place is and the woman points the way.
 
   lesson040:
     theme: The Village
@@ -359,6 +473,10 @@ A1:
       - compare places
       - discuss local facilities
     seedWords: [village, church, road, field, shop, house]
+    outline: >
+      An old man describes his village to a city guest: the church, the
+      fields, the one small shop and the quiet road. Together they compare
+      village life with city life.
 
   lesson041:
     theme: Nature
@@ -367,6 +485,10 @@ A1:
       - identify landscapes
       - discuss outdoor activities
     seedWords: [tree, river, mountain, forest, flower, lake]
+    outline: >
+      A family walks in the countryside. The children name the trees,
+      flowers and the river; the parents point to the mountains and the
+      lake in the distance. Everyone says what they want to do outside.
 
   lesson042:
     theme: Animals
@@ -375,6 +497,10 @@ A1:
       - describe pets
       - talk about farms
     seedWords: [dog, cat, cow, horse, bird, farm]
+    outline: >
+      A girl visits her uncle's farm and sees cows, horses and birds.
+      She compares them with her pets at home — a dog and a cat — and
+      her uncle explains how each animal lives on the farm.
 
   lesson043:
     theme: Holidays
@@ -383,6 +509,10 @@ A1:
       - describe vacations
       - book accommodation
     seedWords: [holiday, beach, hotel, suitcase, sea, sun]
+    outline: >
+      Two colleagues talk about their summer holiday plans. One wants to
+      go to the beach and book a hotel by the sea; the other describes
+      last year's trip while they both pack their suitcases in their minds.
 
   lesson044:
     theme: Hotels
@@ -391,6 +521,10 @@ A1:
       - ask about facilities
       - solve simple problems
     seedWords: [hotel, room, key, bed, reception, breakfast]
+    outline: >
+      A traveller arrives at the hotel, goes to reception and checks in.
+      She asks about breakfast and gets a key; later she calls reception
+      because there is a problem with the bed in her room.
 
   lesson045:
     theme: Airports
@@ -399,6 +533,10 @@ A1:
       - understand airport signs
       - ask for information
     seedWords: [airport, plane, ticket, passport, luggage, gate]
+    outline: >
+      A man arrives at the airport with his ticket and passport. He checks
+      in his luggage, reads the signs to find the right gate, and asks a
+      staff member when the plane departs.
 
   lesson046:
     theme: Trains
@@ -407,6 +545,10 @@ A1:
       - understand platforms
       - ask about delays
     seedWords: [train, station, ticket, platform, seat, conductor]
+    outline: >
+      A woman buys a ticket at the station and looks for the right platform.
+      She asks the conductor about a delay, finds her seat on the train,
+      and the journey begins.
 
   lesson047:
     theme: Directions
@@ -415,6 +557,10 @@ A1:
       - give directions
       - locate landmarks
     seedWords: [street, corner, map, sign, left, right]
+    outline: >
+      A cyclist stops at a corner with a map and asks a local how to reach
+      the museum. The local gives clear left-right directions, names the
+      street signs to watch for, and the cyclist thanks him and rides off.
 
   lesson048:
     theme: Money
@@ -423,6 +569,10 @@ A1:
       - discuss prices
       - pay by card
     seedWords: [money, coin, card, price, bank, wallet]
+    outline: >
+      A tourist goes to the bank to exchange money. She asks about the
+      price of things, puts coins in her wallet, and pays for a coffee
+      by card — her first purchase in the new country.
 
   lesson049:
     theme: Banking
@@ -431,6 +581,10 @@ A1:
       - ask for assistance
       - understand banking terms
     seedWords: [bank, money, card, account, cash, machine]
+    outline: >
+      A young man uses the cash machine at the bank for the first time.
+      When it does not work he goes inside, explains the problem, and an
+      assistant helps him withdraw money from his account.
 
   lesson050:
     theme: Post Office
@@ -439,6 +593,10 @@ A1:
       - buy stamps
       - ask about parcels
     seedWords: [letter, stamp, parcel, envelope, address, post]
+    outline: >
+      A woman goes to the post office with a letter and a parcel. She buys
+      stamps, writes the address on the envelope, and asks how long the
+      post will take to arrive.
 
   lesson051:
     theme: Emergencies
@@ -447,6 +605,10 @@ A1:
       - call emergency services
       - describe a problem
     seedWords: [help, fire, police, ambulance, accident, phone]
+    outline: >
+      A boy sees an accident in the street. He phones the emergency services,
+      asks for an ambulance, describes what happened, and stays calm while
+      the police and help arrive.
 
   lesson052:
     theme: Police
@@ -455,6 +617,10 @@ A1:
       - describe an incident
       - ask for assistance
     seedWords: [police, thief, wallet, street, officer, report]
+    outline: >
+      A man's wallet is stolen in the street. He goes to the police station,
+      tells an officer what the thief looked like and where it happened,
+      and fills in a short report.
 
   lesson053:
     theme: The Doctor
@@ -463,6 +629,10 @@ A1:
       - describe symptoms
       - understand advice
     seedWords: [doctor, appointment, pain, fever, medicine, illness]
+    outline: >
+      A woman phones the doctor to make an appointment. At the surgery she
+      describes her pain and fever; the doctor names the illness, explains
+      the medicine, and gives clear advice.
 
   lesson054:
     theme: The Dentist
@@ -471,6 +641,10 @@ A1:
       - make an appointment
       - understand treatment
     seedWords: [dentist, tooth, pain, appointment, mouth, chair]
+    outline: >
+      A boy has toothache and his mother phones the dentist for an
+      appointment. In the chair the boy points to the painful tooth;
+      the dentist explains the treatment and the boy tries to be brave.
 
   lesson055:
     theme: Weekend
@@ -479,6 +653,10 @@ A1:
       - invite friends
       - describe activities
     seedWords: [weekend, friend, park, film, walk, plan]
+    outline: >
+      On Friday afternoon two friends talk about their weekend. One wants
+      to walk in the park; the other suggests a film. They agree on a plan:
+      a walk on Saturday and a film on Sunday evening.
 
   lesson056:
     theme: Birthdays
@@ -487,6 +665,10 @@ A1:
       - give presents
       - organize a party
     seedWords: [birthday, cake, present, candle, party, card]
+    outline: >
+      It is a girl's birthday. Her family sings, lights the candles on the
+      cake, and gives her presents. She opens the card, thanks everyone,
+      and they talk about the party later that day.
 
   lesson057:
     theme: Celebrations
@@ -495,6 +677,10 @@ A1:
       - invite guests
       - thank people
     seedWords: [party, guest, food, music, gift, dance]
+    outline: >
+      A family prepares for a celebration: they cook food, choose music
+      and tidy the house. Guests arrive with gifts; the host thanks each
+      one, and later everyone dances together.
 
   lesson058:
     theme: Dutch Culture
@@ -503,6 +689,10 @@ A1:
       - compare cultures
       - ask questions
     seedWords: [bicycle, cheese, tulip, windmill, king, canal]
+    outline: >
+      A foreign student asks her Dutch classmate about typical Dutch things.
+      The classmate explains bicycles, cheese, tulips and canals; the
+      student compares them with traditions from her own country.
 
   lesson059:
     theme: Simple Opinions
@@ -511,6 +701,10 @@ A1:
       - express disagreement
       - explain preferences
     seedWords: [film, food, book, music, weather, idea]
+    outline: >
+      Two neighbours sit outside on a sunny day. They share opinions about
+      the weather, a film they both saw and the food at a local restaurant —
+      sometimes agreeing, sometimes not, and always politely.
 
   lesson060:
     theme: Future Plans
@@ -519,6 +713,10 @@ A1:
       - make appointments
       - describe intentions
     seedWords: [tomorrow, plan, trip, appointment, week, job]
+    outline: >
+      A woman tells a friend what she plans to do next week: a trip on
+      Tuesday, a job appointment on Thursday. They check their calendars
+      and agree on a time to meet tomorrow.
 
   lesson061:
     theme: Appearance
@@ -527,6 +725,10 @@ A1:
       - compare appearances
       - identify someone
     seedWords: [hair, eye, face, beard, glasses, smile]
+    outline: >
+      Two friends wait for a third person at a café. One describes what
+      he looks like — short hair, glasses, a beard and a big smile — so
+      the other can spot him when he walks through the door.
 
   lesson062:
     theme: Personality
@@ -535,6 +737,10 @@ A1:
       - compliment someone
       - express opinions
     seedWords: [person, friend, smile, character, mood, neighbour]
+    outline: >
+      A woman introduces her best friend to a neighbour. She describes his
+      warm character and good mood; the neighbour compliments him, and they
+      talk about what makes a good friend.
 
   lesson063:
     theme: Household Tasks
@@ -543,6 +749,10 @@ A1:
       - divide tasks
       - ask for help
     seedWords: [kitchen, dish, floor, laundry, broom, trash]
+    outline: >
+      Two housemates divide the Saturday chores: one washes the dishes and
+      sweeps the floor, the other does the laundry and takes out the trash.
+      One asks the other for help in the kitchen.
 
   lesson064:
     theme: Gardening
@@ -551,6 +761,10 @@ A1:
       - describe gardens
       - discuss outdoor work
     seedWords: [garden, plant, flower, tree, soil, water]
+    outline: >
+      An elderly woman shows her garden to a young neighbour. She names the
+      flowers and trees, explains how to prepare the soil and water the
+      plants, and the neighbour offers to help.
 
   lesson065:
     theme: Cooking
@@ -559,6 +773,10 @@ A1:
       - describe ingredients
       - prepare meals
     seedWords: [pan, oven, recipe, salt, vegetable, knife]
+    outline: >
+      A father and daughter cook dinner together. He reads the recipe aloud
+      while she chops vegetables with the knife; together they add salt,
+      heat the pan and put the dish in the oven.
 
   lesson066:
     theme: Pets
@@ -567,6 +785,10 @@ A1:
       - discuss care
       - visit a veterinarian
     seedWords: [dog, cat, fish, bird, cage, vet]
+    outline: >
+      A boy's cat is ill, so his mother takes it to the vet. In the waiting
+      room a girl has a bird in a cage and a fish in a bag. They compare
+      their pets and the vet explains how to care for each animal.
 
   lesson067:
     theme: Shopping for Clothes
@@ -575,6 +797,10 @@ A1:
       - compare sizes
       - make purchases
     seedWords: [shop, dress, size, shirt, shoe, mirror]
+    outline: >
+      A woman tries on two dresses in a shop. She looks in the mirror,
+      asks the assistant for a different size, compares a dress with a
+      shirt, and decides what to buy.
 
   lesson068:
     theme: Asking Permission
@@ -583,6 +809,10 @@ A1:
       - give permission
       - refuse politely
     seedWords: [door, key, car, phone, window, room]
+    outline: >
+      A teenager asks her parents permission to use the car and to have
+      a friend in her room. Her father says yes to one thing and politely
+      says no to the other, and explains why.
 
   lesson069:
     theme: Invitations
@@ -591,6 +821,10 @@ A1:
       - accept invitations
       - decline politely
     seedWords: [party, dinner, friend, card, evening, invitation]
+    outline: >
+      A woman sends a card inviting two friends to a dinner party on Friday
+      evening. One friend accepts with pleasure; the other declines politely
+      because she has another plan and suggests a different evening.
 
   lesson070:
     theme: Simple Problems
@@ -599,6 +833,10 @@ A1:
       - ask for help
       - thank someone
     seedWords: [problem, help, key, door, phone, money]
+    outline: >
+      A man locks himself out and cannot find his key. He knocks on a
+      neighbour's door, explains the problem and borrows a phone to call
+      a locksmith. He thanks the neighbour warmly when the door opens.
 
   lesson071:
     theme: Renting a Home
@@ -607,6 +845,10 @@ A1:
       - describe housing
       - arrange a viewing
     seedWords: [house, rent, room, key, landlord, contract]
+    outline: >
+      A young woman phones a landlord about a room to rent. She asks about
+      the price and what is included, describes what she needs, and they
+      agree a time to view the house and sign a contract.
 
   lesson072:
     theme: Neighbours
@@ -615,6 +857,10 @@ A1:
       - discuss neighbourhoods
       - ask for help
     seedWords: [neighbour, street, door, garden, house, noise]
+    outline: >
+      A new family moves into the street. The man knocks on the neighbour's
+      door to introduce himself, they talk about the neighbourhood — the
+      garden, the quiet — and he asks if there is a noise problem at night.
 
   lesson073:
     theme: Environment
@@ -623,6 +869,10 @@ A1:
       - describe nature
       - express responsibility
     seedWords: [tree, water, waste, plastic, nature, bin]
+    outline: >
+      Two friends clean up a park together. They pick up plastic waste and
+      put it in the bin, talk about protecting the trees and the water,
+      and agree that everyone has a responsibility for nature.
 
   lesson074:
     theme: Internet
@@ -631,6 +881,10 @@ A1:
       - discuss online activities
       - ask for Wi-Fi
     seedWords: [internet, website, computer, password, screen, email]
+    outline: >
+      A guest at a friend's house asks for the Wi-Fi password. She opens
+      her computer, browses a website and checks her email on the screen.
+      They talk about what they each like to do on the internet.
 
   lesson075:
     theme: Social Media
@@ -639,6 +893,10 @@ A1:
       - share information
       - discuss preferences
     seedWords: [photo, message, friend, phone, profile, post]
+    outline: >
+      A teenager shows her grandmother her phone and explains social media:
+      she posts photos, sends messages to friends and has a profile page.
+      The grandmother asks questions and they laugh at a funny post together.
 
   lesson076:
     theme: Festivals
@@ -647,6 +905,10 @@ A1:
       - make plans
       - describe traditions
     seedWords: [festival, music, crowd, food, stage, light]
+    outline: >
+      Two friends plan to go to a local festival. They describe the music
+      on the big stage, the food stalls, the lights and the crowd. They
+      decide what time to meet and which traditions to join in with.
 
   lesson077:
     theme: Simple Stories
@@ -655,6 +917,10 @@ A1:
       - describe events
       - sequence actions
     seedWords: [story, man, woman, house, day, child]
+    outline: >
+      A grandparent tells a grandchild a simple story about a man, a woman
+      and a child who live in a house. Each day something small happens —
+      first this, then that — and the story ends happily.
 
   lesson078:
     theme: Daily News
@@ -663,6 +929,10 @@ A1:
       - express opinions
       - ask questions
     seedWords: [newspaper, news, story, world, weather, report]
+    outline: >
+      Two colleagues share a newspaper at coffee time. They read a short
+      news story about the weather in another part of the world, say what
+      they think about it, and ask each other questions.
 
   lesson079:
     theme: Review
@@ -671,6 +941,10 @@ A1:
       - review grammar
       - improve fluency
     seedWords: [word, sentence, story, question, answer, lesson]
+    outline: >
+      A teacher and student look back over the course together. The student
+      picks favourite words, reads a sentence from an earlier lesson, and
+      the teacher asks questions; the student answers and feels the progress.
 
   lesson080:
     theme: Final Integration
@@ -679,6 +953,11 @@ A1:
       - hold simple conversations
       - prepare for A2
     seedWords: [conversation, friend, day, plan, question, story]
+    outline: >
+      Two people who met at the start of the course bump into each other in
+      the street. They have a full A1 conversation — greetings, plans for the
+      day, a short story, questions and answers — and look forward to learning
+      more.
 
 A2:
   lesson001:
@@ -688,6 +967,10 @@ A2:
       - describe recent events
       - ask follow-up questions
     seedWords: [friend, news, holiday, coffee, week, story]
+    outline: >
+      Two old friends run into each other after months apart. Over coffee they
+      catch up: one describes a holiday, the other shares news from the past few
+      weeks, and they ask follow-up questions to keep the story going.
 
   lesson002:
     theme: Life History
@@ -696,6 +979,10 @@ A2:
       - talk about past experiences
       - compare then and now
     seedWords: [child, school, family, town, year, memory]
+    outline: >
+      An adult looks through a family photo album with a younger relative.
+      Each photo triggers a memory — childhood in a small town, school years,
+      family events — and together they compare how life has changed since then.
 
   lesson003:
     theme: Education
@@ -704,6 +991,10 @@ A2:
       - discuss qualifications
       - talk about future studies
     seedWords: [school, teacher, exam, subject, student, diploma]
+    outline: >
+      Two students waiting for exam results talk about their school careers:
+      favourite subjects, best teachers, the diploma they are hoping for, and
+      what they plan to study next.
 
   lesson004:
     theme: Career
@@ -712,6 +1003,10 @@ A2:
       - discuss work experience
       - explain responsibilities
     seedWords: [job, office, work, manager, salary, company]
+    outline: >
+      At a networking event a woman describes her career path to a new contact:
+      the company she works for, her role and responsibilities, the salary range,
+      and how she became a manager.
 
   lesson005:
     theme: Looking for a Job
@@ -720,6 +1015,10 @@ A2:
       - describe your skills
       - ask about vacancies
     seedWords: [job, letter, interview, skill, company, vacancy]
+    outline: >
+      A man reads job advertisements online and calls a company about a vacancy.
+      He describes his skills and experience, asks what the role involves, and
+      finds out whether there will be an interview.
 
   lesson006:
     theme: Job Interview
@@ -728,6 +1027,10 @@ A2:
       - answer interview questions
       - discuss availability
     seedWords: [interview, job, question, suit, office, manager]
+    outline: >
+      A young woman arrives at a company office for a job interview. She
+      introduces herself to the manager, answers questions about her experience
+      and strengths, and at the end they discuss when she could start.
 
   lesson007:
     theme: Workplace Communication
@@ -736,6 +1039,10 @@ A2:
       - ask for clarification
       - report progress
     seedWords: [meeting, email, colleague, phone, report, office]
+    outline: >
+      At the weekly team meeting a colleague presents progress on a project.
+      Others ask for clarification by email or phone; the team leader summarizes
+      what everyone reports and decides the next steps.
 
   lesson008:
     theme: Working from Home
@@ -744,6 +1051,11 @@ A2:
       - discuss advantages
       - solve technical problems
     seedWords: [computer, desk, home, internet, screen, coffee]
+    outline: >
+      A colleague phones to ask how working from home is going. The woman
+      describes her desk and screen setup, talks about the advantages of
+      working at home, and explains a technical problem she solved with the
+      internet connection.
 
   lesson009:
     theme: Housing
@@ -752,6 +1064,10 @@ A2:
       - discuss renting and buying
       - describe neighbourhoods
     seedWords: [house, apartment, rent, room, neighbour, garden]
+    outline: >
+      Two friends discuss whether to rent or buy. One lives in an apartment
+      in the city centre; the other rents a house with a garden further out.
+      They compare the neighbourhoods and weigh up the advantages of each.
 
   lesson010:
     theme: Moving House
@@ -760,6 +1076,10 @@ A2:
       - discuss utilities
       - describe your new home
     seedWords: [box, truck, furniture, key, address, house]
+    outline: >
+      A woman is moving to a new address. She calls a friend to help carry
+      boxes and furniture into the truck, explains how to arrange the new
+      rooms, and discusses which utilities need to be connected.
 
   lesson011:
     theme: Household Repairs
@@ -768,6 +1088,10 @@ A2:
       - arrange repairs
       - explain what happened
     seedWords: [pipe, lamp, tool, plumber, leak, wall]
+    outline: >
+      A man discovers a water leak from a pipe behind the wall. He calls a
+      plumber, describes the problem and explains what happened. While he waits
+      he tries to fix the lamp that also stopped working.
 
   lesson012:
     theme: Shopping for Furniture
@@ -776,6 +1100,10 @@ A2:
       - discuss prices
       - make purchasing decisions
     seedWords: [table, sofa, chair, shop, price, lamp]
+    outline: >
+      A couple browse a furniture shop for their new home. They compare two
+      sofas, discuss which table fits the room, ask about prices, and debate
+      whether to buy the lamp now or wait for a sale.
 
   lesson013:
     theme: Healthy Living
@@ -784,6 +1112,10 @@ A2:
       - give advice
       - describe routines
     seedWords: [food, exercise, sleep, water, fruit, walk]
+    outline: >
+      A doctor gives a patient advice after a check-up. She explains the
+      importance of sleep, daily exercise and eating fruit and vegetables,
+      asks about the patient's current routine, and suggests small changes.
 
   lesson014:
     theme: Visiting the Doctor
@@ -792,6 +1124,10 @@ A2:
       - understand recommendations
       - discuss treatment
     seedWords: [doctor, pain, fever, medicine, appointment, symptom]
+    outline: >
+      A man has had a fever and pain for three days and finally makes an
+      appointment. At the surgery he describes his symptoms in detail; the
+      doctor examines him, explains the diagnosis, and discusses the treatment.
 
   lesson015:
     theme: Sports and Exercise
@@ -800,6 +1136,10 @@ A2:
       - discuss fitness
       - compare sports
     seedWords: [ball, gym, run, team, bike, muscle]
+    outline: >
+      Two colleagues talk about keeping fit. One goes to the gym and runs;
+      the other cycles and plays in a team. They compare the benefits for
+      muscles and health and agree to try each other's sport.
 
   lesson016:
     theme: Mental Well-being
@@ -808,6 +1148,10 @@ A2:
       - discuss stress
       - suggest solutions
     seedWords: [stress, rest, sleep, friend, walk, smile]
+    outline: >
+      A friend notices that her colleague looks tired and stressed. They
+      talk honestly about how he feels; she listens, suggests more sleep and
+      a walk each day, and reminds him that a good friend always helps.
 
   lesson017:
     theme: Cooking
@@ -816,6 +1160,10 @@ A2:
       - describe cooking methods
       - discuss favourite dishes
     seedWords: [recipe, pan, oven, vegetable, salt, knife]
+    outline: >
+      A woman teaches her flatmate a favourite recipe. She explains each step —
+      chopping vegetables with a knife, heating the pan, adding salt — puts
+      the dish in the oven, and they discuss what makes it a perfect meal.
 
   lesson018:
     theme: Restaurants
@@ -824,6 +1172,10 @@ A2:
       - deal with problems
       - recommend dishes
     seedWords: [table, menu, waiter, meal, bill, wine]
+    outline: >
+      A man phones a restaurant to reserve a table for four. When they arrive
+      the wrong table is ready, and he politely solves the problem with the
+      waiter. At dinner he recommends dishes from the menu and orders wine.
 
   lesson019:
     theme: Supermarkets
@@ -832,6 +1184,10 @@ A2:
       - discuss prices
       - ask for recommendations
     seedWords: [trolley, shelf, price, vegetable, checkout, bag]
+    outline: >
+      Two neighbours shop at the supermarket with a trolley. They compare
+      prices on the shelf, debate which vegetables are best value, and ask
+      a staff member for a recommendation before paying at the checkout.
 
   lesson020:
     theme: Clothing and Fashion
@@ -840,6 +1196,10 @@ A2:
       - discuss preferences
       - compare outfits
     seedWords: [dress, shirt, shoe, colour, size, jacket]
+    outline: >
+      Two friends get ready for a party and debate what to wear. They compare
+      a dress with a jacket and shirt, discuss colours and sizes, and give each
+      other honest opinions before settling on their favourite outfits.
 
   lesson021:
     theme: Banking
@@ -848,6 +1208,10 @@ A2:
       - discuss payments
       - solve banking issues
     seedWords: [bank, account, card, money, machine, loan]
+    outline: >
+      A student goes to the bank to open her first account. The clerk explains
+      the card and how the cash machine works; the student asks about a small
+      loan for her studies and they work through a payment problem together.
 
   lesson022:
     theme: Insurance
@@ -856,6 +1220,10 @@ A2:
       - report damage
       - ask for information
     seedWords: [insurance, car, damage, policy, accident, money]
+    outline: >
+      A man's car is damaged in an accident. He phones his insurance company,
+      describes what happened, and asks what his policy covers. The agent
+      explains the procedure and how much money he can expect back.
 
   lesson023:
     theme: Public Services
@@ -864,6 +1232,10 @@ A2:
       - request documents
       - ask for assistance
     seedWords: [office, document, form, queue, clerk, passport]
+    outline: >
+      A woman visits the town hall to request an official document. She waits
+      in the queue, explains what she needs to the clerk, fills in a form, and
+      asks whether she also needs to renew her passport.
 
   lesson024:
     theme: Transportation
@@ -872,6 +1244,10 @@ A2:
       - discuss delays
       - explain travel plans
     seedWords: [bus, train, ticket, station, car, bike]
+    outline: >
+      Two colleagues discuss how to get to a conference in another city. They
+      compare the train, bus, bike and car options, look up ticket prices at
+      the station, and decide what to do when the train is delayed.
 
   lesson025:
     theme: Driving
@@ -880,6 +1256,10 @@ A2:
       - report accidents
       - ask for directions
     seedWords: [car, road, traffic, accident, parking, speed]
+    outline: >
+      A driver is stuck in heavy traffic on a busy road and witnesses a minor
+      accident. She calls roadside assistance to report it, asks for an
+      alternative route, and finds parking when she finally arrives.
 
   lesson026:
     theme: Cycling
@@ -888,6 +1268,10 @@ A2:
       - explain road safety
       - rent a bicycle
     seedWords: [bicycle, road, helmet, route, path, brake]
+    outline: >
+      Two tourists rent bicycles for the day. They study a map to choose a
+      safe route on the cycle path, discuss road safety rules, and the rental
+      staff member checks their helmets and brakes before they set off.
 
   lesson027:
     theme: Travel Planning
@@ -896,6 +1280,10 @@ A2:
       - compare destinations
       - book accommodation
     seedWords: [map, ticket, hotel, suitcase, trip, holiday]
+    outline: >
+      A couple spread a map on the table and plan their holiday. They compare
+      two destinations, look up ticket prices and hotels, and finally book
+      the trip — then immediately start thinking about packing the suitcase.
 
   lesson028:
     theme: Hotels
@@ -904,6 +1292,10 @@ A2:
       - ask about facilities
       - make requests
     seedWords: [hotel, room, key, reception, breakfast, bed]
+    outline: >
+      A guest checks into a hotel but finds his room key does not work and
+      the bed is not made. He goes to reception, explains the problems calmly,
+      asks about breakfast times, and the staff quickly solve everything.
 
   lesson029:
     theme: Airports
@@ -912,6 +1304,10 @@ A2:
       - understand announcements
       - request assistance
     seedWords: [airport, plane, gate, passport, luggage, ticket]
+    outline: >
+      A woman's flight is delayed and her luggage did not arrive at the gate.
+      She listens carefully to the airport announcements, asks a staff member
+      for assistance, and shows her passport and ticket to sort out the problem.
 
   lesson030:
     theme: Holidays Abroad
@@ -920,6 +1316,10 @@ A2:
       - compare cultures
       - discuss travel memories
     seedWords: [beach, sea, hotel, sun, photo, city]
+    outline: >
+      Back at work after a holiday, a man shows colleagues photos on his phone.
+      He describes the beach, the sea and the city he visited, compares the
+      culture with home, and answers questions about his best memories.
 
   lesson031:
     theme: Family Life
@@ -928,6 +1328,10 @@ A2:
       - describe responsibilities
       - give advice
     seedWords: [family, child, parent, home, dinner, weekend]
+    outline: >
+      Two parents sit down after the children are in bed and talk about family
+      life: who handles which responsibilities, how they share the cooking and
+      cleaning, and what advice they would give a new parent.
 
   lesson032:
     theme: Raising Children
@@ -936,6 +1340,10 @@ A2:
       - describe routines
       - express opinions
     seedWords: [child, school, toy, baby, parent, bed]
+    outline: >
+      Two parents in a playground compare how they handle daily routines:
+      bedtime, toys, screen time and school. They share opinions on education
+      and laugh about the chaos of life with a baby and a toddler.
 
   lesson033:
     theme: Friends
@@ -944,6 +1352,10 @@ A2:
       - discuss social activities
       - resolve misunderstandings
     seedWords: [friend, party, plan, coffee, evening, group]
+    outline: >
+      Two friends had a misunderstanding after a party. Over coffee they calmly
+      explain how each one felt, work out what went wrong with the plan, and
+      agree to be more open with the group in future.
 
   lesson034:
     theme: Celebrations
@@ -952,6 +1364,10 @@ A2:
       - invite guests
       - describe traditions
     seedWords: [party, gift, cake, guest, music, dinner]
+    outline: >
+      A family organizes a dinner party for an anniversary. They write the
+      guest list, decide on gifts, music and cake, and explain the traditions
+      they always follow — everything must be just right for the celebration.
 
   lesson035:
     theme: Culture
@@ -960,6 +1376,10 @@ A2:
       - compare traditions
       - express opinions
     seedWords: [festival, food, music, costume, country, dance]
+    outline: >
+      An exchange student describes a festival from her home country: the
+      costumes, the food, the music and the dancing. Her host family compares
+      it with a local tradition and they share opinions on why customs matter.
 
   lesson036:
     theme: Museums
@@ -968,6 +1388,11 @@ A2:
       - describe artwork
       - recommend museums
     seedWords: [museum, painting, ticket, artist, statue, room]
+    outline: >
+      Two friends visit a museum and walk through different rooms. One is drawn
+      to a large painting and describes it; the other prefers a statue. They
+      discuss the artist, buy a ticket for the next exhibition, and recommend
+      the museum to a friend by message.
 
   lesson037:
     theme: Cinema
@@ -976,6 +1401,10 @@ A2:
       - express opinions
       - recommend movies
     seedWords: [film, ticket, screen, actor, popcorn, seat]
+    outline: >
+      After a film, two friends discuss it over popcorn. One loved the actor
+      and the story; the other was disappointed. They explain their opinions,
+      compare it with other films, and one recommends a film for next time.
 
   lesson038:
     theme: Books
@@ -984,6 +1413,11 @@ A2:
       - summarize stories
       - recommend reading
     seedWords: [book, story, author, page, library, novel]
+    outline: >
+      At a book club meeting members discuss the novel they read this month.
+      One person summarizes the story; others react to the author's choices
+      and the characters' decisions. At the end they recommend the next book
+      from the library.
 
   lesson039:
     theme: Music
@@ -992,6 +1426,10 @@ A2:
       - describe concerts
       - compare genres
     seedWords: [song, band, concert, guitar, singer, stage]
+    outline: >
+      Two friends compare their music tastes: one loves guitar bands, the
+      other prefers solo singers. They describe the last concert each saw —
+      the stage, the songs, the atmosphere — and plan to go together next time.
 
   lesson040:
     theme: Television and Streaming
@@ -1000,6 +1438,11 @@ A2:
       - compare services
       - recommend series
     seedWords: [television, series, screen, episode, remote, film]
+    outline: >
+      Roommates argue over the remote: one wants to watch a television film,
+      the other is in the middle of a series. They compare their streaming
+      services, and one enthusiastically recommends the new episode she just
+      watched on her screen.
 
   lesson041:
     theme: Technology
@@ -1008,6 +1451,11 @@ A2:
       - solve technical issues
       - explain usage
     seedWords: [phone, computer, screen, app, device, battery]
+    outline: >
+      A parent asks her teenager to help with a new device. The teenager
+      explains how the app works and why the battery drains fast. They look
+      at the screen together, solve the problem, and the parent learns something
+      new about her phone.
 
   lesson042:
     theme: Internet Safety
@@ -1016,6 +1464,11 @@ A2:
       - recognize scams
       - ask for technical help
     seedWords: [password, account, email, virus, internet, scam]
+    outline: >
+      A man receives a suspicious email asking for his account password. He
+      shows it to a tech-savvy colleague who explains it is a scam. They
+      discuss how to stay safe on the internet and the colleague helps him
+      protect his account from viruses.
 
   lesson043:
     theme: Social Media
@@ -1024,6 +1477,11 @@ A2:
       - express opinions
       - compare platforms
     seedWords: [photo, post, friend, profile, message, phone]
+    outline: >
+      Two colleagues eat lunch and scroll through their phones. They compare
+      different platforms — where they post photos, send messages or follow
+      friends — share opinions on how social media affects daily life, and
+      debate whether their profiles say too much about them.
 
   lesson044:
     theme: Nature
@@ -1032,6 +1490,11 @@ A2:
       - discuss outdoor activities
       - express preferences
     seedWords: [forest, river, mountain, tree, lake, animal]
+    outline: >
+      On a hiking trip two friends reach a viewpoint over a forest lake and
+      distant mountains. They describe the landscape, spot an animal in the
+      trees by the river, and talk about their favourite outdoor activities
+      in each season.
 
   lesson045:
     theme: Weather
@@ -1040,6 +1503,11 @@ A2:
       - discuss climate
       - plan activities
     seedWords: [rain, sun, cloud, wind, snow, storm]
+    outline: >
+      Two friends check the weather forecast before a weekend trip. The app
+      shows clouds, wind and a possible storm. They discuss the climate in
+      the region, weigh up the risk of rain and snow, and decide whether
+      to go or stay home.
 
   lesson046:
     theme: Environment
@@ -1048,6 +1516,11 @@ A2:
       - describe environmental problems
       - suggest improvements
     seedWords: [waste, plastic, tree, water, bin, pollution]
+    outline: >
+      Neighbours attend a local meeting about pollution in the park. They
+      describe the problem — plastic waste in the water, trees being cut down —
+      suggest better bins and recycling, and agree on a plan to improve the
+      neighbourhood environment.
 
   lesson047:
     theme: Animals
@@ -1056,6 +1529,11 @@ A2:
       - discuss pets
       - compare habitats
     seedWords: [dog, cat, bird, forest, zoo, farm]
+    outline: >
+      A family visits a zoo and a farm in the same weekend. The children
+      compare the animals they saw — birds in the forest, cats on the farm —
+      with their pets at home, while the parents explain the different habitats
+      and why wild animals should stay wild.
 
   lesson048:
     theme: Gardening
@@ -1064,6 +1542,11 @@ A2:
       - explain gardening tasks
       - ask for advice
     seedWords: [garden, plant, flower, soil, tree, water]
+    outline: >
+      A new homeowner asks her experienced neighbour for gardening advice.
+      The neighbour walks through the garden, identifies the plants, explains
+      how to prepare the soil, water correctly and prune the tree before
+      winter.
 
   lesson049:
     theme: Volunteering
@@ -1072,6 +1555,11 @@ A2:
       - explain motivations
       - encourage participation
     seedWords: [volunteer, help, group, food, people, project]
+    outline: >
+      A volunteer coordinator talks at a community evening about a local food
+      project. She describes what volunteers do, explains why she joined,
+      and encourages the people in the group to take part — even one hour
+      a week makes a difference.
 
   lesson050:
     theme: Community
@@ -1080,6 +1568,11 @@ A2:
       - participate in local events
       - suggest improvements
     seedWords: [neighbour, street, park, school, meeting, town]
+    outline: >
+      Residents gather at a neighbourhood meeting to discuss the state of
+      the park near the school. They describe the problems, suggest improvements
+      to the street and the park, and plan a community event to bring the
+      town together.
 
   lesson051:
     theme: Emergencies
@@ -1088,6 +1581,11 @@ A2:
       - request assistance
       - explain situations
     seedWords: [fire, ambulance, police, accident, help, phone]
+    outline: >
+      A woman witnesses a serious accident near her house. She phones the
+      emergency services, describes the incident clearly, requests an ambulance
+      and the police, and stays on the line explaining the situation until
+      help arrives.
 
   lesson052:
     theme: Police
@@ -1096,6 +1594,10 @@ A2:
       - describe suspects
       - understand procedures
     seedWords: [police, thief, report, officer, street, car]
+    outline: >
+      A man's car is broken into on his street. He goes to the police station,
+      reports the crime to an officer, describes the suspect he saw, and the
+      officer explains the procedure for the report and what happens next.
 
   lesson053:
     theme: Laws and Rules
@@ -1104,6 +1606,11 @@ A2:
       - discuss responsibilities
       - ask for clarification
     seedWords: [law, police, fine, rule, sign, document]
+    outline: >
+      A new resident receives a fine for breaking a local rule she did not
+      know about. She goes to the council office, asks for clarification of
+      the law and the sign she missed, and the clerk explains her responsibilities
+      and how to pay or contest the fine.
 
   lesson054:
     theme: Money Management
@@ -1112,6 +1619,11 @@ A2:
       - compare expenses
       - give financial advice
     seedWords: [money, budget, bank, card, bill, salary]
+    outline: >
+      Two students compare how they manage money at the end of the month.
+      One always has bills left unpaid; the other keeps a strict budget.
+      They discuss their bank accounts, card spending and salary, and the
+      more organised student gives practical financial advice.
 
   lesson055:
     theme: Consumer Rights
@@ -1120,6 +1632,11 @@ A2:
       - make complaints
       - request refunds
     seedWords: [shop, receipt, refund, product, complaint, money]
+    outline: >
+      A woman buys a faulty product and goes back to the shop with her receipt.
+      She explains the complaint calmly, asks for a refund, and when the
+      assistant is unhelpful she asks to speak to a manager — and gets her
+      money back.
 
   lesson056:
     theme: Hobbies
@@ -1128,6 +1645,11 @@ A2:
       - compare activities
       - invite participation
     seedWords: [book, music, game, sport, garden, photo]
+    outline: >
+      At a community centre open day people describe their hobbies. One man
+      talks about photography and sport; a woman explains her passion for
+      music and her garden. They compare activities and invite each other to
+      try something new.
 
   lesson057:
     theme: Learning Languages
@@ -1136,6 +1658,11 @@ A2:
       - describe progress
       - ask for advice
     seedWords: [word, book, teacher, lesson, language, exam]
+    outline: >
+      Two language learners meet at a conversation class. They compare their
+      methods — using books, apps and lessons with a teacher — describe
+      how much progress they have made, and ask each other for advice before
+      their upcoming exam.
 
   lesson058:
     theme: Giving Directions
@@ -1144,6 +1671,11 @@ A2:
       - understand instructions
       - ask follow-up questions
     seedWords: [street, map, corner, sign, left, right]
+    outline: >
+      A delivery driver is lost in an unfamiliar part of town. He stops and
+      asks for directions; a local woman explains the route carefully using
+      street names, corners and signs. He asks follow-up questions and
+      repeats the instructions back to make sure he understood.
 
   lesson059:
     theme: Making Plans
@@ -1152,6 +1684,10 @@ A2:
       - negotiate schedules
       - confirm plans
     seedWords: [calendar, appointment, friend, week, plan, time]
+    outline: >
+      Two friends try to find a free time to meet. They check their calendars,
+      discover they are both busy most of the week, negotiate a time that
+      works for both, and send a message to confirm the appointment.
 
   lesson060:
     theme: Solving Problems
@@ -1160,6 +1696,10 @@ A2:
       - propose solutions
       - agree on actions
     seedWords: [problem, help, phone, key, money, plan]
+    outline: >
+      A couple realizes they have a problem: the key is lost, the phone is
+      dead and they need money urgently. They stay calm, help each other
+      think through possible solutions, agree on a plan, and act step by step.
 
   lesson061:
     theme: Describing Experiences
@@ -1168,6 +1708,10 @@ A2:
       - describe memorable events
       - sequence actions
     seedWords: [trip, holiday, day, story, photo, city]
+    outline: >
+      At a dinner party a woman tells the story of an unforgettable day on
+      holiday: first this happened, then that — a wrong turn in a foreign
+      city, a lucky discovery. She shows a photo and the others ask questions.
 
   lesson062:
     theme: Giving Advice
@@ -1176,6 +1720,11 @@ A2:
       - express concerns
       - explain consequences
     seedWords: [friend, doctor, problem, money, plan, health]
+    outline: >
+      A friend has been feeling unwell for weeks but keeps putting off seeing
+      a doctor. Another friend listens, expresses concern, recommends going
+      urgently, explains the possible consequences, and offers to help make
+      a plan and go along for support.
 
   lesson063:
     theme: Making Comparisons
@@ -1184,6 +1733,10 @@ A2:
       - compare places
       - compare experiences
     seedWords: [city, house, car, price, size, person]
+    outline: >
+      A family is deciding between two cities to move to. They compare house
+      prices and sizes, the two cities as places to live, and share personal
+      experiences of each. In the end everyone has a different opinion.
 
   lesson064:
     theme: Expressing Opinions
@@ -1192,6 +1745,10 @@ A2:
       - disagree politely
       - justify opinions
     seedWords: [film, book, food, music, idea, news]
+    outline: >
+      After dinner four friends discuss a news story they all read. Two agree
+      on the main idea; the other two disagree politely. Each one justifies
+      their view using examples from films, books and daily life.
 
   lesson065:
     theme: Future Plans
@@ -1200,6 +1757,11 @@ A2:
       - describe intentions
       - make predictions
     seedWords: [year, plan, job, trip, house, family]
+    outline: >
+      Two friends turn thirty in the same year and talk about the decade
+      ahead. They share ambitions — a new job, a house, a family, a big trip —
+      describe what they intend to do first, and predict how life will look
+      in ten years.
 
   lesson066:
     theme: Memories
@@ -1208,6 +1770,11 @@ A2:
       - express emotions
       - compare experiences
     seedWords: [child, photo, school, family, holiday, year]
+    outline: >
+      Two siblings sort through old family photos. Each picture brings up
+      a memory — a school holiday, a family celebration, a difficult year.
+      They describe the emotions they felt then, and compare their memories
+      of the same events.
 
   lesson067:
     theme: News
@@ -1216,6 +1783,11 @@ A2:
       - summarize news
       - express reactions
     seedWords: [newspaper, news, world, report, story, television]
+    outline: >
+      Colleagues discuss the morning news over coffee. One summarizes a story
+      from the newspaper; another saw a different report on television. They
+      compare the two versions, react to what is happening in the world, and
+      debate whose account is more reliable.
 
   lesson068:
     theme: Local History
@@ -1224,6 +1796,11 @@ A2:
       - discuss traditions
       - compare past and present
     seedWords: [town, church, castle, year, war, story]
+    outline: >
+      A tour guide leads a small group around the old part of town. She
+      describes the castle and the church, tells a story about a war that
+      happened here many years ago, and the group compares how the town
+      looked then with what they see today.
 
   lesson069:
     theme: Dutch Society
@@ -1232,6 +1809,11 @@ A2:
       - compare cultures
       - describe customs
     seedWords: [bicycle, canal, cheese, king, market, rain]
+    outline: >
+      An international student describes her first impressions of life in
+      the Netherlands: everyone cycles in the rain, the market sells enormous
+      wheels of cheese, and the king's birthday is celebrated everywhere.
+      Her host explains the customs and they compare cultures.
 
   lesson070:
     theme: Public Holidays
@@ -1240,6 +1822,11 @@ A2:
       - describe celebrations
       - make plans
     seedWords: [holiday, king, party, flag, family, day]
+    outline: >
+      Friends plan how to celebrate a national public holiday. They discuss
+      the traditions — flags out, parties in the street, the king on
+      television — decide where the family will gather, and make sure
+      everyone knows the plan for the day.
 
   lesson071:
     theme: Problem Solving at Work
@@ -1248,6 +1835,11 @@ A2:
       - suggest solutions
       - report outcomes
     seedWords: [meeting, problem, colleague, plan, report, boss]
+    outline: >
+      A serious problem comes up at work just before a deadline. A colleague
+      explains the issue to the team in a short meeting, everyone suggests
+      solutions, they agree on a plan, and the next morning the colleague
+      reports the outcome to the boss.
 
   lesson072:
     theme: Telephone Conversations
@@ -1256,6 +1848,11 @@ A2:
       - leave messages
       - clarify information
     seedWords: [phone, call, message, appointment, voice, number]
+    outline: >
+      A man tries to phone a clinic to make an appointment but the line is
+      busy. He calls again, reaches a voice message and leaves his number.
+      When they call back he clarifies the appointment details and writes
+      everything down carefully.
 
   lesson073:
     theme: Emails and Messages
@@ -1264,6 +1861,11 @@ A2:
       - request information
       - reply politely
     seedWords: [email, message, computer, letter, reply, screen]
+    outline: >
+      A woman needs information about a course and writes a polite email
+      from her computer. The organization replies with details on her screen;
+      she reads the message carefully and sends a short, polite reply to
+      confirm her interest.
 
   lesson074:
     theme: Customer Service
@@ -1272,6 +1874,11 @@ A2:
       - explain problems
       - evaluate service
     seedWords: [shop, phone, problem, product, help, complaint]
+    outline: >
+      A man phones customer service about a product that stopped working.
+      He explains the problem clearly, asks for help, and the agent tries
+      several solutions. Afterwards a survey asks him to evaluate the service
+      — he gives honest feedback.
 
   lesson075:
     theme: Planning an Event
@@ -1280,6 +1887,11 @@ A2:
       - assign responsibilities
       - confirm arrangements
     seedWords: [party, guest, date, food, music, plan]
+    outline: >
+      A group of colleagues plan a leaving party for a team member. They
+      choose a date, divide responsibilities — one handles food, another
+      music, another the guest list — and send a message to confirm all
+      the arrangements with everyone involved.
 
   lesson076:
     theme: Dreams and Goals
@@ -1288,6 +1900,11 @@ A2:
       - explain motivations
       - encourage others
     seedWords: [job, plan, year, money, house, dream]
+    outline: >
+      Two old school friends catch up and share their dreams. One wants to
+      own a house and change jobs within the year; the other is saving money
+      for a plan she has kept secret. They explain their motivations and
+      encourage each other to believe the dream is possible.
 
   lesson077:
     theme: Review of Daily Life
@@ -1296,6 +1913,10 @@ A2:
       - reinforce grammar
       - improve fluency
     seedWords: [day, work, home, food, friend, plan]
+    outline: >
+      A language learner records a voice diary at the end of an ordinary day:
+      she describes work, the food she ate at home, a phone call with a friend,
+      and her plan for tomorrow — using as much A2 vocabulary as she can.
 
   lesson078:
     theme: Review of Travel and Work
@@ -1304,6 +1925,11 @@ A2:
       - combine workplace language
       - practice conversations
     seedWords: [trip, office, ticket, job, hotel, meeting]
+    outline: >
+      A man tells a colleague about a business trip: the ticket, the hotel,
+      the office he visited, the meetings he attended. The colleague asks
+      questions; together they practise the full range of travel and
+      workplace vocabulary from the course.
 
   lesson079:
     theme: Integrated Communication
@@ -1312,6 +1938,11 @@ A2:
       - express opinions confidently
       - respond naturally
     seedWords: [conversation, friend, opinion, question, plan, story]
+    outline: >
+      Two friends sit in a café and have a free-flowing conversation: they
+      share a story, express opinions about a film and a news event, ask
+      follow-up questions and respond naturally — a real conversation, not
+      a lesson.
 
   lesson080:
     theme: Preparing for B1
@@ -1320,6 +1951,11 @@ A2:
       - use expanded vocabulary
       - prepare for independent communication
     seedWords: [conversation, opinion, plan, story, question, future]
+    outline: >
+      A student and her teacher review the A2 course together. They look back
+      at the stories and conversations covered, the student expresses her own
+      opinion on what was most useful, and they make a plan for what comes
+      next — the independence of B1.
 
 B1:
   lesson001:
@@ -1329,6 +1965,10 @@ B1:
       - describe your background
       - explain personal goals
     seedWords: [city, job, home, friend, plan, year]
+    outline: >
+      At the first session of a language course, participants introduce themselves
+      in detail: where they come from, what job they do, why they moved to this
+      city, and what they hope to achieve in the year ahead.
 
   lesson002:
     theme: Personal Development
@@ -1337,6 +1977,11 @@ B1:
       - discuss personal growth
       - set future goals
     seedWords: [goal, skill, plan, year, book, course]
+    outline: >
+      A mentor and a mentee meet to review the past year. The mentee honestly
+      describes her strengths and weaknesses, talks about how she has grown,
+      and together they set concrete goals and a plan for the year ahead —
+      including a course and books to read.
 
   lesson003:
     theme: Education and Lifelong Learning
@@ -1345,6 +1990,11 @@ B1:
       - compare learning methods
       - explain future study plans
     seedWords: [school, course, teacher, exam, diploma, student]
+    outline: >
+      Two adults at an evening class discuss why they returned to education.
+      One describes a demanding exam; the other talks about a teacher who
+      inspired him. They compare the old school approach with modern online
+      courses and explain what diploma or qualification each is aiming for.
 
   lesson004:
     theme: Career Development
@@ -1353,6 +2003,11 @@ B1:
       - discuss professional development
       - evaluate work opportunities
     seedWords: [job, career, company, manager, salary, skill]
+    outline: >
+      A professional is offered a new role at a different company. She
+      discusses the opportunity with a trusted friend: better salary but
+      more responsibility, a bigger team to manage, new skills to develop.
+      Together they weigh up whether it is the right career move.
 
   lesson005:
     theme: Workplace Communication
@@ -1361,6 +2016,11 @@ B1:
       - express agreement and disagreement
       - summarize discussions
     seedWords: [meeting, email, colleague, report, phone, boss]
+    outline: >
+      A team holds a project meeting where ideas conflict. One colleague
+      agrees with the boss's report; another disagrees and explains why.
+      A third person summarizes the discussion fairly before they send a
+      decision by email to everyone involved.
 
   lesson006:
     theme: Leadership and Teamwork
@@ -1369,6 +2029,11 @@ B1:
       - discuss teamwork
       - resolve conflicts
     seedWords: [team, meeting, manager, project, colleague, goal]
+    outline: >
+      Two managers compare how they lead their teams. One prefers a direct
+      style; the other involves everyone in decisions. A conflict has arisen
+      on one team over the project goal — they discuss how best to resolve
+      it before the next meeting.
 
   lesson007:
     theme: Work-Life Balance
@@ -1377,6 +2042,11 @@ B1:
       - explain challenges
       - suggest improvements
     seedWords: [work, family, time, weekend, stress, sleep]
+    outline: >
+      A man admits to a friend that work has taken over his life: he has no
+      time for family or sleep, and weekends are lost to stress. His friend
+      listens, asks about his priorities, and together they suggest practical
+      improvements — small changes that could make a big difference.
 
   lesson008:
     theme: Entrepreneurship
@@ -1385,6 +2055,11 @@ B1:
       - explain risks
       - discuss opportunities
     seedWords: [company, money, idea, customer, product, plan]
+    outline: >
+      Two friends have an idea for a small company. Over coffee they describe
+      the product, identify the customers they want to reach, and talk
+      honestly about the money needed, the risks involved, and the
+      opportunities if the plan works.
 
   lesson009:
     theme: Housing Choices
@@ -1393,6 +2068,11 @@ B1:
       - discuss advantages and disadvantages
       - explain preferences
     seedWords: [house, apartment, rent, city, garden, price]
+    outline: >
+      A young couple must decide: rent an apartment in the city centre or
+      buy a house with a garden further out. They compare price, commute
+      and lifestyle, weigh the advantages and disadvantages of each option,
+      and try to agree on what matters most to them.
 
   lesson010:
     theme: Sustainable Living
@@ -1401,6 +2081,11 @@ B1:
       - describe eco-friendly habits
       - propose improvements
     seedWords: [energy, waste, water, bike, plastic, tree]
+    outline: >
+      A household reviews its environmental impact. Family members describe
+      their eco-friendly habits — cycling instead of driving, reducing plastic,
+      saving water and energy. They identify what still needs to improve and
+      propose practical changes to make their home more sustainable.
 
   lesson011:
     theme: Family Relationships
@@ -1409,6 +2094,11 @@ B1:
       - describe responsibilities
       - express opinions
     seedWords: [family, parent, child, partner, home, dinner]
+    outline: >
+      Two partners discuss how to share responsibilities at home. One feels
+      the other does less around the house and with the children; the other
+      disagrees. They express their opinions honestly over dinner and look
+      for a fairer balance.
 
   lesson012:
     theme: Friendships
@@ -1417,6 +2107,11 @@ B1:
       - discuss trust
       - resolve misunderstandings
     seedWords: [friend, trust, party, time, group, conversation]
+    outline: >
+      A misunderstanding at a party has put a friendship under strain. Two
+      people have a calm conversation about what happened, why trust is
+      important, and what each person could have done differently. By the end
+      the friendship is stronger.
 
   lesson013:
     theme: Raising Children
@@ -1425,6 +2120,11 @@ B1:
       - compare educational approaches
       - give advice
     seedWords: [child, school, parent, baby, toy, bed]
+    outline: >
+      Two parents at a school meeting compare their approaches: one is strict
+      about bedtime and screen time; the other is more relaxed. They discuss
+      different educational philosophies, listen to each other's reasoning,
+      and offer genuine advice.
 
   lesson014:
     theme: Healthy Lifestyle
@@ -1433,6 +2133,11 @@ B1:
       - evaluate diets
       - explain routines
     seedWords: [food, exercise, sleep, fruit, water, gym]
+    outline: >
+      A woman starts a new health routine and explains it to a sceptical
+      friend: early mornings at the gym, more fruit and water, better sleep.
+      The friend questions whether the diet is balanced and they evaluate the
+      routine together with honesty.
 
   lesson015:
     theme: Mental Health
@@ -1441,6 +2146,11 @@ B1:
       - discuss stress management
       - support others
     seedWords: [stress, sleep, mood, friend, rest, doctor]
+    outline: >
+      A colleague has been in a low mood for weeks and finally opens up
+      to a trusted friend. She describes her emotions and sleep problems;
+      the friend listens without judging, talks about stress management
+      techniques, and gently suggests seeing a doctor.
 
   lesson016:
     theme: Healthcare
@@ -1449,6 +2159,11 @@ B1:
       - understand treatment options
       - ask detailed questions
     seedWords: [doctor, hospital, medicine, treatment, nurse, pain]
+    outline: >
+      A patient receives an unexpected diagnosis and has a detailed
+      conversation with her doctor. She asks about the treatment options,
+      what the medicine does, whether she needs to go to hospital, and
+      what the nurse will monitor. The doctor answers every question carefully.
 
   lesson017:
     theme: Sports and Fitness
@@ -1457,6 +2172,11 @@ B1:
       - compare sports
       - describe achievements
     seedWords: [gym, run, muscle, team, ball, bike]
+    outline: >
+      Two friends compare their fitness routines: one trains muscles at the
+      gym; the other runs and cycles. They describe recent achievements —
+      a personal best, a team tournament — and debate which sport gives the
+      best overall fitness.
 
   lesson018:
     theme: Nutrition
@@ -1465,6 +2185,11 @@ B1:
       - compare diets
       - explain food choices
     seedWords: [food, vegetable, fruit, sugar, meat, diet]
+    outline: >
+      A nutritionist talks to a group about different diets. Participants
+      compare what they eat — meat or no meat, fruit and vegetables, sugar
+      levels — explain why they made their food choices, and the nutritionist
+      responds with evidence-based advice.
 
   lesson019:
     theme: Cooking and Recipes
@@ -1473,6 +2198,11 @@ B1:
       - describe cooking techniques
       - recommend dishes
     seedWords: [recipe, pan, oven, vegetable, knife, spice]
+    outline: >
+      A home cook hosts a small cooking class. She explains the recipe step
+      by step — the right knife technique, how hot the pan should be, which
+      spices and vegetables to add and when — and at the end recommends the
+      dish for a dinner party.
 
   lesson020:
     theme: Restaurants and Reviews
@@ -1481,6 +2211,11 @@ B1:
       - write reviews
       - make recommendations
     seedWords: [restaurant, menu, meal, waiter, bill, review]
+    outline: >
+      Two food lovers eat at a new restaurant and compare notes. They evaluate
+      the menu, the meal, the service and the bill. One writes a review on her
+      phone while they wait for dessert; the other recommends a better place
+      for next time.
 
   lesson021:
     theme: Technology in Daily Life
@@ -1489,6 +2224,11 @@ B1:
       - compare devices
       - explain advantages and disadvantages
     seedWords: [phone, computer, app, screen, device, internet]
+    outline: >
+      A teacher asks students how technology affects their daily lives. They
+      compare devices and apps, describe how they use the internet for work
+      and leisure, and debate the advantages and disadvantages of being
+      constantly connected through a screen.
 
   lesson022:
     theme: Artificial Intelligence
@@ -1497,6 +2237,12 @@ B1:
       - discuss opportunities
       - express concerns
     seedWords: [computer, robot, data, machine, screen, program]
+    outline: >
+      A journalist interviews a researcher about artificial intelligence.
+      The researcher explains how AI programs process data, describes real
+      applications — robots, screen assistants, medical machines — discusses
+      the opportunities for society, and takes the journalist's concerns
+      seriously.
 
   lesson023:
     theme: Social Media
@@ -1505,6 +2251,11 @@ B1:
       - express opinions
       - evaluate social media
     seedWords: [photo, post, profile, friend, phone, message]
+    outline: >
+      A parent and a teenager debate social media at the dinner table. The
+      teenager explains why she posts photos and manages her profile; the
+      parent expresses concern about online behaviour and privacy. They
+      evaluate the benefits and risks honestly and find some common ground.
 
   lesson024:
     theme: Online Privacy
@@ -1513,6 +2264,11 @@ B1:
       - explain risks
       - suggest precautions
     seedWords: [password, data, account, email, internet, phone]
+    outline: >
+      A cybersecurity expert gives a short talk at a workplace. She explains
+      how personal data and passwords can be exposed on the internet, describes
+      the risks for email and phone accounts, and suggests practical precautions
+      that everyone can take immediately.
 
   lesson025:
     theme: Shopping Habits
@@ -1521,6 +2277,11 @@ B1:
       - discuss consumer behaviour
       - justify choices
     seedWords: [shop, price, product, money, bag, card]
+    outline: >
+      Two friends with very different shopping styles go to a market together.
+      One always compares prices and products carefully; the other buys on
+      impulse. They discuss consumer behaviour, justify their choices, and
+      end up teaching each other something.
 
   lesson026:
     theme: Consumer Rights
@@ -1529,6 +2290,11 @@ B1:
       - negotiate solutions
       - understand guarantees
     seedWords: [shop, receipt, refund, product, complaint, guarantee]
+    outline: >
+      A customer returns a product that broke within the guarantee period.
+      The shop initially refuses a refund; she makes a clear, firm complaint,
+      cites the consumer guarantee, and negotiates a solution that satisfies
+      both sides — without losing her temper.
 
   lesson027:
     theme: Money Management
@@ -1537,6 +2303,11 @@ B1:
       - explain financial decisions
       - compare saving strategies
     seedWords: [money, budget, bank, salary, bill, saving]
+    outline: >
+      A financial adviser helps a young man review his budget. They look at
+      his salary, monthly bills and spending; the adviser explains how to
+      build a saving strategy, compares different approaches, and the young
+      man explains the financial decisions he has made so far.
 
   lesson028:
     theme: Banking and Finance
@@ -1545,6 +2316,11 @@ B1:
       - explain financial products
       - ask for advice
     seedWords: [bank, account, money, loan, card, interest]
+    outline: >
+      A woman visits her bank to discuss what to do with her savings. The
+      adviser explains different investment products, the interest on a loan
+      she is considering, and the risks involved. She asks detailed questions
+      before deciding anything.
 
   lesson029:
     theme: Travel Experiences
@@ -1553,6 +2329,11 @@ B1:
       - compare destinations
       - recommend places
     seedWords: [trip, city, hotel, photo, beach, flight]
+    outline: >
+      At a dinner party guests share travel stories. One describes a
+      memorable city trip and shows photos on his phone; another compares
+      it with a beach holiday she took last year. They recommend destinations
+      and debate which flight route is worth the price.
 
   lesson030:
     theme: International Travel
@@ -1561,6 +2342,11 @@ B1:
       - solve travel problems
       - give travel advice
     seedWords: [airport, passport, country, flight, hotel, map]
+    outline: >
+      A frequent traveller advises a nervous first-time international flyer.
+      She explains what to expect at the airport, how to handle passport
+      control, what cultural differences to watch for in the destination
+      country, and what to do if the hotel booking goes wrong.
 
   lesson031:
     theme: Public Transport
@@ -1569,6 +2355,11 @@ B1:
       - compare alternatives
       - explain preferences
     seedWords: [train, bus, ticket, station, tram, platform]
+    outline: >
+      Two city planners debate public transport in their region. They compare
+      the train, tram and bus networks, discuss ticket prices and platform
+      reliability, and explain their preferences for different situations —
+      rush hour, weekends, long distances.
 
   lesson032:
     theme: Mobility and Sustainability
@@ -1577,6 +2368,11 @@ B1:
       - evaluate policies
       - propose improvements
     seedWords: [bike, car, train, energy, road, city]
+    outline: >
+      A panel discussion at a town hall examines how the city should move
+      in the future. Speakers evaluate current transport policies — cars on
+      every road, bikes without safe paths — discuss energy use, and propose
+      improvements to make the city cleaner and easier to move around.
 
   lesson033:
     theme: Environment
@@ -1585,6 +2381,11 @@ B1:
       - explain environmental issues
       - suggest solutions
     seedWords: [climate, waste, energy, water, tree, pollution]
+    outline: >
+      A science teacher explains climate change to a group of adults at
+      an evening lecture. She describes the key issues — pollution, water
+      shortages, energy waste, forests disappearing — and invites the
+      audience to suggest solutions they can act on personally.
 
   lesson034:
     theme: Nature and Wildlife
@@ -1593,6 +2394,11 @@ B1:
       - discuss conservation
       - express concerns
     seedWords: [forest, animal, river, bird, mountain, fish]
+    outline: >
+      A nature guide leads a group through a forest near a mountain river.
+      He describes the ecosystem — how the birds, fish and other animals
+      depend on the trees and clean water — expresses concern about what
+      is being lost, and explains the conservation work under way.
 
   lesson035:
     theme: Weather and Climate
@@ -1601,6 +2407,11 @@ B1:
       - describe extreme weather
       - compare regions
     seedWords: [rain, sun, storm, snow, wind, temperature]
+    outline: >
+      A meteorologist presents climate trends at a public event. She
+      describes how storms, snow and extreme temperatures are changing,
+      compares different regions of the world, and explains what rising
+      temperatures mean for rain patterns and daily life.
 
   lesson036:
     theme: Volunteering
@@ -1609,6 +2420,11 @@ B1:
       - discuss motivations
       - encourage participation
     seedWords: [volunteer, help, group, project, people, food]
+    outline: >
+      A long-term volunteer gives a talk at a community centre. He explains
+      the food distribution project he works on, describes what volunteers
+      actually do each week, talks honestly about his motivations, and
+      encourages the people in the room to join — even for a short time.
 
   lesson037:
     theme: Community Life
@@ -1617,6 +2433,11 @@ B1:
       - propose initiatives
       - evaluate community projects
     seedWords: [neighbour, street, park, meeting, town, school]
+    outline: >
+      Residents at a neighbourhood meeting discuss two recurring problems:
+      unsafe streets near the school and a neglected park. They propose
+      concrete initiatives, evaluate a similar project that worked in another
+      town, and divide responsibilities before the next meeting.
 
   lesson038:
     theme: Culture and Traditions
@@ -1625,6 +2446,11 @@ B1:
       - discuss cultural identity
       - explain customs
     seedWords: [festival, food, music, custom, country, dance]
+    outline: >
+      At a multicultural festival, people from different countries share a
+      table. Each person explains a tradition from home — food, music,
+      dance, a custom — and they compare how each culture expresses its
+      identity through celebration.
 
   lesson039:
     theme: Museums and Heritage
@@ -1633,6 +2459,11 @@ B1:
       - evaluate exhibitions
       - recommend visits
     seedWords: [museum, painting, statue, castle, ticket, history]
+    outline: >
+      A heritage guide takes a group around a castle that has been converted
+      into a museum. She describes the history of the site, evaluates the
+      current exhibitions, and recommends the most worthwhile rooms to visit
+      if time is short.
 
   lesson040:
     theme: Literature
@@ -1641,6 +2472,11 @@ B1:
       - discuss characters
       - express opinions
     seedWords: [book, story, author, novel, page, character]
+    outline: >
+      A book club discusses a novel they all read. One member summarizes
+      the story for a latecomer; others debate the main character's choices
+      and what the author intended. Everyone expresses an opinion and
+      nobody fully agrees.
 
   lesson041:
     theme: Film and Television
@@ -1649,6 +2485,11 @@ B1:
       - compare genres
       - recommend productions
     seedWords: [film, screen, actor, series, ticket, scene]
+    outline: >
+      Two critics record a short podcast review after watching a new film.
+      They compare it with the director's earlier work, discuss the lead
+      actor's performance and a key scene, compare genres, and each
+      recommends a production for different types of viewer.
 
   lesson042:
     theme: Music and Performing Arts
@@ -1657,6 +2498,11 @@ B1:
       - compare styles
       - describe experiences
     seedWords: [concert, stage, music, dance, singer, theatre]
+    outline: >
+      Friends compare two performances they attended: a rock concert and a
+      theatre show with dance. They describe the stage, the singer's presence,
+      the music style, and what the experience felt like — and disagree
+      entertainingly about which was better.
 
   lesson043:
     theme: News and Current Events
@@ -1665,6 +2511,11 @@ B1:
       - discuss events
       - express opinions
     seedWords: [news, newspaper, world, report, story, television]
+    outline: >
+      At a weekly discussion group, members each bring a news story. One
+      summarizes a world event from the newspaper; another has seen a
+      different report on television. They compare sources, discuss what
+      happened, and express opinions on what the event means.
 
   lesson044:
     theme: Politics and Society
@@ -1673,6 +2524,11 @@ B1:
       - explain viewpoints
       - compare opinions
     seedWords: [government, vote, country, law, leader, people]
+    outline: >
+      Two citizens debate whether to vote in an upcoming election. One
+      believes the government and leaders make a real difference; the other
+      is less convinced. They discuss a new law that affects many people,
+      explain their viewpoints, and compare opinions without arguing.
 
   lesson045:
     theme: Law and Justice
@@ -1681,6 +2537,11 @@ B1:
       - explain rights
       - describe legal situations
     seedWords: [law, court, judge, police, crime, lawyer]
+    outline: >
+      A lawyer explains the legal system to a client facing a minor issue
+      with the police. She describes how the court works, what the relevant
+      law says, what his rights are, and what a judge would likely decide
+      in a situation like this.
 
   lesson046:
     theme: Education Systems
@@ -1689,6 +2550,11 @@ B1:
       - evaluate teaching methods
       - discuss reforms
     seedWords: [school, university, teacher, exam, student, class]
+    outline: >
+      Two teachers from different countries meet at a conference and compare
+      their education systems. They evaluate different teaching methods and
+      exam formats, discuss recent reforms, and consider what students
+      actually need in order to succeed.
 
   lesson047:
     theme: Science and Discovery
@@ -1697,6 +2563,11 @@ B1:
       - explain discoveries
       - discuss impacts
     seedWords: [science, experiment, laboratory, research, data, discovery]
+    outline: >
+      A researcher presents her team's recent discovery at a public lecture.
+      She describes the experiment in the laboratory, explains what the data
+      showed, and discusses the potential impact of the finding on science
+      and on everyday life.
 
   lesson048:
     theme: Innovation
@@ -1705,6 +2576,11 @@ B1:
       - evaluate new ideas
       - explain benefits
     seedWords: [idea, invention, product, technology, company, design]
+    outline: >
+      At a startup pitch event a young entrepreneur presents a new product.
+      She describes the invention, explains the technology and the design,
+      and tells investors what benefits it will bring. The panel evaluates
+      the idea and asks tough questions.
 
   lesson049:
     theme: Communication Skills
@@ -1713,6 +2589,11 @@ B1:
       - persuade others
       - summarize discussions
     seedWords: [meeting, speech, audience, message, question, idea]
+    outline: >
+      A communications trainer runs a workshop on effective speaking. She
+      asks participants to present an idea to the group, coaches them on
+      how to structure the message and engage the audience, and at the end
+      asks one person to summarize what the whole group discussed.
 
   lesson050:
     theme: Solving Problems
@@ -1721,6 +2602,11 @@ B1:
       - propose solutions
       - justify decisions
     seedWords: [problem, plan, solution, team, idea, meeting]
+    outline: >
+      A team discovers a serious problem the day before a deadline. In an
+      emergency meeting they analyse the situation from different angles,
+      each person proposes a solution with reasoning, and they agree on
+      the best plan — then justify the decision to their manager.
 
   lesson051:
     theme: Making Decisions
@@ -1729,6 +2615,11 @@ B1:
       - explain choices
       - negotiate outcomes
     seedWords: [choice, plan, option, money, time, decision]
+    outline: >
+      A family must make a difficult financial decision: spend the money on
+      a renovation now or save it for another year. They compare the options,
+      each member explains their preferred choice and why, and they negotiate
+      until they reach a decision everyone can accept.
 
   lesson052:
     theme: Giving Presentations
@@ -1737,6 +2628,11 @@ B1:
       - engage an audience
       - answer questions
     seedWords: [presentation, screen, audience, slide, speech, question]
+    outline: >
+      A manager gives a presentation to a mixed audience using slides on
+      a screen. She structures her speech clearly — introduction, key points,
+      conclusion — keeps the audience engaged with questions, and handles
+      a difficult question from the floor calmly and confidently.
 
   lesson053:
     theme: Debating Opinions
@@ -1745,6 +2641,11 @@ B1:
       - challenge arguments
       - reach conclusions
     seedWords: [debate, opinion, argument, question, idea, point]
+    outline: >
+      A formal debate takes place between two pairs of students on the idea
+      that technology does more harm than good. Each side defends its opinion,
+      challenges the other's arguments with evidence, and at the end both
+      sides try to reach a balanced conclusion.
 
   lesson054:
     theme: Planning Projects
@@ -1753,6 +2654,11 @@ B1:
       - assign responsibilities
       - monitor progress
     seedWords: [project, plan, team, task, deadline, meeting]
+    outline: >
+      A project manager sets up a new initiative with her team. In the
+      kick-off meeting she explains the plan, breaks it into tasks, assigns
+      each responsibility to a team member, and explains how she will
+      monitor progress against the deadline.
 
   lesson055:
     theme: Dutch Society
@@ -1761,6 +2667,11 @@ B1:
       - compare cultures
       - evaluate traditions
     seedWords: [bicycle, canal, cheese, king, market, immigration]
+    outline: >
+      A panel of people with different backgrounds discusses what it means
+      to live in the Netherlands today. They talk about immigration, the
+      canal cities, the cheese market, cycling culture and the role of the
+      king — comparing what they value and what they find surprising.
 
   lesson056:
     theme: International Perspectives
@@ -1769,6 +2680,11 @@ B1:
       - discuss globalization
       - describe cultural experiences
     seedWords: [country, culture, world, language, travel, border]
+    outline: >
+      Students from five different countries share their experience of living
+      abroad. They compare home cultures with their new environment, discuss
+      how globalization has blurred borders and changed language, and describe
+      the moment each one felt truly at home in the world.
 
   lesson057:
     theme: Future Challenges
@@ -1777,6 +2693,11 @@ B1:
       - make predictions
       - evaluate possibilities
     seedWords: [climate, technology, work, energy, world, future]
+    outline: >
+      A journalist interviews three experts about the next twenty years. One
+      talks about climate and energy; another about how technology will change
+      work; the third about geopolitics. Each makes predictions, evaluates
+      possibilities, and the journalist challenges them on the harder questions.
 
   lesson058:
     theme: Review of B1 Communication
@@ -1785,6 +2706,11 @@ B1:
       - strengthen vocabulary
       - improve fluency
     seedWords: [conversation, opinion, plan, story, question, idea]
+    outline: >
+      A teacher and a small group review the full B1 course. Each student
+      tells a short story from their own life using B1 vocabulary, expresses
+      an opinion on a topic they debated earlier, and asks a question. The
+      teacher gives feedback and the group discusses what helped them most.
 
   lesson059:
     theme: Integrated Discussions
@@ -1793,6 +2719,11 @@ B1:
       - express nuanced opinions
       - summarize viewpoints
     seedWords: [discussion, opinion, argument, topic, question, idea]
+    outline: >
+      A group of B1 learners hold a free discussion on a topic of their
+      choice. They sustain the conversation for an extended time, express
+      nuanced opinions rather than simple yes or no, challenge each other's
+      ideas respectfully, and at the end one person summarizes all viewpoints.
 
   lesson060:
     theme: Preparing for B2
@@ -1801,3 +2732,9 @@ B1:
       - increase confidence
       - prepare for independent language use
     seedWords: [conversation, opinion, essay, argument, plan, future]
+    outline: >
+      On the final day of the B1 course, learners reflect on how far they
+      have come. Each person describes what they can now do — hold a
+      conversation, argue a point, write a short essay — and talks about
+      where they want to take the language next. The teacher sends them off
+      with confidence and a clear plan for B2.
