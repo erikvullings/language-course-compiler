@@ -781,7 +781,9 @@ def test_seed_words_resolve_to_lexicon_via_english_glosses():
     plans = orc.plan(words, cefr="A1", language="Dutch")
 
     # Lesson 1 is anchored by the resolved concrete nouns, not the frequent fillers.
-    assert {w.lemma for w in plans[0].new_words} == {"straat", "naam", "huis"}
+    lesson1_lemmas = {w.lemma for w in plans[0].new_words}
+    assert {"straat", "naam", "huis"} <= lesson1_lemmas  # seeds are present
+    assert "er" not in lesson1_lemmas  # seed_owner reservation protects 'er'-less seeds
 
 
 def test_seed_words_are_reserved_from_earlier_themes():

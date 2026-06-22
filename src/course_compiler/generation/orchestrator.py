@@ -6,6 +6,7 @@ a sequence of generated lessons for a target CEFR level.
 
 from __future__ import annotations
 
+import math
 import re
 from collections.abc import Collection, Iterator
 from dataclasses import dataclass, field
@@ -523,7 +524,6 @@ class LessonOrchestrator:
         # theme. Surplus vocabulary beyond ``themes × budget`` is simply not taught
         # in this run (a curated subset), which is the point of a graded course.
         lesson_count = min(len(theme_sequence), len(all_content))
-        slices = self._distribute(len(all_content), lesson_count)
 
         # A lemma can map to multiple sense-items (noun + verb homograph); keep
         # them all so neither sense is dropped when the lemma is selected.
@@ -548,16 +548,17 @@ class LessonOrchestrator:
             ):
                 seed_owner.setdefault(lemma, theme_index)
 
-        for index, (start, end) in enumerate(slices):
-            if index >= len(theme_sequence):
-                break
-
+        for index in range(lesson_count):
             theme_plan = theme_sequence[index]
-            # Cap the even-split slice at the per-lesson budget so a huge lexicon
-            # yields many small lessons, not a few enormous ones.
-            target_count = min(max(1, end - start), self._budget_for(index + 1))
             selected: list[str] = []
             remaining_words = [w for w in all_content if w.lemma not in used_lemmas]
+            remaining_themes = lesson_count - index
+            budget = self._budget_for(index + 1)
+            # Take up to the budget, but always leave at least one word for each
+            # subsequent theme.  When vocabulary is sparse (fewer words than
+            # themes), this reduces to an even spread so every theme gets words.
+            max_takeable = max(1, len(remaining_words) - (remaining_themes - 1))
+            target_count = min(budget, max_takeable)
             candidate_lemmas = _theme_candidate_pool(
                 remaining_words=remaining_words,
                 theme=theme_plan.theme,
