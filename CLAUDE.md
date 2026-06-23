@@ -76,14 +76,21 @@ These shape every change — violating them is a bug:
   (`_target_length`); (2) seed words are **generate-then-filter** — the LLM
   proposes ~5n theme-relevant words (`propose_theme_vocabulary`) and the
   orchestrator keeps only lexicon hits, frequency-ranked, falling back to a
-  candidate pool for coverage; (3) on vocabulary leakage the generator asks for a
-  **minimal revision** of the prior draft, not a fresh rewrite. All LLM calls are
+  candidate pool for coverage; (3) on vocabulary leakage the retry strategy is
+  **violation-count-aware** (`revise_violation_threshold`): a near-miss draft (few
+  violations) gets a **minimal revision** of the prior draft, while a heavily
+  broken one — or the final attempt — is **restarted from the original prompt** and
+  resampled at a higher temperature, so the model isn't anchored to wrong text.
+  All LLM calls are
   cached for reproducibility. Two cold-start aids: the per-lesson word budget can
   be **front-loaded** (`first_lesson_words` tapers to `words_per_lesson` over
   `front_load_lessons`, via `_budget_for`) so early lessons have critical mass,
   and the lesson **format adapts to stage** — below `narrative_vocab_threshold`
   allowed words the prompt asks for short example sentences/dialogue instead of a
-  narrative. Both are opt-in/config so output stays reproducible and
+  narrative, and the writer prompt's **tense guidance relaxes** by CEFR level and
+  once the allowed vocabulary passes `mature_vocab_threshold` (cold-start A1 is
+  present-tense-first; A2 and mature A1 get only a gentle steer; B1+ none).
+  Both are opt-in/config so output stays reproducible and
   language-agnostic. For coherence, the theme catalog (`themes.yaml`) may carry
   two **optional English** hints per lesson — `seedWords` (concrete anchors fed to
   `propose_theme_vocabulary` so early lessons get scene-grounding nouns) and

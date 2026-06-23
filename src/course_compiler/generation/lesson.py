@@ -51,16 +51,28 @@ class GeneratedLesson:
     fallback: bool = False
 
 
-_LOW_CEFR: frozenset[str] = frozenset({"A1", "A2"})
+#: Levels that still benefit from a light steer toward simple tenses.
+_SIMPLE_TENSE_LEVELS: frozenset[str] = frozenset({"A1", "A2"})
 
 
-def _tense_guidance(cefr: str) -> str:
-    if cefr in _LOW_CEFR:
+def _tense_guidance(cefr: str, mature: bool = False) -> str:
+    """Tense steer for the writer, relaxing as level and learner maturity rise.
+
+    A1 cold-start is the most constrained (present-first); A2 — and a *mature* A1
+    lesson, where the learner already has a large recombinant vocabulary — only
+    gets a gentle nudge; B1 and above carry no tense restriction at all.
+    """
+    if cefr == "A1" and not mature:
         return (
             "Prefer present tense. "
             "Simple past of very frequent forms "
             "(for example equivalents of 'was/were') is allowed when natural. "
             "Avoid complex tense combinations. "
+        )
+    if cefr in _SIMPLE_TENSE_LEVELS:
+        return (
+            "Present and simple past are both fine; "
+            "use other tenses only when they read naturally. "
         )
     return ""
 
@@ -96,43 +108,52 @@ def _user_prompt(
     outline: str = "",
     glosses: dict[str, str] | None = None,
     verb_lemmas: list[str] | None = None,
+    mature: bool = False,
 ) -> str:
+    verbs = list(verb_lemmas or [])
+    verb_set = set(verbs)
+    # Verbs get their own dedicated line below; keep them out of the general word
+    # list so they aren't presented to the writer twice.
+    other_words = [w for w in new_words if w not in verb_set]
+
     if fmt == FORMAT_EXAMPLES:
         write_instruction = (
-            f"Write several short, simple example sentences or a brief dialogue "
-            f"— not more than {target_length} in total. "
-            "Keep sentences short and concrete; each new word should appear in at least one sentence."
+            f'Write several short, simple {language} example sentences or a brief '
+            f'dialogue on the theme "{theme}" — not more than {target_length} in total. '
+            "Keep sentences short and concrete; try to use most of the new words, "
+            "but a few may be left out if the text reads better."
         )
     else:
         write_instruction = (
-            f"Write a short narrative — a story or dialogue — not more than {target_length}, "
-            "that reads naturally from start to finish."
+            f"Write a short {language} narrative — a story or dialogue — not more "
+            f"than {target_length} that reads naturally from start to finish. "
         )
-
-    theme_line = f'The theme is "{theme}"'
-    if outline:
-        theme_line += f": {outline.strip()}"
-
-    word_line = (
-        f"Try to use these {language} words, or derivatives, naturally in context "
-        f"(the English meaning is given in brackets to fix the intended sense — do "
-        f"not write the English in your text): {_format_new_words(new_words, glosses)}."
-    )
+        if outline:
+            write_instruction += (
+                f'The theme is "{theme}" and the scene is: {outline.strip()}'
+            )
+        else:
+            write_instruction += f'The theme is "{theme}".'
 
     parts = [
         f"You are a {language} writer. {write_instruction}",
-        f"Keep the vocabulary at the CEFR {cefr} level — do not use advanced words, "
-        f"but you may freely use other common words at or below this level so the text reads naturally. "
-        f"Conjugate verbs correctly for their subject and tense. "
-        f"{_tense_guidance(cefr)}"
+        f"Keep the vocabulary at the CEFR {cefr} level — do not use words above this "
+        f"level, but you may freely use other common words at or below it so the text "
+        f"reads naturally. Conjugate verbs correctly for their subject and tense. "
+        f"{_tense_guidance(cefr, mature)}"
         "Articles, prepositions, conjunctions, and common pronouns may be used freely.",
-        theme_line + ".",
-        word_line,
     ]
-    if verb_lemmas:
+    if other_words:
         parts.append(
-            "Build your sentences around these verbs, conjugated as the context "
-            f"requires: {_format_new_words(verb_lemmas, glosses)}."
+            f"Try to use these {language} words, or derivatives, naturally in context "
+            f"(the English meaning is given in brackets to fix the intended sense — do "
+            f"not write the English in your text): {_format_new_words(other_words, glosses)}."
+        )
+    if verbs:
+        parts.append(
+            "Use most of these verbs where they fit naturally, conjugated as the "
+            "context requires; a few may be left out if the story reads better: "
+            f"{_format_new_words(verbs, glosses)}."
         )
     parts.append(
         f"Only output the title and text in {language}, using Markdown with this exact structure:\n\n"
@@ -226,6 +247,9 @@ class LessonGenerator:
         max_retries: int = 5,
         extra_tolerance: float | None = 0.5,
         narrative_vocab_threshold: int = 60,
+        mature_vocab_threshold: int = 300,
+        revise_violation_threshold: int = 2,
+        restart_temperature_bump: float = 0.1,
         fail_open_on_llm_error: bool = True,
         fail_open_on_validation_error: bool = True,
     ) -> None:
@@ -235,6 +259,15 @@ class LessonGenerator:
         self._max_retries = max_retries
         self._extra_tolerance = extra_tolerance
         self._narrative_vocab_threshold = narrative_vocab_threshold
+        # Once the allowed (recombinant) vocabulary reaches this size, the lesson is
+        # treated as "mature" and the cold-start tense constraints relax.
+        self._mature_vocab_threshold = mature_vocab_threshold
+        # At or below this many violations, ask for a minimal revision of the prior
+        # draft (it's nearly right). Above it — or on the final attempt — discard the
+        # broken draft and resample the original prompt afresh, since "minimally
+        # revise" only anchors the model to fundamentally-wrong text.
+        self._revise_violation_threshold = revise_violation_threshold
+        self._restart_temperature_bump = restart_temperature_bump
         self._fail_open_on_llm_error = fail_open_on_llm_error
         self._fail_open_on_validation_error = fail_open_on_validation_error
 
@@ -250,6 +283,7 @@ class LessonGenerator:
         outline: str = "",
         glosses: dict[str, str] | None = None,
         verb_lemmas: list[str] | None = None,
+        mature: bool = False,
     ) -> list[Message]:
         return [
             Message(
@@ -264,6 +298,7 @@ class LessonGenerator:
                     outline,
                     glosses,
                     verb_lemmas,
+                    mature,
                 ),
             )
         ]
@@ -315,12 +350,19 @@ class LessonGenerator:
             if outline or len(allowed_words) >= self._narrative_vocab_threshold
             else FORMAT_EXAMPLES
         )
+        # A large recombinant vocabulary marks a later lesson, where cold-start
+        # tense constraints can relax.
+        mature = len(allowed_words) >= self._mature_vocab_threshold
         messages = self._build_initial_messages(
             lesson_id, language, cefr, theme, target_length, new_words, fmt, outline,
-            glosses, verb_lemmas,
+            glosses, verb_lemmas, mature,
         )
+        # Kept verbatim so a "fresh restart" attempt can re-issue the original
+        # prompt instead of continuing a conversation anchored to a broken draft.
+        initial_messages = list(messages)
         raw_messages = [m.as_dict() for m in messages]
         resolved_model = model or ""
+        current_temperature = temperature
 
         log.debug(
             "[%s] Starting generation — cefr=%s theme=%r fmt=%s target=%s "
@@ -351,7 +393,7 @@ class LessonGenerator:
             log.debug("[%s] Attempt %d/%d — calling LLM", lesson_id, attempt, self._max_retries)
             try:
                 response = self._provider.complete(
-                    messages, model=model, temperature=temperature
+                    messages, model=model, temperature=current_temperature
                 )
             except LLMError:
                 if not self._fail_open_on_llm_error:
@@ -406,15 +448,32 @@ class LessonGenerator:
                 "[%s] Validation failed on attempt %d — violations: %s",
                 lesson_id, attempt, sorted(result.violations),
             )
-            feedback = _feedback_message(result, cefr)
-            log.debug("[%s] FEEDBACK MESSAGE:\n%s", lesson_id, feedback)
 
-            # Append the bad response and a correction message for the next attempt.
-            messages = [
-                *messages,
-                Message(Role.ASSISTANT, response.content),
-                Message(Role.USER, feedback),
-            ]
+            # Decide what the *next* attempt should look like. A near-miss draft
+            # (few violations) is worth salvaging via minimal revision; a heavily
+            # broken one — or the last shot — is better restarted from scratch so
+            # the model isn't anchored to wrong text.
+            next_attempt = attempt + 1
+            heavy = len(result.violations) > self._revise_violation_threshold
+            final = next_attempt >= self._max_retries
+            if heavy or final:
+                current_temperature = min(
+                    current_temperature + self._restart_temperature_bump, 1.0
+                )
+                log.debug(
+                    "[%s] Restarting fresh (heavy=%s final=%s) at temperature %.2f",
+                    lesson_id, heavy, final, current_temperature,
+                )
+                messages = list(initial_messages)
+            else:
+                feedback = _feedback_message(result, cefr)
+                log.debug("[%s] FEEDBACK MESSAGE:\n%s", lesson_id, feedback)
+                # Append the bad response and a correction message for the next attempt.
+                messages = [
+                    *messages,
+                    Message(Role.ASSISTANT, response.content),
+                    Message(Role.USER, feedback),
+                ]
 
         if self._fail_open_on_validation_error:
             return GeneratedLesson(

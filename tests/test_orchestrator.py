@@ -181,6 +181,39 @@ def _make_orchestrator(
 # ---------------------------------------------------------------------------
 
 
+def test_resolve_seed_pairs_disambiguates_by_theme():
+    """A seed with multiple gloss matches resolves to the theme-relevant sense.
+
+    Two lemmas share the primary English gloss 'bank'; the financial sense is the
+    rarer (higher-rank) word, so a pure frequency pick would wrongly choose the
+    seat. With theme context, the lemma whose metadata overlaps the theme wins.
+    """
+    from course_compiler.generation.orchestrator import _resolve_seed_pairs
+
+    seat = _word("zitbank", en="bank (a long seat)", rank=1)
+    seat.synonyms = ["chair"]
+    fin = _word("geldbank", en="bank (financial institution)", rank=9)
+    fin.synonyms = ["account"]
+    words = [seat, fin]
+
+    # Without theme context: frequency wins → the seat.
+    assert _resolve_seed_pairs(words, ["bank"]) == [("bank", "zitbank")]
+
+    # With theme tokens that overlap the financial sense: the bank account wins.
+    pairs = _resolve_seed_pairs(words, ["bank"], theme_tokens={"money", "account"})
+    assert pairs == [("bank", "geldbank")]
+
+
+def test_resolve_seed_pairs_frequency_tiebreak_within_theme():
+    """When theme overlap ties, the more frequent gloss match is chosen."""
+    from course_compiler.generation.orchestrator import _resolve_seed_pairs
+
+    a = _word("banka", en="bank", rank=5)
+    b = _word("bankb", en="bank", rank=2)
+    pairs = _resolve_seed_pairs([a, b], ["bank"], theme_tokens={"unrelated"})
+    assert pairs == [("bank", "bankb")]
+
+
 def test_plan_filters_by_cefr():
     words = [_word("huis", cefr="A1"), _word("appartement", cefr="B1")]
     orc = _make_orchestrator({"home": ["huis", "appartement"]})

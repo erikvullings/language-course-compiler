@@ -37,6 +37,7 @@ class _StubProvider(LLMProvider):
     def __init__(self, responses: list[str]) -> None:
         self._responses = list(responses)
         self._calls: list[list[Message]] = []
+        self._temperatures: list[float | None] = []
 
     def complete(
         self,
@@ -49,6 +50,7 @@ class _StubProvider(LLMProvider):
         from course_compiler.llm.base import to_messages
 
         self._calls.append(to_messages(prompt))
+        self._temperatures.append(temperature)
         content = self._responses.pop(0) if self._responses else ""
         return LLMResponse(content=content, model=model or "stub", raw={})
 
@@ -192,8 +194,12 @@ def test_generate_shows_english_glosses_for_new_words():
     assert "eten (to eat)" in prompt
 
 
-def test_generate_lists_verbs_with_build_instruction():
-    """Selected verbs are surfaced with an explicit 'build sentences' instruction."""
+def test_generate_lists_verbs_with_soft_instruction():
+    """Selected verbs are surfaced, but their use is encouraged, not mandated.
+
+    A few may be left out if the text reads better — the validator never enforces
+    their presence, so over-constraining the writer only degrades naturalness.
+    """
     provider = _StubProvider(["## T\nhuis"])
     gen = LessonGenerator(provider, _lemmatizer(["huis"]))
     gen.generate(
@@ -205,8 +211,87 @@ def test_generate_lists_verbs_with_build_instruction():
         verb_lemmas=["hebben"],
     )
     prompt = provider._calls[0][0].content.lower()
-    assert "build your sentences around these verbs" in prompt
     assert "hebben" in prompt
+    # No longer a hard "build your sentences around" mandate.
+    assert "build your sentences around these verbs" not in prompt
+    # Soft phrasing: most verbs, where they fit; some may be omitted.
+    assert "where they fit naturally" in prompt
+    assert "left out" in prompt or "omit" in prompt
+
+
+def test_verbs_not_duplicated_in_word_list():
+    """Verbs appear only in their dedicated line, not also in the general word list."""
+    provider = _StubProvider(["## T\nhuis"])
+    gen = LessonGenerator(provider, _lemmatizer(["huis"]))
+    gen.generate(
+        "lesson001",
+        ["huis", "lopen", "kijken"],
+        {"huis", "lopen", "kijken"},
+        language="Dutch",
+        model="stub",
+        verb_lemmas=["lopen", "kijken"],
+    )
+    prompt = provider._calls[0][0].content
+    assert prompt.count("lopen") == 1
+    assert prompt.count("kijken") == 1
+    assert "huis" in prompt  # the non-verb word still appears
+
+
+def test_narrative_prompt_states_theme_and_outline_together():
+    """The narrative directive names both the theme and the scene/outline."""
+    provider = _StubProvider(["## T\nhuis"])
+    gen = LessonGenerator(provider, _lemmatizer(["huis"]))
+    gen.generate(
+        "lesson001",
+        ["huis"],
+        {"huis"},
+        language="Dutch",
+        theme="Time",
+        outline="A traveller asks about the time at a station.",
+        model="stub",
+    )
+    prompt = provider._calls[0][0].content
+    assert 'theme is "Time"' in prompt
+    assert "scene is: A traveller asks about the time" in prompt
+
+
+def test_a2_tense_guidance_is_lighter_than_a1():
+    """A2 lessons drop the present-tense-first mandate but still steer simple tenses."""
+    provider = _StubProvider(["## T\nhuis"])
+    gen = LessonGenerator(provider, _lemmatizer(["huis"]))
+    gen.generate(
+        "lesson001", ["huis"], {"huis"}, language="Dutch", cefr="A2", model="stub"
+    )
+    prompt = provider._calls[0][0].content
+    assert "Prefer present tense" not in prompt
+    assert "simple past" in prompt.lower()
+
+
+def test_b1_has_no_tense_restriction():
+    """B1+ lessons carry no tense guidance at all."""
+    provider = _StubProvider(["## T\nhuis"])
+    gen = LessonGenerator(provider, _lemmatizer(["huis"]))
+    gen.generate(
+        "lesson001", ["huis"], {"huis"}, language="Dutch", cefr="B1", model="stub"
+    )
+    prompt = provider._calls[0][0].content
+    assert "Prefer present tense" not in prompt
+    assert "simple past" not in prompt.lower()
+
+
+def test_mature_lesson_relaxes_a1_tense_constraints():
+    """Once the learner has a large vocabulary, A1 tense constraints relax."""
+    allowed = {f"w{i}" for i in range(400)}
+    provider = _StubProvider(["## T\nw0"])
+    gen = LessonGenerator(
+        provider,
+        _MapLemmatizer({w: w for w in allowed}),
+        mature_vocab_threshold=300,
+    )
+    gen.generate("lesson050", ["w0"], allowed, language="Dutch", cefr="A1", model="stub")
+    prompt = provider._calls[0][0].content
+    assert "Prefer present tense" not in prompt
+    assert "Avoid complex tense combinations" not in prompt
 
 
 def test_early_lesson_uses_example_format_when_vocab_is_small():
@@ -383,6 +468,85 @@ def test_retry_messages_form_multi_turn_conversation():
     assert len(provider._calls[1]) == 3
     assert provider._calls[1][1].role.value == "assistant"
     assert provider._calls[1][2].role.value == "user"
+
+
+def test_many_violations_restart_fresh_without_history():
+    """When a draft leaks many words, the next attempt re-issues the original prompt.
+
+    Accumulating a badly-broken draft anchors the model to it; past the revise
+    threshold we drop the history and resample from the original prompt instead.
+    """
+    mapping = {"huis": "huis"}
+    bad = "## T\naaa bbb ccc"  # three unknown content words → 3 violations
+    good = "## T\nhuis"
+    provider = _StubProvider([bad, good])
+    gen = LessonGenerator(
+        provider, _MapLemmatizer(mapping), revise_violation_threshold=2
+    )
+    gen.generate("lesson001", ["huis"], {"huis"}, language="Dutch", model="stub")
+    # Second call is a fresh single-message prompt identical to the first — no
+    # appended assistant draft or feedback turn.
+    assert len(provider._calls[1]) == 1
+    assert provider._calls[1][0].content == provider._calls[0][0].content
+
+
+def test_few_violations_still_revise_with_history():
+    """At or below the revise threshold, keep the minimal-revision-with-history path."""
+    mapping = {"huis": "huis", "bad": "bad"}
+    bad = "## T\nbad"  # single violation
+    good = "## T\nhuis"
+    provider = _StubProvider([bad, good])
+    gen = LessonGenerator(
+        provider, _MapLemmatizer(mapping), revise_violation_threshold=2
+    )
+    gen.generate("lesson001", ["huis"], {"huis"}, language="Dutch", model="stub")
+    assert len(provider._calls[1]) == 3  # prompt + assistant draft + feedback
+
+
+def test_fresh_restart_resamples_with_higher_temperature():
+    """A fresh restart bumps the sampling temperature to escape the bad draft."""
+    mapping = {"huis": "huis"}
+    bad = "## T\naaa bbb ccc"
+    good = "## T\nhuis"
+    provider = _StubProvider([bad, good])
+    gen = LessonGenerator(
+        provider, _MapLemmatizer(mapping), revise_violation_threshold=2
+    )
+    gen.generate(
+        "lesson001", ["huis"], {"huis"}, language="Dutch", model="stub", temperature=0.6
+    )
+    assert provider._temperatures[0] == 0.6
+    assert provider._temperatures[1] > 0.6
+
+
+def test_final_attempt_restarts_fresh_even_with_few_violations():
+    """The last retry always goes fresh rather than burning it on a doomed revision."""
+    mapping = {"huis": "huis", "bad": "bad"}
+    # Every attempt leaks the single word 'bad'; with max_retries=3 the third
+    # (final) attempt must be a fresh prompt, not a third feedback turn.
+    provider = _StubProvider(["## T\nbad"] * 3)
+    gen = LessonGenerator(
+        provider,
+        _MapLemmatizer(mapping),
+        max_retries=3,
+        revise_violation_threshold=2,
+    )
+    gen.generate("lesson001", ["huis"], {"huis"}, language="Dutch", model="stub")
+    # Attempt 2 (after 1 light failure): revise with history.
+    assert len(provider._calls[1]) == 3
+    # Attempt 3 (final): fresh restart — single original prompt message.
+    assert len(provider._calls[2]) == 1
+    assert provider._calls[2][0].content == provider._calls[0][0].content
+
+
+def test_example_format_word_coverage_instruction_is_soft():
+    """Example-format lessons should cover most new words, not force every one."""
+    provider = _StubProvider(["## T\nhuis"])
+    gen = LessonGenerator(provider, _lemmatizer(["huis"]))
+    gen.generate("lesson001", ["huis"], {"huis"}, language="Dutch", model="stub")
+    prompt = provider._calls[0][0].content.lower()
+    assert "each new word should appear in at least one sentence" not in prompt
+    assert "most of the new words" in prompt
 
 
 def test_function_words_are_exempt():

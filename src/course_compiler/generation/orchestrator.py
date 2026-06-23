@@ -115,13 +115,37 @@ def _is_form_pointer_gloss(gloss: str) -> bool:
     return bool(gloss) and _FORM_POINTER_RE.match(gloss.strip()) is not None
 
 
-def _resolve_seed_pairs(words: list[Word], seed_words: list[str]) -> list[tuple[str, str]]:
+def _lexical_tokens(word: Word) -> set[str]:
+    """All searchable tokens describing *word*: lemma, tags, relations, glosses.
+
+    Used to score a word's relevance to a theme (shared by the candidate pool and
+    seed-translation disambiguation).
+    """
+    toks: set[str] = _tokens(word.lemma)
+    toks |= _tokens(" ".join(word.tags))
+    toks |= _tokens(" ".join(word.related))
+    toks |= _tokens(" ".join(word.synonyms))
+    toks |= _tokens(" ".join(word.antonyms))
+    toks |= _tokens(" ".join(word.translations.values()))
+    return toks
+
+
+def _resolve_seed_pairs(
+    words: list[Word],
+    seed_words: list[str],
+    *,
+    theme_tokens: set[str] | None = None,
+) -> list[tuple[str, str]]:
     """Resolve English ``seed_words`` to ``(seed, lemma)`` pairs via English glosses.
 
-    For each seed, the most frequent word whose primary English gloss equals the
-    seed is chosen (one lemma per seed). Entries whose gloss is a form pointer are
-    ignored. The seed is kept alongside the lemma so callers can later show the
-    intended English meaning in prompts.
+    For each seed, the word whose primary English gloss equals the seed is chosen
+    (one lemma per seed). When ``theme_tokens`` is given, candidates are ranked by
+    how much their metadata overlaps the theme first, so a polysemous seed (e.g.
+    English ``bank`` → financial vs. seat) resolves to the sense that fits the
+    lesson rather than merely the most frequent homograph; frequency breaks ties.
+    Without ``theme_tokens`` the choice is purely most-frequent (back-compatible).
+    Entries whose gloss is a form pointer are ignored. The seed is kept alongside
+    the lemma so callers can later show the intended English meaning in prompts.
     """
     if not seed_words:
         return []
@@ -140,11 +164,17 @@ def _resolve_seed_pairs(words: list[Word], seed_words: list[str]) -> list[tuple[
             return word.frequency.rank
         return 999_999
 
+    def sort_key(word: Word) -> tuple[int, int]:
+        # Most theme-relevant first (negated so higher overlap sorts earlier),
+        # then most frequent (lowest rank).
+        overlap = len(theme_tokens & _lexical_tokens(word)) if theme_tokens else 0
+        return (-overlap, rank(word))
+
     pairs: list[tuple[str, str]] = []
     seen: set[str] = set()
     for seed in seed_words:
         key = seed.strip().lower()
-        for word in sorted(index.get(key, []), key=rank):
+        for word in sorted(index.get(key, []), key=sort_key):
             if word.lemma not in seen:
                 seen.add(word.lemma)
                 pairs.append((key, word.lemma))
@@ -152,14 +182,37 @@ def _resolve_seed_pairs(words: list[Word], seed_words: list[str]) -> list[tuple[
     return pairs
 
 
-def _resolve_seed_words(words: list[Word], seed_words: list[str]) -> list[str]:
+def _resolve_seed_words(
+    words: list[Word],
+    seed_words: list[str],
+    *,
+    theme_tokens: set[str] | None = None,
+) -> list[str]:
     """Map English ``seed_words`` to lexicon lemmas via their English glosses.
 
     Deterministic and independent of any LLM: lets a catalog anchor lessons in
     concrete vocabulary that the frequency fallback would otherwise bury under
-    function words.
+    function words. ``theme_tokens`` disambiguates polysemous seeds (see
+    :func:`_resolve_seed_pairs`).
     """
-    return [lemma for _, lemma in _resolve_seed_pairs(words, seed_words)]
+    return [
+        lemma
+        for _, lemma in _resolve_seed_pairs(words, seed_words, theme_tokens=theme_tokens)
+    ]
+
+
+def _plan_theme_tokens(plan: LessonThemePlan) -> set[str]:
+    """Tokens describing a lesson's theme: theme name, goals, and outline.
+
+    Used to disambiguate which translation of a polysemous English seed best fits
+    the lesson's scene.
+    """
+    toks = _tokens(plan.theme)
+    for goal in plan.communicative_goals:
+        toks |= _tokens(goal)
+    if plan.outline:
+        toks |= _tokens(plan.outline)
+    return toks
 
 
 def _theme_candidate_pool(
@@ -195,14 +248,7 @@ def _theme_candidate_pool(
         if word.lemma.lower() in _LOW_SIGNAL_LEMMAS:
             score -= 5
 
-        lexical_tokens: set[str] = _tokens(word.lemma)
-        lexical_tokens |= _tokens(" ".join(word.tags))
-        lexical_tokens |= _tokens(" ".join(word.related))
-        lexical_tokens |= _tokens(" ".join(word.synonyms))
-        lexical_tokens |= _tokens(" ".join(word.antonyms))
-        lexical_tokens |= _tokens(" ".join(word.translations.values()))
-
-        overlap = len(theme_tokens & lexical_tokens)
+        overlap = len(theme_tokens & _lexical_tokens(word))
         if overlap > 0:
             score += overlap * 6
 
@@ -601,6 +647,7 @@ class LessonOrchestrator:
             for lemma in _resolve_seed_words(
                 all_content,
                 plan_for_owner.english_verbs + plan_for_owner.english_seed_words,
+                theme_tokens=_plan_theme_tokens(plan_for_owner),
             ):
                 seed_owner.setdefault(lemma, theme_index)
 
@@ -630,6 +677,7 @@ class LessonOrchestrator:
             seed_pairs = _resolve_seed_pairs(
                 remaining_words,
                 theme_plan.english_verbs + theme_plan.english_seed_words,
+                theme_tokens=_plan_theme_tokens(theme_plan),
             )
             # Remember the English meaning each lemma was resolved from, so the
             # writer prompt shows the intended sense (e.g. "betalen (pay)").
