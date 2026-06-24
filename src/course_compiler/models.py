@@ -145,6 +145,9 @@ class Lesson(_Model):
     #: or validation could not be satisfied — lets ``--regenerate-fallbacks`` find
     #: these lessons without guessing from the title.
     fallback: bool = False
+    #: Unresolved content words in a fallback lesson (above level / out of vocabulary).
+    #: Empty unless ``fallback`` is a best-effort draft that still leaked vocabulary.
+    violations: list[str] = []
 
 
 def to_yaml(model: BaseModel) -> str:

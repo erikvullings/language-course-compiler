@@ -46,9 +46,29 @@ class GeneratedLesson:
     title: str = ""
     theme: str = ""
     new_words: frozenset[str] = frozenset()
-    #: True when ``content`` is the deterministic placeholder produced after the
-    #: provider failed or validation could not be satisfied — not real lesson text.
+    #: True when ``content`` could not be validated cleanly — either the deterministic
+    #: word placeholder (provider failed with no usable draft) or the best-effort draft
+    #: returned after retries were exhausted. ``violations`` says how bad it is.
     fallback: bool = False
+    #: Unresolved content words in a fallback lesson (above level / out of vocabulary).
+    #: Empty for a clean lesson or a bare placeholder; non-empty marks a best-effort draft.
+    violations: frozenset[str] = frozenset()
+
+
+@dataclass(frozen=True)
+class _Draft:
+    """A validated-but-rejected attempt, retained as best-effort fallback material.
+
+    ``badness`` orders drafts for "least bad" selection: fewer violations first,
+    then (on a tie) the longer, richer draft — so we never prefer a near-empty
+    draft that merely happens to leak fewer words.
+    """
+
+    title: str
+    narrative: str
+    attempt: int
+    result: ValidationResult
+    badness: tuple[int, int]
 
 
 #: Levels that still benefit from a light steer toward simple tenses.
@@ -185,6 +205,28 @@ def _fallback_content(new_words: list[str], *, lesson_id: str, reason: str) -> s
     if words:
         return f"{words}."
     return f"{lesson_id}: lesson unavailable ({reason})."
+
+
+def _lesson_from_draft(
+    draft: _Draft,
+    *,
+    lesson_id: str,
+    theme: str,
+    new_words: list[str],
+    attempts: int,
+) -> GeneratedLesson:
+    """Wrap the best-effort ``draft`` as a fallback lesson carrying its violations."""
+    return GeneratedLesson(
+        lesson_id=lesson_id,
+        content=draft.narrative,
+        attempts=attempts,
+        tolerated=draft.result.tolerated,
+        title=draft.title,
+        theme=theme,
+        new_words=frozenset(new_words),
+        fallback=True,
+        violations=frozenset(draft.result.violations),
+    )
 
 
 def _clean_title(raw: str) -> str:
@@ -363,6 +405,9 @@ class LessonGenerator:
         raw_messages = [m.as_dict() for m in messages]
         resolved_model = model or ""
         current_temperature = temperature
+        # Least-bad rejected draft seen so far, kept so a failed lesson degrades to
+        # real (if imperfect) text rather than a bag of words.
+        best_draft: _Draft | None = None
 
         log.debug(
             "[%s] Starting generation — cefr=%s theme=%r fmt=%s target=%s "
@@ -398,7 +443,25 @@ class LessonGenerator:
             except LLMError:
                 if not self._fail_open_on_llm_error:
                     raise
-                log.debug("[%s] LLM error on attempt %d — using fallback", lesson_id, attempt)
+                if best_draft is not None:
+                    log.warning(
+                        "[%s] LLM error on attempt %d; falling back to best prior draft "
+                        "(attempt %d, %d violation(s): %s)",
+                        lesson_id, attempt, best_draft.attempt,
+                        len(best_draft.result.violations),
+                        sorted(best_draft.result.violations),
+                    )
+                    return _lesson_from_draft(
+                        best_draft,
+                        lesson_id=lesson_id,
+                        theme=theme,
+                        new_words=new_words,
+                        attempts=attempt,
+                    )
+                log.warning(
+                    "[%s] LLM error on attempt %d and no usable draft — using placeholder",
+                    lesson_id, attempt,
+                )
                 return GeneratedLesson(
                     lesson_id=lesson_id,
                     content=_fallback_content(
@@ -449,6 +512,18 @@ class LessonGenerator:
                 lesson_id, attempt, sorted(result.violations),
             )
 
+            # Remember the least-bad draft so an exhausted lesson can degrade to
+            # real text rather than a placeholder.
+            badness = (len(result.violations), -len(narrative.split()))
+            if best_draft is None or badness < best_draft.badness:
+                best_draft = _Draft(
+                    title=title,
+                    narrative=narrative,
+                    attempt=attempt,
+                    result=result,
+                    badness=badness,
+                )
+
             # Decide what the *next* attempt should look like. A near-miss draft
             # (few violations) is worth salvaging via minimal revision; a heavily
             # broken one — or the last shot — is better restarted from scratch so
@@ -476,6 +551,27 @@ class LessonGenerator:
                 ]
 
         if self._fail_open_on_validation_error:
+            if best_draft is not None:
+                log.warning(
+                    "[%s] No valid draft after %d attempts; using best-effort draft "
+                    "(attempt %d, %d unresolved word(s): %s)",
+                    lesson_id, self._max_retries, best_draft.attempt,
+                    len(best_draft.result.violations),
+                    sorted(best_draft.result.violations),
+                )
+                return _lesson_from_draft(
+                    best_draft,
+                    lesson_id=lesson_id,
+                    theme=theme,
+                    new_words=new_words,
+                    attempts=self._max_retries,
+                )
+            # No draft was ever produced (shouldn't happen on this path) — last-resort
+            # deterministic placeholder.
+            log.warning(
+                "[%s] No usable draft after %d attempts — using placeholder",
+                lesson_id, self._max_retries,
+            )
             return GeneratedLesson(
                 lesson_id=lesson_id,
                 content=_fallback_content(

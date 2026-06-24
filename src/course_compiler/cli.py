@@ -840,6 +840,7 @@ def main(argv: list[str] | None = None) -> int:
                 attempts=lesson.attempts,
                 tolerated=sorted(lesson.tolerated),
                 fallback=lesson.fallback,
+                violations=sorted(lesson.violations),
             )
             _write_json(
                 out_dir / f"{lesson.lesson_id}.json",
@@ -848,7 +849,15 @@ def main(argv: list[str] | None = None) -> int:
             count += 1
             if lesson.fallback:
                 failed += 1
-            status = " — FALLBACK (provider failed; placeholder text)" if lesson.fallback else ""
+            if lesson.fallback and lesson.violations:
+                status = (
+                    f" — BEST-EFFORT ({len(lesson.violations)} unresolved word(s): "
+                    f"{', '.join(sorted(lesson.violations))})"
+                )
+            elif lesson.fallback:
+                status = " — FALLBACK (provider failed; placeholder text)"
+            else:
+                status = ""
             print(
                 f"  [{count}] {lesson.lesson_id} {plan.theme} "
                 f"({len(lesson.new_words)} new words, {lesson.attempts} attempt(s)){status}",
@@ -859,10 +868,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Generated {count} lessons into {out_dir}")
         if failed:
             print(
-                f"WARNING: {failed}/{count} lesson(s) fell back to placeholder text "
-                "because the LLM provider failed (timeout/out-of-memory). Check that "
-                "the model is loaded and the Ollama context is large enough, then "
-                "rerun with --regenerate-fallbacks to retry just those lessons.",
+                f"WARNING: {failed}/{count} lesson(s) did not validate cleanly — either "
+                "a best-effort draft with unresolved vocabulary, or a placeholder where "
+                "the LLM provider failed (timeout/out-of-memory). Check that the model is "
+                "loaded and the Ollama context is large enough, then rerun with "
+                "--regenerate-fallbacks to retry just those lessons.",
                 file=sys.stderr,
             )
         return 0

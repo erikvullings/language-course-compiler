@@ -87,6 +87,37 @@ class _ErrorProvider(LLMProvider):
         raise LLMError("timed out")
 
 
+class _DraftThenErrorProvider(LLMProvider):
+    """Returns one draft on the first call, then raises ``LLMError`` thereafter."""
+
+    def __init__(self, first: str) -> None:
+        self._first = first
+        self._calls = 0
+
+    def complete(
+        self,
+        prompt: PromptInput,
+        *,
+        model: str | None = None,
+        temperature: float | None = None,
+        **kwargs: object,
+    ) -> LLMResponse:
+        self._calls += 1
+        if self._calls == 1:
+            return LLMResponse(content=self._first, model=model or "stub", raw={})
+        raise LLMError("timed out")
+
+    async def acomplete(
+        self,
+        prompt: PromptInput,
+        *,
+        model: str | None = None,
+        temperature: float | None = None,
+        **kwargs: object,
+    ) -> LLMResponse:
+        return self.complete(prompt, model=model, temperature=temperature, **kwargs)
+
+
 def _lemmatizer(words: list[str]) -> _MapLemmatizer:
     return _MapLemmatizer({w: w for w in words})
 
@@ -562,14 +593,52 @@ def test_function_words_are_exempt():
     assert "huis" in result.content
 
 
-def test_generate_falls_back_after_validation_retries():
-    provider = _StubProvider(["huis xyz"] * 5)
-    gen = LessonGenerator(provider, _lemmatizer(["huis"]), max_retries=3)
+def test_validation_fallback_uses_best_draft_not_word_soup():
+    """When no draft validates, return the least-bad draft, not a word placeholder."""
+    mapping = {"huis": "huis"}
+    responses = [
+        "## A\nhuis bad1 bad2 bad3",  # 3 violations
+        "## B\nhuis bad1",  # 1 violation — the best draft
+        "## C\nhuis bad1 bad2",  # 2 violations
+        "## D\nhuis bad1 bad2 bad3 bad4",  # 4 violations
+        "## E\nhuis bad1 bad2 bad3",  # 3 violations
+    ]
+    provider = _StubProvider(responses)
+    gen = LessonGenerator(provider, _MapLemmatizer(mapping), max_retries=5)
     result = gen.generate(
         "lesson006", ["huis"], {"huis"}, language="Dutch", model="stub"
     )
-    assert result.content == "huis."
-    assert result.attempts == 3
+    assert result.content == "huis bad1"  # narrative of the least-bad draft
+    assert result.title == "B"
+    assert result.fallback is True
+    assert result.violations == frozenset({"bad1"})
+    assert result.attempts == 5
+
+
+def test_validation_fallback_logs_severity(caplog):
+    """How badly the lesson failed (violation count + words) is logged at WARNING."""
+    import logging
+
+    provider = _StubProvider(["## A\nhuis bad1 bad2"] * 3)
+    gen = LessonGenerator(provider, _MapLemmatizer({"huis": "huis"}), max_retries=3)
+    with caplog.at_level(logging.WARNING):
+        gen.generate("lesson006", ["huis"], {"huis"}, language="Dutch", model="stub")
+    text = caplog.text.lower()
+    assert "bad1" in text and "bad2" in text
+    assert "lesson006" in text
+
+
+def test_llm_error_falls_back_to_best_prior_draft():
+    """A timeout after a usable draft returns that draft, not a placeholder."""
+    provider = _DraftThenErrorProvider("## A\nhuis bad1")
+    gen = LessonGenerator(provider, _MapLemmatizer({"huis": "huis"}))
+    result = gen.generate(
+        "lesson007", ["huis"], {"huis"}, language="Dutch", model="stub"
+    )
+    assert result.content == "huis bad1"
+    assert result.title == "A"
+    assert result.fallback is True
+    assert result.violations == frozenset({"bad1"})
 
 
 def test_generate_uses_cache(tmp_path):
