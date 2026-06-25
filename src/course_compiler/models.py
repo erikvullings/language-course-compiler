@@ -150,6 +150,39 @@ class Lesson(_Model):
     violations: list[str] = []
 
 
+class Grammar(_Model):
+    """A grammar page: explanation prose plus target-language examples.
+
+    Language-agnostic like every other model here — the per-language topic set
+    and ordering live in a grammar catalog (data), never in this schema.
+    ``description``/``rules``/``commonMistakes`` are written in the learner's
+    interface language (L1); ``examples`` are target-language strings that are
+    vocabulary-validated against what the learner has seen by
+    ``introducedInLesson``.
+    """
+
+    id: str
+    language: str
+    cefr: str
+    title: str
+    description: str = ""
+    rules: list[str] = []
+    examples: list[str] = []
+    #: Target-language cue words that signal this structure (e.g. *gisteren* for
+    #: the past, *morgen* for the future). Validated like ``examples``.
+    signal_words: list[str] = []
+    common_mistakes: list[str] = []
+    exceptions: list[str] = []
+    related_grammar: list[str] = []
+    introduced_in_lesson: int | None = None
+    exercises: list[str] = []
+    #: True when ``description``/``examples`` are best-effort after the provider
+    #: failed or example validation could not be satisfied.
+    fallback: bool = False
+    #: Example words above level / outside allowed vocabulary in a fallback page.
+    violations: list[str] = []
+
+
 def to_yaml(model: BaseModel) -> str:
     """Serialize a model to deterministic YAML using camelCase keys.
 

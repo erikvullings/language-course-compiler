@@ -38,6 +38,42 @@ and exercises referencing lesson/vocabulary IDs.
 - Validation state:
 	- Targeted tests for each new module pass.
 	- Full suite passes (`106 passed`).
-- Remaining for full task completion:
-	- Grammar lesson/explanation generation content layer (currently progression planning only).
-	- Integration into CLI/pipeline stages once task 0007 wiring is in scope.
+- Grammar content generation layer implemented:
+	- Added `Grammar` model in `src/course_compiler/models.py` (language-agnostic;
+	  English explanation prose + target-language `examples`, with `fallback`/`violations`).
+	- Added per-language grammar catalog: `load_grammar_catalog()` + `GrammarPlan`
+	  in `src/course_compiler/generation/grammar.py` (CEFR-keyed YAML like
+	  `themes.yaml`; cross-level deps validated and ordered via the existing
+	  `GrammarProgressionPlanner`; only the requested level's pages are returned).
+	- Added `GrammarWriter` in `src/course_compiler/generation/grammar_writer.py`:
+	  LLM writes explanation in English (not vocab-checked) and target-language
+	  examples validated against the allowed set with the existing
+	  `VocabularyValidator`; retry + fail-open + first-attempt caching mirror
+	  `LessonGenerator`.
+	- Wired two CLI subcommands in `src/course_compiler/cli.py`: `plan-grammar`
+	  (LLM bootstraps a curated-then-committed catalog) and `generate-grammar`
+	  (pegs each topic to a lesson via `introducedInLesson`, drawing on the lesson
+	  plan's accumulated vocabulary plus all lower-level words).
+	- Committed a curated `grammar/nl.yaml` starter (Dutch A1, ~23 topics,
+	  front-loaded into lessons 1-18; later lessons review rather than introduce).
+	- Signal words: `Grammar.signal_words` (target-language cue words like
+	  *gisteren*/*morgen*); the writer emits and validates them with the examples.
+	- Review mapping at export: `indices.json` carries `grammarByLesson`
+	  (each lesson -> newly-introduced + cumulatively-available grammar, so the ~66
+	  vocabulary-only lessons map to grammar review) and `commonVerbsByLevel`
+	  (frequency-ranked verb ids per level; conjugation tables stay in `verbs.json`,
+	  referenced by id, not duplicated).
+	- Tests: `tests/test_grammar_catalog.py`, `tests/test_grammar_writer.py`,
+	  `tests/test_cli_generate_grammar.py`. Full suite passes (`226 passed`).
+
+Design notes (confirmed with the user):
+- Grammar is **decoupled from lesson theme** (its own dependency order), pegged to
+  a lesson index only so examples reuse vocabulary the learner has seen.
+- Per-language progression lives in the **catalog data file**, never in code.
+- Explanations are in the learner's **L1/English**; only examples are vocab-checked.
+
+Remaining:
+- Cross-level grammar at A2+ currently folds in all lower-level words as a baseline
+  allowed set (since lesson `plan()` is within-level); revisit if lesson planning
+  later accumulates across levels.
+- Grammar pages already flow through `course export` → `grammar.json` (no change needed).

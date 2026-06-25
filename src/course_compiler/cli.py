@@ -9,8 +9,10 @@ from __future__ import annotations
 
 import argparse
 import base64
+import contextlib
 import hashlib
 import json
+import re
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -128,15 +130,32 @@ def _load_verbs_from_lexicon(lexicon_dir: Path, *, default_language: str | None 
 
 
 def _derive_title(text: str, fallback: str) -> str:
+    def shorten(candidate: str) -> str:
+        cleaned = candidate.strip()
+        if not cleaned:
+            return ""
+
+        sentence = cleaned.split(".", 1)[0].split("!", 1)[0].split("?", 1)[0].strip()
+        words = [w for w in sentence.split() if w]
+        if len(words) > 8:
+            return " ".join(words[:4])
+        if len(words) > 6:
+            return " ".join(words[:6])
+        return sentence
+
     for line in text.splitlines():
         stripped = line.strip()
         if not stripped:
             continue
+        if stripped.upper().startswith("TITLE:"):
+            stripped = stripped[6:].strip()
+        if stripped.upper().startswith("TEXT:"):
+            continue
         if stripped.startswith("#"):
             stripped = stripped.lstrip("#").strip()
         if stripped:
-            return stripped
-    return fallback
+            return shorten(stripped) or fallback
+    return shorten(fallback) or fallback
 
 
 def _lesson_seed(level: str, lesson_id: str) -> int:
@@ -175,6 +194,13 @@ def _write_json(path: Path, data: object) -> None:
         json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+
+
+def _load_lesson_payload(path: Path) -> dict:
+    loaded = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(loaded, dict):
+        raise ValueError(f"lesson payload must be an object: {path}")
+    return loaded
 
 
 def _load_entries_from_layout(lexicon_dir: Path, stem: str) -> dict[str, dict]:
@@ -305,6 +331,201 @@ def _lesson_blueprint(plans: Sequence[object]) -> dict[str, object]:
     return {"lessonCount": len(lessons), "lessons": lessons}
 
 
+def _cefr_below(cefr: str) -> set[str]:
+    """Return CEFR levels strictly below *cefr* (already known to the learner)."""
+    from course_compiler.generation.validator import CEFR_ORDER
+
+    try:
+        idx = CEFR_ORDER.index(cefr)
+    except ValueError:
+        return set()
+    return set(CEFR_ORDER[:idx])
+
+
+def _grammar_blueprint(plans: Sequence[object]) -> dict[str, object]:
+    topics: list[dict[str, object]] = []
+    for plan in plans:
+        topic = getattr(plan, "topic", None)
+        topics.append(
+            {
+                "id": getattr(topic, "id", ""),
+                "title": getattr(topic, "title", ""),
+                "cefr": getattr(topic, "cefr", ""),
+                "dependsOn": list(getattr(topic, "depends_on", [])),
+                "introducedInLesson": getattr(plan, "introduced_in_lesson", None),
+            }
+        )
+    return {"topicCount": len(topics), "topics": topics}
+
+
+def _allowed_for_topic(
+    lesson_plans: Sequence[object],
+    lesson_index: int | None,
+    base_lemmas: set[str],
+) -> tuple[set[str], set[str]]:
+    """Vocabulary a grammar topic's examples may use at its lesson peg.
+
+    Returns ``(allowed_content_lemmas, exempt_forms)``. ``base_lemmas`` are
+    lower-level words the learner already knows; the lesson plan at *lesson_index*
+    (1-based; clamped, defaulting to the last lesson) contributes the within-level
+    vocabulary accumulated up to that point.
+    """
+    allowed = set(base_lemmas)
+    forms: set[str] = set()
+    if lesson_plans:
+        idx = (lesson_index or len(lesson_plans)) - 1
+        idx = max(0, min(idx, len(lesson_plans) - 1))
+        plan = lesson_plans[idx]
+        allowed |= getattr(plan, "allowed_lemmas", set())
+        forms |= getattr(plan, "function_lemmas", set()) | getattr(
+            plan, "allowed_forms", set()
+        )
+    return allowed, forms
+
+
+def _grammar_plan_prompt(language: str, cefr: str) -> str:
+    return (
+        "You are a language-curriculum grammar planner. "
+        f"Propose the grammar topics a {language} learner needs to reach CEFR "
+        f"level {cefr}, ordered by dependency (foundational topics first). "
+        "Each topic needs: a kebab-case id, a short English title, a list of "
+        "prerequisite topic ids ('dependsOn', referencing earlier ids only), an "
+        "'introducedInLesson' integer (roughly one new topic per lesson, "
+        "increasing), and a one-sentence English 'focus' hint. "
+        'Respond with strict JSON only: {"topics": [{"id": str, "title": str, '
+        '"dependsOn": [str], "introducedInLesson": int, "focus": str}]}. '
+        "No markdown fences, no commentary."
+    )
+
+
+def _parse_grammar_plan(raw: str) -> dict[str, dict]:
+    """Parse an LLM grammar plan into an ordered ``{id: catalog_entry}`` mapping."""
+    text = raw.strip()
+    fenced = re.search(r"```(?:json)?\s*(.*?)\s*```", text, re.DOTALL)
+    candidates = [text] + ([fenced.group(1).strip()] if fenced else [])
+    payload: dict | None = None
+    for candidate in candidates:
+        try:
+            loaded = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(loaded, dict):
+            payload = loaded
+            break
+    if payload is None:
+        return {}
+
+    topics = payload.get("topics")
+    if not isinstance(topics, list):
+        return {}
+
+    catalog: dict[str, dict] = {}
+    for item in topics:
+        if not isinstance(item, dict):
+            continue
+        topic_id = str(item.get("id") or "").strip()
+        if not topic_id:
+            continue
+        entry: dict[str, object] = {"title": str(item.get("title") or topic_id)}
+        depends_on = item.get("dependsOn") or item.get("depends_on") or []
+        entry["dependsOn"] = [str(d) for d in depends_on if str(d).strip()]
+        lesson = item.get("introducedInLesson", item.get("introduced_in_lesson"))
+        if lesson is not None:
+            with contextlib.suppress(TypeError, ValueError):
+                entry["introducedInLesson"] = int(lesson)
+        focus = str(item.get("focus") or "").strip()
+        if focus:
+            entry["focus"] = focus
+        catalog[topic_id] = entry
+    return catalog
+
+
+def _lesson_number(lesson_id: str) -> int | None:
+    """Extract the trailing integer from a lesson id (``lesson007`` -> 7)."""
+    match = re.search(r"(\d+)\s*$", lesson_id)
+    return int(match.group(1)) if match else None
+
+
+def _grammar_by_lesson(
+    level_lessons: dict[str, dict[str, dict]],
+    grammar: dict[str, dict],
+) -> dict[str, dict[str, dict[str, list[str]]]]:
+    """Map each lesson to its newly-introduced and cumulatively-available grammar.
+
+    Grammar is decoupled from lesson themes: only a handful of lessons introduce a
+    new topic (via ``introducedInLesson``). Every other lesson maps to the grammar
+    already available — all lower-level topics plus same-level topics taught up to
+    that lesson — so the SPA can surface review/application material rather than a
+    blank grammar slot. Returns ``{level: {lessonId: {"new": [...],
+    "available": [...]}}}``.
+    """
+    from course_compiler.generation.validator import CEFR_ORDER
+
+    def level_rank(level: str) -> int:
+        try:
+            return CEFR_ORDER.index(level)
+        except ValueError:
+            return len(CEFR_ORDER)
+
+    topics = [g for g in grammar.values() if isinstance(g, dict) and g.get("id")]
+
+    index: dict[str, dict[str, dict[str, list[str]]]] = {}
+    for level, lessons in level_lessons.items():
+        rank = level_rank(level)
+        lower = sorted(
+            str(g["id"]) for g in topics if level_rank(str(g.get("cefr", ""))) < rank
+        )
+        this_level = [g for g in topics if str(g.get("cefr", "")) == level]
+
+        level_index: dict[str, dict[str, list[str]]] = {}
+        for lesson_id in lessons:
+            number = _lesson_number(lesson_id)
+            new = sorted(
+                str(g["id"])
+                for g in this_level
+                if g.get("introducedInLesson") == number and number is not None
+            )
+            available = lower + sorted(
+                str(g["id"])
+                for g in this_level
+                if isinstance(g.get("introducedInLesson"), int)
+                and number is not None
+                and g["introducedInLesson"] <= number
+            )
+            level_index[lesson_id] = {"new": new, "available": available}
+        index[level] = level_index
+    return index
+
+
+def _common_verbs_by_level(
+    verbs: dict[str, dict], levels: list[str], *, limit: int = 20
+) -> dict[str, list[str]]:
+    """Most frequent verb ids per CEFR level, for review/conjugation drills.
+
+    References ids only — the conjugation tables live in ``verbs.json`` (no data
+    duplication). A learner reviewing grammar at a level can drill the common
+    verbs available by then; the SPA pulls each verb's tables from ``verbs.json``.
+    """
+
+    def rank(entry: dict) -> tuple[int, str]:
+        freq = entry.get("frequency")
+        rank_value = freq.get("rank") if isinstance(freq, dict) else None
+        return (
+            rank_value if isinstance(rank_value, int) else 10**9,
+            str(entry.get("id", "")),
+        )
+
+    result: dict[str, list[str]] = {}
+    for level in levels:
+        at_level = [
+            v
+            for v in verbs.values()
+            if isinstance(v, dict) and str(v.get("cefr", "")) == level and v.get("id")
+        ]
+        result[level] = [str(v["id"]) for v in sorted(at_level, key=rank)[:limit]]
+    return result
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="course", description="Language Course Compiler"
@@ -370,6 +591,81 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Disable on-disk LLM cache for this run",
     )
+    gen.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Print LLM prompts to stderr",
+    )
+
+    plan_g = sub.add_parser(
+        "plan-grammar",
+        help="Draft a per-language grammar catalog with an LLM (review before use)",
+    )
+    plan_g.add_argument("--lang", required=True, help="BCP-47 language code (e.g. nl)")
+    plan_g.add_argument(
+        "--cefr", default="A1", help="Target CEFR level (A1, A2, B1, …)"
+    )
+    plan_g.add_argument(
+        "--language-name",
+        default=None,
+        help="LLM prompt name (defaults to known name for --lang)",
+    )
+    plan_g.add_argument(
+        "--out",
+        default=None,
+        help="Catalog YAML path (defaults to grammar/<lang>.yaml)",
+    )
+
+    gen_g = sub.add_parser(
+        "generate-grammar",
+        help="Generate grammar pages from a grammar catalog and imported lexicon",
+    )
+    gen_g.add_argument("--lang", required=True, help="BCP-47 language code (e.g. nl)")
+    gen_g.add_argument("--cefr", default="A1", help="Target CEFR level (A1, A2, B1, …)")
+    gen_g.add_argument(
+        "--lexicon", default=None, help="Lexicon directory (defaults to courses/<lang>)"
+    )
+    gen_g.add_argument(
+        "--language-name",
+        default=None,
+        help="LLM prompt name (defaults to known name for --lang)",
+    )
+    gen_g.add_argument(
+        "--words-per-lesson",
+        type=int,
+        default=10,
+        help="New content words per lesson (must match the lesson run for pegging)",
+    )
+    gen_g.add_argument(
+        "--grammar-file",
+        default=None,
+        help="Grammar catalog YAML (defaults to grammar/<lang>.yaml)",
+    )
+    gen_g.add_argument(
+        "--themes-file",
+        default="themes.yaml",
+        help="Theme catalog YAML used to plan lesson vocabulary (default: themes.yaml)",
+    )
+    gen_g.add_argument(
+        "--out",
+        default=None,
+        help="Output directory (defaults to <lexicon>/grammar/<cefr>)",
+    )
+    gen_g.add_argument(
+        "--preview",
+        action="store_true",
+        help="Print the ordered grammar topics (id/title/lesson) and exit",
+    )
+    gen_g.add_argument(
+        "--approve",
+        action="store_true",
+        help="When used with --preview, continue to generation after printing",
+    )
+    gen_g.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Disable on-disk LLM cache for this run",
+    )
 
     imp = sub.add_parser("import", help="Import lexical sources into canonical YAML")
     imp.add_argument("--language", default="nl", choices=["nl"], help="Source language")
@@ -425,6 +721,48 @@ def build_parser() -> argparse.ArgumentParser:
     )
     aud.add_argument("--force", action="store_true", help="Overwrite existing files")
 
+    gen_audio = sub.add_parser(
+        "generate-audio",
+        help="Generate mp3 + karaoke transcript for lesson JSON files using Voxtral",
+    )
+    gen_audio.add_argument(
+        "--lang", required=True, help="BCP-47 language code (e.g. nl)"
+    )
+    gen_audio.add_argument(
+        "--cefr", required=True, help="Target CEFR level (A1, A2, B1, ...)"
+    )
+    gen_audio.add_argument(
+        "--course-dir",
+        default=None,
+        help="Course directory (defaults to courses/<lang>)",
+    )
+    gen_audio.add_argument(
+        "--lessons-dir",
+        default=None,
+        help="Lessons directory (defaults to <course-dir>/lessons/<cefr>)",
+    )
+    gen_audio.add_argument(
+        "--lesson-id",
+        default=None,
+        help="Generate audio only for a single lesson id",
+    )
+    gen_audio.add_argument(
+        "--voice",
+        default="nl_female",
+        help="Voxtral voice identifier",
+    )
+    gen_audio.add_argument(
+        "--speed",
+        type=float,
+        default=1.0,
+        help="Speech speed",
+    )
+    gen_audio.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite existing mp3/transcript files",
+    )
+
     return parser
 
 
@@ -473,14 +811,23 @@ def main(argv: list[str] | None = None) -> int:
 
         cache_dir = lexicon_dir / ".llm_cache"
         cache = None if args.no_cache else LLMCache(cache_dir)
-        assigner = LLMThemeAssigner(provider, model=None, cache=cache)
+        assigner = LLMThemeAssigner(
+            provider,
+            model=None,
+            cache=cache,
+            verbose=args.verbose,
+        )
 
         lemmatizer = create_lemmatizer(args.lang)
         generator = LessonGenerator(
             provider,
             lemmatizer,
             cache=cache,
+            # Coherence-first lesson generation: in-level extra words are tolerated
+            # (only above-CEFR words remain violations).
+            extra_tolerance=None,
             retry_strategy=args.retry_strategy,
+            verbose=args.verbose,
         )
         orchestrator = LessonOrchestrator(
             generator,
@@ -553,7 +900,7 @@ def main(argv: list[str] | None = None) -> int:
                 id=lesson.lesson_id,
                 language=args.lang,
                 cefr=args.cefr,
-                title=_derive_title(lesson.content, plan.theme),
+                title=lesson.title or _derive_title(lesson.content, plan.theme),
                 theme=plan.theme,
                 new_words=[w.lemma for w in plan.new_words]
                 + [v.infinitive for v in plan.new_verbs],
@@ -569,6 +916,191 @@ def main(argv: list[str] | None = None) -> int:
             )
 
         print(f"Generated {generated_count} lessons into {out_dir}")
+        return 0
+
+    if args.command == "plan-grammar":
+        from course_compiler.generation.grammar import (
+            GrammarDependencyError,
+            GrammarProgressionPlanner,
+            GrammarTopic,
+        )
+
+        settings = Settings.load()
+        provider = create_provider(settings)
+        language_name = args.language_name or _LANG_NAMES.get(args.lang) or args.lang
+        out_path = Path(args.out) if args.out else Path("grammar") / f"{args.lang}.yaml"
+
+        response = provider.complete(_grammar_plan_prompt(language_name, args.cefr))
+        topics = _parse_grammar_plan(response.content)
+        if not topics:
+            print(
+                "Error: could not parse a grammar plan from the LLM response.",
+                file=sys.stderr,
+            )
+            return 1
+
+        try:
+            GrammarProgressionPlanner().plan(
+                [
+                    GrammarTopic(
+                        id=tid,
+                        language=args.lang,
+                        title=str(data.get("title") or tid),
+                        cefr=args.cefr,
+                        depends_on=list(data.get("dependsOn", [])),
+                    )
+                    for tid, data in topics.items()
+                ]
+            )
+        except GrammarDependencyError as exc:
+            print(f"Error: invalid grammar plan from LLM: {exc}", file=sys.stderr)
+            return 1
+
+        catalog: dict = {}
+        if out_path.exists():
+            existing = yaml.safe_load(out_path.read_text(encoding="utf-8")) or {}
+            if isinstance(existing, dict):
+                catalog = existing
+        catalog[args.cefr] = topics
+
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(
+            yaml.safe_dump(catalog, allow_unicode=True, sort_keys=False),
+            encoding="utf-8",
+        )
+        print(
+            f"Wrote {len(topics)} grammar topics for {args.cefr} to {out_path}. "
+            "Review and curate before running 'course generate-grammar'."
+        )
+        return 0
+
+    if args.command == "generate-grammar":
+        from course_compiler.generation.base import create_lemmatizer
+        from course_compiler.generation.cache import LLMCache
+        from course_compiler.generation.grammar import (
+            GrammarDependencyError,
+            load_grammar_catalog,
+        )
+        from course_compiler.generation.grammar_writer import GrammarWriter
+        from course_compiler.generation.lesson import LessonGenerator
+        from course_compiler.generation.orchestrator import (
+            LessonOrchestrator,
+            _tokens,
+            _verb_surface_forms,
+        )
+        from course_compiler.generation.themes import LLMThemeAssigner
+
+        settings = Settings.load()
+        provider = create_provider(settings)
+        lexicon_dir = Path(args.lexicon or f"courses/{args.lang}")
+        language_name = args.language_name or _LANG_NAMES.get(args.lang) or args.lang
+
+        grammar_path = (
+            Path(args.grammar_file)
+            if args.grammar_file
+            else Path("grammar") / f"{args.lang}.yaml"
+        )
+        if not grammar_path.exists():
+            print(
+                f"Error: grammar catalog not found: {grammar_path}. "
+                "Run 'course plan-grammar' first.",
+                file=sys.stderr,
+            )
+            return 1
+
+        try:
+            words = _load_words_from_lexicon(lexicon_dir, default_language=args.lang)
+        except FileNotFoundError:
+            print(
+                f"Error: neither {lexicon_dir / 'words.json'} nor "
+                f"{lexicon_dir / 'words'} found. Run 'course import' first.",
+                file=sys.stderr,
+            )
+            return 1
+        verbs = _load_verbs_from_lexicon(lexicon_dir, default_language=args.lang)
+
+        try:
+            grammar_plans = load_grammar_catalog(
+                grammar_path, language=args.lang, cefr=args.cefr
+            )
+        except GrammarDependencyError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            return 1
+
+        if not grammar_plans:
+            print(f"No grammar topics for {args.cefr} in {grammar_path}.")
+            return 0
+
+        if args.preview:
+            print(
+                json.dumps(
+                    _grammar_blueprint(grammar_plans), ensure_ascii=False, indent=2
+                )
+            )
+            if not args.approve:
+                return 0
+
+        cache = None if args.no_cache else LLMCache(lexicon_dir / ".llm_cache")
+        lemmatizer = create_lemmatizer(args.lang)
+
+        # Plan the lesson sequence (no generation) so each grammar topic can be
+        # pegged to the vocabulary allowed by its introducedInLesson index.
+        themes_path = Path(args.themes_file)
+        orchestrator = LessonOrchestrator(
+            LessonGenerator(provider, lemmatizer, cache=cache, extra_tolerance=None),
+            LLMThemeAssigner(provider, model=None, cache=cache),
+            words_per_lesson=args.words_per_lesson,
+            predefined_themes_path=themes_path if themes_path.exists() else None,
+        )
+        lesson_plans = orchestrator.plan(
+            words, cefr=args.cefr, verbs=verbs, language=language_name
+        )
+
+        # CEFR lookup across all levels so example extras can be classified.
+        cefr_lookup: dict[str, str] = {
+            w.lemma: w.cefr for w in words if w.cefr is not None
+        }
+        for verb in verbs:
+            if verb.cefr is not None:
+                cefr_lookup[verb.infinitive] = verb.cefr
+                for form in _verb_surface_forms(verb):
+                    for token in _tokens(form):
+                        cefr_lookup[token] = verb.cefr
+
+        below = _cefr_below(args.cefr)
+        base_lemmas = {w.lemma for w in words if w.cefr in below}
+        base_lemmas |= {v.infinitive for v in verbs if v.cefr in below}
+
+        writer = GrammarWriter(provider, lemmatizer, cache=cache)
+        out_dir = Path(args.out) if args.out else lexicon_dir / "grammar" / args.cefr
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        for plan in grammar_plans:
+            allowed, forms = _allowed_for_topic(
+                lesson_plans, plan.introduced_in_lesson, base_lemmas
+            )
+            page = writer.generate(
+                plan.topic,
+                allowed_words=allowed,
+                language=language_name,
+                cefr=args.cefr,
+                focus=plan.focus,
+                introduced_in_lesson=plan.introduced_in_lesson,
+                cefr_lookup=cefr_lookup,
+                function_lemmas=forms,
+            )
+            _write_json(
+                out_dir / f"{plan.topic.id}.json",
+                page.model_dump(by_alias=True, exclude_none=True, mode="json"),
+            )
+            marker = (
+                f" -- BEST-EFFORT ({len(page.violations)} unresolved)"
+                if page.fallback
+                else ""
+            )
+            print(f"  {plan.topic.id} ({plan.topic.title}){marker}")
+
+        print(f"Generated {len(grammar_plans)} grammar pages into {out_dir}")
         return 0
 
     if args.command == "import":
@@ -614,11 +1146,17 @@ def main(argv: list[str] | None = None) -> int:
             "levels": levels,
         }
 
+        indices = {
+            "grammarByLesson": _grammar_by_lesson(level_lessons, grammar),
+            "commonVerbsByLevel": _common_verbs_by_level(verbs, levels),
+        }
+
         _write_json(out_dir / "manifest.json", manifest)
         _write_json(out_dir / "words.json", words)
         _write_json(out_dir / "verbs.json", verbs)
         _write_json(out_dir / "grammar.json", grammar)
         _write_json(out_dir / "exercises.json", exercises)
+        _write_json(out_dir / "indices.json", indices)
         if levels:
             for level in levels:
                 for lesson_id, payload in sorted(level_lessons[level].items()):
@@ -731,6 +1269,88 @@ def main(argv: list[str] | None = None) -> int:
                 response.raise_for_status()
                 target.write_bytes(response.content)
 
+        return 0
+
+    if args.command == "generate-audio":
+        from course_compiler.audio import (
+            OpenAISpeechRequest,
+            VoxtralClient,
+            VoxtralTranscriptRequest,
+        )
+
+        settings = Settings.load()
+
+        course_dir = Path(args.course_dir or f"courses/{args.lang}")
+        lessons_dir = (
+            Path(args.lessons_dir)
+            if args.lessons_dir
+            else course_dir / "lessons" / args.cefr
+        )
+        if not lessons_dir.is_dir():
+            print(f"Error: lessons directory not found: {lessons_dir}", file=sys.stderr)
+            return 1
+
+        lesson_files = sorted(lessons_dir.glob("*.json"))
+        if args.lesson_id:
+            lesson_files = [p for p in lesson_files if p.stem == args.lesson_id]
+            if not lesson_files:
+                print(
+                    f"Error: lesson {args.lesson_id!r} not found in {lessons_dir}",
+                    file=sys.stderr,
+                )
+                return 1
+
+        audio_dir = course_dir / "audio" / args.cefr
+        transcript_dir = course_dir / "audio" / "transcripts" / args.cefr
+        audio_dir.mkdir(parents=True, exist_ok=True)
+        transcript_dir.mkdir(parents=True, exist_ok=True)
+
+        generated = 0
+        with VoxtralClient(
+            base_url=settings.voxtral_base_url,
+            timeout=settings.voxtral_timeout,
+        ) as client:
+            for lesson_path in lesson_files:
+                payload = _load_lesson_payload(lesson_path)
+                lesson_id = str(payload.get("id") or lesson_path.stem)
+                text = str(payload.get("text") or "").strip()
+                if not text:
+                    print(
+                        f"Skipping {lesson_id}: empty lesson text in {lesson_path}",
+                        file=sys.stderr,
+                    )
+                    continue
+
+                mp3_path = audio_dir / f"{lesson_id}.mp3"
+                transcript_path = transcript_dir / f"{lesson_id}.json"
+                if mp3_path.exists() and transcript_path.exists() and not args.force:
+                    continue
+
+                speech = OpenAISpeechRequest(
+                    input=text,
+                    language=args.lang,
+                    voice=args.voice,
+                    speed=args.speed,
+                    response_format="mp3",
+                )
+                audio_bytes = client.synthesize_speech(speech)
+                mp3_path.write_bytes(audio_bytes)
+
+                transcript = client.generate_transcript(
+                    VoxtralTranscriptRequest(
+                        audio_path=str(mp3_path.resolve()),
+                        text=text,
+                        language=args.lang,
+                        lesson_id=lesson_id,
+                    )
+                )
+                _write_json(transcript_path, transcript.model_dump(mode="json"))
+                generated += 1
+
+        print(
+            f"Generated audio for {generated} lesson(s) into {audio_dir} "
+            f"with transcripts in {transcript_dir}"
+        )
         return 0
 
     parser.print_help()

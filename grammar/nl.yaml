@@ -1,0 +1,166 @@
+# Dutch (nl) grammar catalog.
+#
+# Per-language data, not code: the topic set and ordering encode Dutch-specific
+# grammar progression, while the compiler stays language-agnostic. Each topic is
+# dependency-ordered (`dependsOn`) and pegged to a vocabulary lesson
+# (`introducedInLesson`) so its target-language examples reuse only the words a
+# learner has seen by then. `focus` is an English hint steering the explanation;
+# where a structure has characteristic cue words (e.g. time adverbs for a tense),
+# the focus names them so the writer surfaces them as signal words.
+#
+# A1 grammar is a small, finite set: new topics are FRONT-LOADED into the first
+# ~18 lessons; later lessons reuse and review them (see `indices.grammarByLesson`
+# in the export, which maps every lesson to its available grammar for review).
+#
+# Bootstrap a draft with `course plan-grammar --lang nl --cefr <level>`, then
+# curate it here. Generate pages with `course generate-grammar --lang nl`.
+
+A1:
+  personal-pronouns:
+    title: Subject pronouns
+    dependsOn: []
+    introducedInLesson: 1
+    focus: >
+      The subject pronouns ik, jij/je, u, hij, zij/ze, het, wij/we, jullie, zij;
+      formal u vs informal jij.
+  present-tense:
+    title: Present tense
+    dependsOn: [personal-pronouns]
+    introducedInLesson: 2
+    focus: >
+      Regular present tense: stem for ik, stem+t for jij/hij/zij/u, infinitive
+      for plural. Signal words: nu, vandaag, altijd, elke dag.
+  zijn-en-hebben:
+    title: zijn and hebben
+    dependsOn: [present-tense]
+    introducedInLesson: 3
+    focus: >
+      The two most common irregular verbs, zijn (to be) and hebben (to have),
+      and their present-tense forms.
+  articles:
+    title: Definite articles (de / het)
+    dependsOn: []
+    introducedInLesson: 4
+    focus: >
+      The definite articles de (common gender) and het (neuter), and why the
+      article must be learned together with each noun.
+  indefinite-article:
+    title: Indefinite article (een)
+    dependsOn: [articles]
+    introducedInLesson: 5
+    focus: The indefinite article een, used for both de- and het-words.
+  cardinal-numbers:
+    title: Numbers and counting
+    dependsOn: []
+    introducedInLesson: 6
+    focus: Cardinal numbers and counting nouns (een, twee, drie ...).
+  plural-nouns:
+    title: Plural nouns
+    dependsOn: [articles]
+    introducedInLesson: 7
+    focus: >
+      Forming plurals with -en or -s, and that all plural nouns take de.
+  word-order:
+    title: Main clause word order
+    dependsOn: [present-tense]
+    introducedInLesson: 8
+    focus: >
+      The finite verb stands in second position (V2) in a main clause; the
+      subject can come before or after it.
+  yes-no-questions:
+    title: Yes/no questions
+    dependsOn: [word-order]
+    introducedInLesson: 9
+    focus: Questions formed by putting the finite verb first.
+  question-words:
+    title: Question words
+    dependsOn: [word-order]
+    introducedInLesson: 10
+    focus: >
+      wh-questions with wie, wat, waar, wanneer, hoe, waarom and verb-second
+      order.
+  negation:
+    title: Negation (niet / geen)
+    dependsOn: [present-tense, indefinite-article]
+    introducedInLesson: 11
+    focus: >
+      niet negates verbs/adjectives/definite phrases; geen negates indefinite
+      and uncountable nouns.
+  possessive-pronouns:
+    title: Possessive pronouns
+    dependsOn: [personal-pronouns]
+    introducedInLesson: 12
+    focus: mijn, jouw/je, uw, zijn, haar, ons/onze, jullie, hun.
+  demonstratives:
+    title: Demonstratives (deze / die / dit / dat)
+    dependsOn: [articles]
+    introducedInLesson: 12
+    focus: >
+      deze/die for de-words and dit/dat for het-words; near (deze/dit) vs far
+      (die/dat).
+  prepositions-of-place:
+    title: Prepositions of place
+    dependsOn: [articles]
+    introducedInLesson: 13
+    focus: in, op, onder, naast, achter, voor, tussen, boven.
+  time-expressions:
+    title: Time expressions
+    dependsOn: [present-tense]
+    introducedInLesson: 13
+    focus: >
+      Days, parts of the day and time adverbs. Signal words: vandaag, morgen,
+      gisteren, 's ochtends, om ... uur.
+  adjectives:
+    title: Attributive adjectives
+    dependsOn: [articles, indefinite-article]
+    introducedInLesson: 14
+    focus: >
+      The -e ending on attributive adjectives, and the exception: no -e before a
+      singular het-word with een.
+  diminutives:
+    title: Diminutives (-je)
+    dependsOn: [articles]
+    introducedInLesson: 15
+    focus: >
+      Forming diminutives with -je/-tje/-pje; diminutives are always het-words.
+  comparative-superlative:
+    title: Comparative and superlative
+    dependsOn: [adjectives]
+    introducedInLesson: 15
+    focus: >
+      -er / -st endings (groter, grootst) and the comparison words dan and even
+      ... als.
+  imperative:
+    title: Imperative
+    dependsOn: [present-tense]
+    introducedInLesson: 16
+    focus: Giving commands and instructions with the verb stem (Kom! Ga zitten!).
+  modal-verbs:
+    title: Modal verbs
+    dependsOn: [present-tense, word-order]
+    introducedInLesson: 16
+    focus: >
+      kunnen, willen, moeten, mogen: conjugation and sending the second verb
+      (infinitive) to the end of the clause.
+  future-with-gaan:
+    title: Future with gaan
+    dependsOn: [present-tense, word-order]
+    introducedInLesson: 17
+    focus: >
+      Expressing future plans with gaan + infinitive. Signal words: morgen,
+      straks, volgende week, vanavond.
+  separable-verbs:
+    title: Separable verbs
+    dependsOn: [word-order]
+    introducedInLesson: 17
+    focus: >
+      Prefixed verbs whose prefix detaches and moves to the end of a main clause
+      (e.g. opstaan -> ik sta op).
+  perfect-tense:
+    title: Perfect tense
+    dependsOn: [zijn-en-hebben, word-order]
+    introducedInLesson: 18
+    focus: >
+      The perfect with hebben/zijn plus a past participle (ge-...-d/-t); the
+      participle goes to the end of the clause. Signal words: gisteren, vorige
+      week, net, al.
