@@ -18,11 +18,22 @@ def _target_length(new_word_count: int) -> str:
 
 
 @dataclass(frozen=True)
+class AttemptDiagnostics:
+    attempt: int
+    violations: frozenset[str]
+    tolerated: frozenset[str]
+
+
+@dataclass(frozen=True)
 class GeneratedLesson:
     lesson_id: str
     content: str
     attempts: int
     tolerated: frozenset[str] = frozenset()
+    fallback: bool = False
+    violations: frozenset[str] = frozenset()
+    best_attempt: int | None = None
+    diagnostics: tuple[AttemptDiagnostics, ...] = ()
 
 
 _LOW_CEFR: frozenset[str] = frozenset({"A1", "A2"})
@@ -113,12 +124,30 @@ class LessonGenerator:
         theme: str,
         target_length: str,
         new_words: list[str],
+        *,
+        outline: str = "",
+        communicative_goals: list[str] | None = None,
+        glosses: dict[str, str] | None = None,
+        verb_lemmas: list[str] | None = None,
     ) -> list[Message]:
+        rendered_words = [
+            (
+                f"{lemma} ({glosses[lemma]})"
+                if glosses is not None and lemma in glosses and glosses[lemma]
+                else lemma
+            )
+            for lemma in new_words
+        ]
+        goals = communicative_goals or []
+        verbs = verb_lemmas or []
         user_content = (
             f"Lesson ID: {lesson_id}\n"
             f"CEFR level: {cefr}\n"
             f"Theme: {theme}\n"
-            f"New words to introduce: {', '.join(new_words)}\n\n"
+            f"Communicative goals: {', '.join(goals) if goals else '-'}\n"
+            f"Focus verbs: {', '.join(verbs) if verbs else '-'}\n"
+            f"Story outline: {outline or '-'}\n"
+            f"New words to introduce: {', '.join(rendered_words)}\n\n"
             "Write the lesson now."
         )
         return [
@@ -139,6 +168,10 @@ class LessonGenerator:
         temperature: float = 0.7,
         function_lemmas: set[str] | None = None,
         cefr_lookup: dict[str, str] | None = None,
+        outline: str = "",
+        communicative_goals: list[str] | None = None,
+        glosses: dict[str, str] | None = None,
+        verb_lemmas: list[str] | None = None,
     ) -> GeneratedLesson:
         """Generate and validate lesson content, retrying with feedback on violation.
 
@@ -162,10 +195,23 @@ class LessonGenerator:
         """
         target_length = _target_length(len(new_words))
         messages = self._build_initial_messages(
-            lesson_id, language, cefr, theme, target_length, new_words
+            lesson_id,
+            language,
+            cefr,
+            theme,
+            target_length,
+            new_words,
+            outline=outline,
+            communicative_goals=communicative_goals,
+            glosses=glosses,
+            verb_lemmas=verb_lemmas,
         )
         raw_messages = [m.as_dict() for m in messages]
         resolved_model = model or ""
+        diagnostics: list[AttemptDiagnostics] = []
+        best_content: str | None = None
+        best_result: ValidationResult | None = None
+        best_attempt: int | None = None
 
         for attempt in range(1, self._max_retries + 1):
             # Cache: only the first attempt (deterministic prompt) is cached.
@@ -173,7 +219,10 @@ class LessonGenerator:
                 cached = self._cache.get(resolved_model, raw_messages)
                 if cached is not None:
                     return GeneratedLesson(
-                        lesson_id=lesson_id, content=cached.content, attempts=0
+                        lesson_id=lesson_id,
+                        content=cached.content,
+                        attempts=0,
+                        best_attempt=0,
                     )
 
             try:
@@ -189,6 +238,9 @@ class LessonGenerator:
                         new_words, lesson_id=lesson_id, reason="llm-timeout"
                     ),
                     attempts=attempt,
+                    fallback=True,
+                    best_attempt=attempt,
+                    diagnostics=tuple(diagnostics),
                 )
 
             if self._cache is not None and attempt == 1:
@@ -203,6 +255,27 @@ class LessonGenerator:
                 extra_tolerance=self._extra_tolerance,
                 new_word_count=len(new_words),
             )
+            diagnostics.append(
+                AttemptDiagnostics(
+                    attempt=attempt,
+                    violations=result.violations,
+                    tolerated=result.tolerated,
+                )
+            )
+
+            if (
+                best_result is None
+                or len(result.violations) < len(best_result.violations)
+                or (
+                    len(result.violations) == len(best_result.violations)
+                    and response.content.strip()
+                    and best_content is not None
+                    and len(response.content) > len(best_content)
+                )
+            ):
+                best_content = response.content
+                best_result = result
+                best_attempt = attempt
 
             if result.is_valid:
                 return GeneratedLesson(
@@ -210,6 +283,8 @@ class LessonGenerator:
                     content=response.content,
                     attempts=attempt,
                     tolerated=result.tolerated,
+                    best_attempt=attempt,
+                    diagnostics=tuple(diagnostics),
                 )
 
             # Append the bad response and a correction message for the next attempt.
@@ -220,12 +295,31 @@ class LessonGenerator:
             ]
 
         if self._fail_open_on_validation_error:
+            if (
+                best_content is not None
+                and best_result is not None
+                and best_attempt is not None
+            ):
+                return GeneratedLesson(
+                    lesson_id=lesson_id,
+                    content=best_content,
+                    attempts=self._max_retries,
+                    tolerated=best_result.tolerated,
+                    fallback=True,
+                    violations=best_result.violations,
+                    best_attempt=best_attempt,
+                    diagnostics=tuple(diagnostics),
+                )
+
             return GeneratedLesson(
                 lesson_id=lesson_id,
                 content=_fallback_content(
                     new_words, lesson_id=lesson_id, reason="validation-retries"
                 ),
                 attempts=self._max_retries,
+                fallback=True,
+                best_attempt=self._max_retries,
+                diagnostics=tuple(diagnostics),
             )
 
         raise RuntimeError(

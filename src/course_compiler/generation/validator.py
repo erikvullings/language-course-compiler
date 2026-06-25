@@ -19,7 +19,7 @@ from dataclasses import dataclass
 
 from course_compiler.generation.base import Lemmatizer
 
-_TOKEN_RE = re.compile(r"[^\w]+", re.UNICODE)
+_WORD_RE = re.compile(r"\w+", re.UNICODE)
 
 # Canonical CEFR ordering — lower index = lower level.
 CEFR_ORDER: list[str] = ["A1", "A2", "B1", "B2", "C1", "C2"]
@@ -102,10 +102,19 @@ class VocabularyValidator:
         exempt = self._function_lemmas | (extra_function_lemmas or set())
         extras: set[str] = set()
 
-        for raw_token in _TOKEN_RE.split(text):
-            token = raw_token.strip()
+        for token_match in _WORD_RE.finditer(text):
+            token = token_match.group(0)
             if not token:
                 continue
+
+            # Proper names (e.g. "Mark") are usually acceptable discourse glue
+            # and should not force retries unless they appear sentence-initial,
+            # where capitalization alone is ambiguous.
+            if _looks_like_proper_name(token) and not _is_sentence_initial(
+                text, token_match.start()
+            ):
+                continue
+
             lemma = self._lemmatizer.lemmatize(token)
             resolved = lemma if lemma is not None else token.lower()
             if resolved in exempt or resolved in allowed:
@@ -150,3 +159,32 @@ class VocabularyValidator:
             violations=above_cefr | excess,
             tolerated=frozenset(tolerated_list),
         )
+
+
+def _looks_like_proper_name(token: str) -> bool:
+    """Heuristic for personal names written in title case (e.g. ``Mark``)."""
+    if len(token) < 2:
+        return False
+    if not token[0].isalpha() or not token[0].isupper():
+        return False
+
+    tail = token[1:]
+    if not any(ch.islower() for ch in tail):
+        return False
+
+    for ch in tail:
+        if ch in "-'":
+            continue
+        if not ch.isalpha():
+            return False
+    return True
+
+
+def _is_sentence_initial(text: str, token_start: int) -> bool:
+    """Return True when the token appears at a likely sentence start."""
+    i = token_start - 1
+    while i >= 0 and text[i].isspace():
+        i -= 1
+    if i < 0:
+        return True
+    return text[i] in ".!?\n"

@@ -46,6 +46,28 @@ class LessonThemePlan:
 
     theme: str
     seed_lemmas: list[str]
+    communicative_goals: list[str] = None  # type: ignore[assignment]
+    english_seed_words: list[str] = None  # type: ignore[assignment]
+    english_verbs: list[str] = None  # type: ignore[assignment]
+    outline: str = ""
+
+    def __post_init__(self) -> None:
+        # Keep dataclass frozen while normalizing mutable defaults.
+        object.__setattr__(
+            self,
+            "communicative_goals",
+            list(self.communicative_goals or []),
+        )
+        object.__setattr__(
+            self,
+            "english_seed_words",
+            list(self.english_seed_words or []),
+        )
+        object.__setattr__(
+            self,
+            "english_verbs",
+            list(self.english_verbs or []),
+        )
 
 
 class ThemeAssigner(Protocol):

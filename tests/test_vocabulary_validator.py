@@ -22,6 +22,7 @@ class _MapLemmatizer(Lemmatizer):
 # Basic allow/reject
 # ---------------------------------------------------------------------------
 
+
 def test_valid_lesson_is_valid():
     lem = _MapLemmatizer({"huis": "huis", "is": "zijn", "groot": "groot"})
     validator = VocabularyValidator(lem)
@@ -121,12 +122,12 @@ def test_tolerated_extras_respect_budget():
     lem = _MapLemmatizer({k: k for k in _CEFR})
     validator = VocabularyValidator(lem)
     result = validator.validate(
-        "huis tafel stoel",   # 2 extras: tafel, stoel (both A1)
+        "huis tafel stoel",  # 2 extras: tafel, stoel (both A1)
         {"huis"},
         cefr_target="A1",
         cefr_lookup=_CEFR,
         extra_tolerance=0.5,
-        new_word_count=2,     # budget = 1
+        new_word_count=2,  # budget = 1
     )
     # One should be tolerated, one should be a violation
     assert len(result.tolerated) == 1
@@ -156,3 +157,19 @@ def test_no_cefr_info_all_extras_are_violations():
     validator = VocabularyValidator(lem)
     result = validator.validate("huis tafel", {"huis"})
     assert "tafel" in result.violations
+
+
+def test_proper_name_not_sentence_initial_is_exempt():
+    lem = _MapLemmatizer(
+        {"ik": "ik", "spreek": "spreken", "met": "met", "huis": "huis"}
+    )
+    validator = VocabularyValidator(lem, function_lemmas={"ik", "spreken", "met"})
+    result = validator.validate("ik spreek met Mark huis", {"huis"})
+    assert result.is_valid
+
+
+def test_sentence_initial_capitalized_word_is_not_auto_exempt():
+    lem = _MapLemmatizer({"huis": "huis"})
+    validator = VocabularyValidator(lem)
+    result = validator.validate("Mark huis", {"huis"})
+    assert "mark" in result.violations

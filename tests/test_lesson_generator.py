@@ -265,13 +265,18 @@ def test_generate_raises_after_max_retries():
 
 
 def test_generate_falls_back_after_validation_retries():
-    provider = _StubProvider(["huis xyz"] * 5)
+    provider = _StubProvider(["huis xyz abc", "huis xyz", "huis q"])
     gen = LessonGenerator(provider, _lemmatizer(["huis"]), max_retries=3)
     result = gen.generate(
         "lesson006", ["huis"], {"huis"}, language="Dutch", model="stub"
     )
-    assert result.content == "huis."
+    # Best effort keeps the draft with the smallest violation set.
+    assert result.content in {"huis xyz", "huis q"}
     assert result.attempts == 3
+    assert result.fallback
+    assert len(result.violations) == 1
+    assert result.best_attempt in {2, 3}
+    assert len(result.diagnostics) == 3
 
 
 def test_generate_uses_cache(tmp_path):
