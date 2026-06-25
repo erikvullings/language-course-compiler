@@ -198,8 +198,8 @@ def test_extra_word_at_same_cefr_is_tolerated():
     assert len(provider._calls) == 1  # no retry needed
 
 
-def test_extra_word_above_cefr_triggers_retry_with_feedback():
-    """A B1 word in an A1 lesson triggers a retry with a feedback message."""
+def test_extra_word_above_cefr_triggers_retry_with_fresh_sampling():
+    """A B1 word in an A1 lesson triggers a retry with a fresh prompt."""
     mapping = {"huis": "huis", "appartement": "appartement"}
     cefr_lookup = {"huis": "A1", "appartement": "B1"}
     provider = _StubProvider(["huis appartement", "huis"])
@@ -215,13 +215,12 @@ def test_extra_word_above_cefr_triggers_retry_with_feedback():
     )
     assert result.content == "huis"
     assert len(provider._calls) == 2
-    # Second call must include a feedback message mentioning the violation.
-    second_call_text = " ".join(m.content for m in provider._calls[1])
-    assert "appartement" in second_call_text
+    assert len(provider._calls[0]) == 2
+    assert len(provider._calls[1]) == 2
 
 
-def test_retry_messages_form_multi_turn_conversation():
-    """On retry the conversation appends assistant + user feedback, not a fresh prompt."""
+def test_retry_messages_use_fresh_single_turn_prompt_each_attempt():
+    """Each retry is an independent single-turn draft attempt."""
     mapping = {"huis": "huis", "bad": "bad"}
     provider = _StubProvider(["huis bad", "huis"])
     gen = LessonGenerator(provider, _MapLemmatizer(mapping))
@@ -234,10 +233,29 @@ def test_retry_messages_form_multi_turn_conversation():
     )
     # First call: 2 messages (system + user)
     assert len(provider._calls[0]) == 2
-    # Second call: 4 messages (system + user + assistant_bad + user_feedback)
+    # Second call stays single-turn as well.
+    assert len(provider._calls[1]) == 2
+
+
+def test_corrective_retry_strategy_uses_feedback_turns():
+    mapping = {"huis": "huis", "bad": "bad"}
+    provider = _StubProvider(["huis bad", "huis"])
+    gen = LessonGenerator(
+        provider,
+        _MapLemmatizer(mapping),
+        retry_strategy="corrective",
+    )
+    result = gen.generate(
+        "lesson001",
+        ["huis"],
+        {"huis"},
+        language="Dutch",
+        model="stub",
+    )
+    assert result.content == "huis"
+    assert len(provider._calls[0]) == 2
+    # Second call includes assistant draft + user correction request.
     assert len(provider._calls[1]) == 4
-    assert provider._calls[1][2].role.value == "assistant"
-    assert provider._calls[1][3].role.value == "user"
 
 
 def test_function_words_are_exempt():

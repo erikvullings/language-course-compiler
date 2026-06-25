@@ -398,3 +398,105 @@ def test_generate_lessons_preview_missing_themes_file_returns_error(
 
     assert rc == 1
     assert "themes file not found" in capsys.readouterr().err
+
+
+def test_generate_lessons_regenerate_fallbacks_only(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "course_compiler.cli.create_provider",
+        lambda settings: _GenerateLessonsProvider(),
+    )
+
+    course_dir = tmp_path / "courses" / "nl"
+    _write_minimal_lexicon(course_dir)
+    out_dir = tmp_path / "out"
+    out_dir.mkdir(parents=True)
+
+    (out_dir / "lesson001.json").write_text(
+        json.dumps(
+            {
+                "id": "lesson001",
+                "language": "nl",
+                "cefr": "A1",
+                "title": "Old 1",
+                "theme": "Greetings",
+                "newWords": ["huis"],
+                "text": "old fallback",
+                "attempts": 5,
+                "tolerated": [],
+                "fallback": True,
+                "violations": ["x"],
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    (out_dir / "lesson002.json").write_text(
+        json.dumps(
+            {
+                "id": "lesson002",
+                "language": "nl",
+                "cefr": "A1",
+                "title": "Old 2",
+                "theme": "Personal Information",
+                "newWords": ["deur"],
+                "text": "keep me",
+                "attempts": 1,
+                "tolerated": [],
+                "fallback": False,
+                "violations": [],
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    rc = main(
+        [
+            "generate-lessons",
+            "--lang",
+            "nl",
+            "--cefr",
+            "A1",
+            "--lexicon",
+            str(course_dir),
+            "--out",
+            str(out_dir),
+            "--regenerate-fallbacks",
+        ]
+    )
+
+    assert rc == 0
+
+    regenerated = json.loads((out_dir / "lesson001.json").read_text(encoding="utf-8"))
+    untouched = json.loads((out_dir / "lesson002.json").read_text(encoding="utf-8"))
+    assert regenerated["title"] == "Home Lesson"
+    assert untouched["text"] == "keep me"
+
+
+def test_generate_lessons_accepts_no_cache_flag(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "course_compiler.cli.create_provider",
+        lambda settings: _GenerateLessonsProvider(),
+    )
+
+    course_dir = tmp_path / "courses" / "nl"
+    _write_minimal_lexicon(course_dir)
+    out_dir = tmp_path / "out"
+
+    rc = main(
+        [
+            "generate-lessons",
+            "--lang",
+            "nl",
+            "--cefr",
+            "A1",
+            "--lexicon",
+            str(course_dir),
+            "--out",
+            str(out_dir),
+            "--no-cache",
+        ]
+    )
+
+    assert rc == 0
+    assert (out_dir / "lesson001.json").exists()

@@ -104,8 +104,25 @@ course generate-lessons \
   --lexicon courses/nl \
   --language-name Dutch \
   --words-per-lesson 10 \
-  --out courses/nl/lessons
+  --out courses/nl/lessons \
+  --retry-strategy natural
 ```
+
+Retry behavior options:
+
+- `--retry-strategy natural` (default): generate up to `max_retries` independent
+  drafts and keep the one with the fewest vocabulary violations.
+- `--retry-strategy corrective`: use multi-turn feedback where each retry asks
+  the model to rewrite and remove current violations.
+
+Regenerate only previously failed/best-effort lessons:
+
+```bash
+course generate-lessons --lang nl --cefr A1 --regenerate-fallbacks
+```
+
+This reads existing lesson JSON files in the output folder and regenerates only
+entries with `"fallback": true`.
 
 Preview the computed lesson blueprint first (count + theme + seed lemmas):
 

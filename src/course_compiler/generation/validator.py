@@ -107,16 +107,19 @@ class VocabularyValidator:
             if not token:
                 continue
 
-            # Proper names (e.g. "Mark") are usually acceptable discourse glue
-            # and should not force retries unless they appear sentence-initial,
-            # where capitalization alone is ambiguous.
-            if _looks_like_proper_name(token) and not _is_sentence_initial(
-                text, token_match.start()
-            ):
-                continue
-
             lemma = self._lemmatizer.lemmatize(token)
             resolved = lemma if lemma is not None else token.lower()
+
+            # Proper names (e.g. "Mark") are usually acceptable discourse glue
+            # and should not force retries. For sentence-initial titlecase words,
+            # exemption is only applied when the resolved lemma is unknown to the
+            # CEFR lookup (strong signal that it is a proper noun, not core vocab).
+            if _looks_like_proper_name(token):
+                if not _is_sentence_initial(text, token_match.start()):
+                    continue
+                if cefr_lookup is not None and resolved not in cefr_lookup:
+                    continue
+
             if resolved in exempt or resolved in allowed:
                 continue
             extras.add(resolved)

@@ -43,11 +43,12 @@ A1:
       - count from 1 to 20
       - ask someone's age
       - give your phone number
-    seedWords: [number, phone, age, year, money, hour, reception, desk, sign]
+    seedWords: [number, phone, age, year, money, hour, family, home, paper]
     verbs: [ask, say, write]
     outline: >
-      At a reception desk a man signs up: the clerk asks his age and phone
-      number, and he says the numbers slowly while the clerk writes them down.
+      At home two family members practise numbers together. One asks the age
+      and phone number, and the other says the numbers slowly while someone
+      writes them on paper.
 
   lesson004:
     theme: Family
@@ -82,11 +83,11 @@ A1:
       - identify furniture
       - describe a room
       - talk about possessions
-    seedWords: [table, chair, bed, lamp, sofa, cupboard, friend]
+    seedWords: [table, chair, bed, room, house, door, window]
     verbs: [arrange, decide, go]
     outline: >
-      Two friends arrange a living room together, deciding where the table, the
-      chairs, the sofa and the lamp should go.
+      Two friends arrange a room in a house, deciding where the table, the
+      chairs and the bed should go, and checking the door and window.
 
   lesson007:
     theme: Daily Routine
@@ -106,11 +107,11 @@ A1:
       - tell the time
       - ask the time
       - discuss schedules
-    seedWords:
-      [clock, hour, minute, morning, busy, late, station, traveller, train]
+    seedWords: [hour, day, morning, evening, work, home, friend, week, calendar]
     verbs: [ask, tell, look, worry]
     outline: >
-      At a station a traveller asks a fellow traveller about the time and the other looks at the clock and tells the time. They worry a little about the train being late.
+      Two friends talk about time at home: one asks the hour, the other tells
+      it, and they look at the calendar to plan morning and evening activities.
 
   lesson009:
     theme: Days and Months
@@ -143,23 +144,12 @@ A1:
       - name the seasons
       - describe seasonal activities
       - express preferences
-    seedWords:
-      [
-        summer,
-        winter,
-        spring,
-        autumn,
-        weather,
-        holiday,
-        friend,
-        season,
-        love,
-        beach,
-      ]
+    seedWords: [summer, winter, weather, holiday, friend, sun, rain, cold, warm]
     verbs: [compare, prefer, describe]
     outline: >
-      Four friends compare their favourite seasons: one loves summer at the beach,
-      another prefers spring flowers, the third enjoys autumn leaves, and the fourth likes winter snow. They describe the typical weather and why they prefer it.
+      Four friends compare favourite times of year. They talk about summer and
+      winter weather, holidays, sun, rain, cold and warm days, and say what
+      they prefer.
 
   lesson012:
     theme: Food
@@ -181,12 +171,11 @@ A1:
       - order drinks
       - offer someone a drink
       - describe preferences
-    seedWords: [water, coffee, tea, milk, juice, glass, host, guest, drink]
+    seedWords: [water, coffee, tea, milk, drink, cup, table, friend, home]
     verbs: [offer, choose, explain, raise]
     outline: >
-      A host welcomes a guest and offers coffee, tea, juice or water.
-      The guest chooses, explains what she usually drinks, and they
-      raise their glasses together.
+      Two friends sit at a table at home. One offers water, coffee, tea or
+      milk. The other chooses a drink and explains what she usually drinks.
 
   lesson014:
     theme: Breakfast
@@ -194,11 +183,12 @@ A1:
       - describe breakfast
       - prepare a meal
       - ask for food
-    seedWords: [bread, egg, coffee, butter, cheese, table, breakfast, slice]
+    seedWords:
+      [bread, egg, coffee, cheese, table, breakfast, family, kitchen, plate]
     verbs: [sit, make, set, ask, want]
     outline: >
       A family sits at the breakfast table. One person makes coffee and
-      eggs while another slices bread and sets out butter and cheese;
+      eggs while another puts bread and cheese on the table;
       they ask each other what they want.
 
   lesson015:
@@ -207,12 +197,11 @@ A1:
       - ask prices
       - buy groceries
       - pay at the checkout
-    seedWords: [shop, money, price, bag, market, cash, bread, cheese, item]
+    seedWords: [shop, money, price, bread, cheese, apple, water, home, list]
     verbs: [ask, pay]
     outline: >
-      A woman does her weekly shoppings at the market: she asks the price of
-      bread and cheese, puts all items in her bag, and pays with cash at
-      the checkout.
+      A woman goes to a shop with a list. She asks the price of bread and
+      cheese, adds apples and water, and pays before she goes home.
 
   lesson016:
     theme: Clothes
@@ -220,12 +209,11 @@ A1:
       - describe clothing
       - talk about sizes
       - buy clothes
-    seedWords:
-      [shirt, trousers, shoe, coat, dress, hat, clothing, shop, size, assistant]
+    seedWords: [shirt, trousers, shoe, coat, hat, shop, friend, colour, size]
     verbs: [ask, try, decide, buy]
     outline: >
-      A woman in a clothing shop asks for a new outfit in her size. The assistant
-      shows her a shirt, dress, coat and trousers; she tries them on and decides what to buy. In another shop, she buys a matching hat and shoes.
+      A woman and a friend visit a shop. She asks for her size, tries a shirt,
+      coat and trousers, checks the colour, and decides what to buy.
 
   lesson017:
     theme: Colours
@@ -234,10 +222,11 @@ A1:
       - describe objects
       - express preferences
     seedWords:
-      [red, blue, green, yellow, black, white, children, picture, name, sky]
+      [red, blue, green, yellow, black, white, child, picture, wall, paper]
     verbs: [paint, argue, look]
     outline: >
-      Two children copy a black and white picture of a rainbow. They paint it in red, blue, green, yellow — and argue cheerfully about which colour looks best for the sky and the grass.
+      Two children paint a picture on paper. They use red, blue, green,
+      yellow, black and white, and talk about which colour they like best.
 
   lesson018:
     theme: The Body
@@ -245,10 +234,12 @@ A1:
       - name body parts
       - describe appearance
       - report simple pain
-    seedWords: [head, foot, leg, eye, arm, hand, child, parent, body, doctor]
+    seedWords: [head, foot, leg, eye, arm, hand, child, parent, body, home]
     verbs: [tell, hurt, check, decide, call]
     outline: >
-      A child falls on the ground and tells a parent where it hurts — head, leg, foot, and arm and hand. The parent checks the child's body, and decides to call the doctor.
+      A child falls at home and tells a parent where it hurts: head, leg,
+      foot, arm and hand. The parent checks the child and asks if help is
+      needed.
 
   lesson019:
     theme: Health
@@ -256,11 +247,11 @@ A1:
       - describe symptoms
       - visit a doctor
       - ask for medicine
-    seedWords: [doctor, pain, medicine, fever, illness, hospital, visit]
+    seedWords: [doctor, body, warm, cold, day, rest, water, visit]
     verbs: [describe, feel, examine, explain, tell, take]
     outline: >
-      A man with a fever and pain visits his doctor in the hospital. He describes how he
-      feels; the doctor examines him, explains the illness, and tells him which medicine to take.
+      A man feels ill for a few days and visits a doctor. He describes how he
+      feels, the doctor examines him, and explains simple advice: rest and water.
 
   lesson020:
     theme: At the Pharmacy
@@ -268,12 +259,11 @@ A1:
       - buy medicine
       - ask for advice
       - understand instructions
-    seedWords: [medicine, pill, doctor, pharmacy, advice, instruction]
+    seedWords: [doctor, shop, advice, water, tea, day, rest, home]
     verbs: [cough, explain, recommend, give, take]
     outline: >
-      A woman with a cough goes to the pharmacy. She explains her symptoms,
-      the pharmacist recommends pills and gives instructions on how and when
-      to take them.
+      A woman has a cough and asks for advice. She explains her symptoms and
+      gets simple instructions for tea, water and rest at home.
 
   lesson021:
     theme: School
@@ -282,12 +272,12 @@ A1:
       - talk about subjects
       - ask questions
     seedWords:
-      [school, teacher, book, pen, class, student, board, subject, answer]
+      [school, teacher, book, pen, class, student, room, question, answer]
     verbs: [look, see, ask]
     outline: >
       On the first day a new student looks around the classroom: she sees
-      books, pens and a board. The teacher asks the class which subjects
-      they like and the students answer one by one.
+      books and pens. The teacher asks simple questions and the students
+      answer one by one.
 
   lesson022:
     theme: Work
@@ -295,11 +285,11 @@ A1:
       - describe your job
       - introduce colleagues
       - discuss working hours
-    seedWords: [work, office, job, colleague, boss, salary, friend]
+    seedWords: [work, office, job, colleague, boss, day, time, friend]
     verbs: [tell, describe, explain]
     outline: >
       A man tells a friend about his new job: he describes the office, his
-      colleagues and his boss, and explains what hours he works each day.
+      colleagues and his boss, and explains what time he works each day.
 
   lesson023:
     theme: Office
@@ -308,23 +298,11 @@ A1:
       - ask for assistance
       - describe tasks
     seedWords:
-      [
-        desk,
-        computer,
-        paper,
-        pen,
-        phone,
-        chair,
-        employee,
-        colleague,
-        show,
-        task,
-      ]
+      [table, computer, paper, pen, phone, chair, colleague, room, work]
     verbs: [ask, explain]
     outline: >
-      A new employee asks a colleague where things are: the computer, the
-      paper and the phone on her desk. The colleague shows her around and
-      explains her first tasks.
+      A new worker asks a colleague where things are: the computer, paper and
+      phone in the room. The colleague shows her around and explains simple work.
 
   lesson024:
     theme: Hobbies

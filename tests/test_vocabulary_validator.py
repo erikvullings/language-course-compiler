@@ -173,3 +173,16 @@ def test_sentence_initial_capitalized_word_is_not_auto_exempt():
     validator = VocabularyValidator(lem)
     result = validator.validate("Mark huis", {"huis"})
     assert "mark" in result.violations
+
+
+def test_sentence_initial_unknown_name_is_exempt_with_cefr_lookup():
+    lem = _MapLemmatizer({"jan": "jan", "huis": "huis"})
+    validator = VocabularyValidator(lem)
+    result = validator.validate(
+        "Jan huis",
+        {"huis"},
+        cefr_target="A1",
+        cefr_lookup={"huis": "A1"},
+        new_word_count=5,
+    )
+    assert result.is_valid

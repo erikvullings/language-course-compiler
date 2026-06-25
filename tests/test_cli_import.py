@@ -118,9 +118,9 @@ def test_import_with_budgets_reassigns_cefr(tmp_path):
 
     assert rc == 0
     levels = {
-        yaml.safe_load((out / "words" / f"{name}.yaml").read_text())["lemma"]: yaml.safe_load(
-            (out / "words" / f"{name}.yaml").read_text()
-        ).get("cefr")
+        yaml.safe_load((out / "words" / f"{name}.yaml").read_text())[
+            "lemma"
+        ]: yaml.safe_load((out / "words" / f"{name}.yaml").read_text()).get("cefr")
         for name in ["kat", "hond"]
     }
     # Two A1-floored items, one A1 slot then one A2 slot: tie-break is deterministic.
@@ -173,3 +173,28 @@ def test_load_words_from_yaml_layout(tmp_path):
     assert len(words) == 1
     assert words[0].lemma == "huis"
     assert words[0].translations["en"] == "house"
+
+
+def test_load_words_from_compact_json_layout_missing_required_fields(tmp_path):
+    out = tmp_path / "courses" / "nl"
+    out.mkdir(parents=True)
+    (out / "words.json").write_text(
+        json.dumps(
+            [
+                {
+                    "id": "'er",
+                    "lemma": "'er",
+                    "translations": {"en": "abbreviation of der"},
+                }
+            ],
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    words = _load_words_from_lexicon(out)
+
+    assert len(words) == 1
+    assert words[0].language == "nl"
+    assert words[0].normalized == "'er"
+    assert words[0].part_of_speech.value == "other"

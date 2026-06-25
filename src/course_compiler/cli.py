@@ -36,7 +36,25 @@ _LANG_NAMES: dict[str, str] = {
 }
 
 
-def _load_words_from_lexicon(lexicon_dir: Path):
+def _default_lexicon_language(lexicon_dir: Path, default: str | None = None) -> str:
+    if default:
+        return default
+    guess = lexicon_dir.name.strip()
+    return guess or "nl"
+
+
+def _hydrate_compact_word_entry(entry: dict, *, default_language: str) -> dict:
+    """Fill required Word fields when loading compact aggregate JSON rows."""
+    hydrated = dict(entry)
+    lemma = str(hydrated.get("lemma") or hydrated.get("id") or "")
+    hydrated.setdefault("language", default_language)
+    hydrated.setdefault("normalized", lemma)
+    hydrated.setdefault("partOfSpeech", "other")
+    hydrated.setdefault("translations", {})
+    return hydrated
+
+
+def _load_words_from_lexicon(lexicon_dir: Path, *, default_language: str | None = None):
     from course_compiler.models import Word
 
     words_json = lexicon_dir / "words.json"
@@ -44,7 +62,13 @@ def _load_words_from_lexicon(lexicon_dir: Path):
 
     if words_json.exists():
         raw = json.loads(words_json.read_text(encoding="utf-8"))
-        return [Word.model_validate(entry) for entry in raw]
+        language = _default_lexicon_language(lexicon_dir, default_language)
+        return [
+            Word.model_validate(
+                _hydrate_compact_word_entry(entry, default_language=language)
+            )
+            for entry in raw
+        ]
 
     if words_yaml_dir.is_dir():
         word_files = sorted(
@@ -60,7 +84,20 @@ def _load_words_from_lexicon(lexicon_dir: Path):
     raise FileNotFoundError(f"neither {words_json} nor {words_yaml_dir} found")
 
 
-def _load_verbs_from_lexicon(lexicon_dir: Path):
+def _hydrate_compact_verb_entry(entry: dict, *, default_language: str) -> dict:
+    """Fill required Verb fields when loading compact aggregate JSON rows."""
+    hydrated = dict(entry)
+    lemma = str(
+        hydrated.get("lemma") or hydrated.get("infinitive") or hydrated.get("id") or ""
+    )
+    hydrated.setdefault("language", default_language)
+    hydrated.setdefault("lemma", lemma)
+    hydrated.setdefault("infinitive", lemma)
+    hydrated.setdefault("translations", {})
+    return hydrated
+
+
+def _load_verbs_from_lexicon(lexicon_dir: Path, *, default_language: str | None = None):
     from course_compiler.models import Verb
 
     verbs_json = lexicon_dir / "verbs.json"
@@ -68,7 +105,13 @@ def _load_verbs_from_lexicon(lexicon_dir: Path):
 
     if verbs_json.exists():
         raw = json.loads(verbs_json.read_text(encoding="utf-8"))
-        return [Verb.model_validate(entry) for entry in raw]
+        language = _default_lexicon_language(lexicon_dir, default_language)
+        return [
+            Verb.model_validate(
+                _hydrate_compact_verb_entry(entry, default_language=language)
+            )
+            for entry in raw
+        ]
 
     if verbs_yaml_dir.is_dir():
         verb_files = sorted(
@@ -187,6 +230,26 @@ def _load_lessons_for_export(lessons_dir: Path) -> dict[str, dict]:
     return lessons
 
 
+def _load_fallback_lesson_ids(lessons_dir: Path) -> set[str]:
+    """Return lesson ids marked with ``fallback: true`` in ``lessons_dir`` JSON files."""
+    if not lessons_dir.is_dir():
+        return set()
+
+    fallback_ids: set[str] = set()
+    for path in sorted(lessons_dir.glob("*.json")):
+        try:
+            loaded = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(loaded, dict):
+            continue
+        if loaded.get("fallback") is not True:
+            continue
+        lesson_id = str(loaded.get("id") or path.stem)
+        fallback_ids.add(lesson_id)
+    return fallback_ids
+
+
 def _load_level_lessons_for_export(
     lessons_dir: Path,
 ) -> tuple[dict[str, dict[str, dict]], list[str]]:
@@ -288,6 +351,25 @@ def build_parser() -> argparse.ArgumentParser:
         default="themes.yaml",
         help="Theme catalog YAML path (default: bundled themes.yaml)",
     )
+    gen.add_argument(
+        "--regenerate-fallbacks",
+        action="store_true",
+        help="Regenerate only lessons previously marked with fallback=true",
+    )
+    gen.add_argument(
+        "--retry-strategy",
+        choices=["natural", "corrective"],
+        default="natural",
+        help=(
+            "Retry mode: natural samples fresh drafts; corrective asks the model "
+            "to rewrite using violation feedback"
+        ),
+    )
+    gen.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Disable on-disk LLM cache for this run",
+    )
 
     imp = sub.add_parser("import", help="Import lexical sources into canonical YAML")
     imp.add_argument("--language", default="nl", choices=["nl"], help="Source language")
@@ -368,7 +450,7 @@ def main(argv: list[str] | None = None) -> int:
         lexicon_dir = Path(args.lexicon or f"courses/{args.lang}")
         language_name = args.language_name or _LANG_NAMES.get(args.lang) or args.lang
         try:
-            words = _load_words_from_lexicon(lexicon_dir)
+            words = _load_words_from_lexicon(lexicon_dir, default_language=args.lang)
         except FileNotFoundError:
             print(
                 "Error: neither "
@@ -378,7 +460,7 @@ def main(argv: list[str] | None = None) -> int:
             )
             return 1
 
-        verbs = _load_verbs_from_lexicon(lexicon_dir)
+        verbs = _load_verbs_from_lexicon(lexicon_dir, default_language=args.lang)
 
         themes_path = Path(args.themes_file)
         if not themes_path.exists():
@@ -390,11 +472,16 @@ def main(argv: list[str] | None = None) -> int:
         from course_compiler.generation.cache import LLMCache
 
         cache_dir = lexicon_dir / ".llm_cache"
-        cache = LLMCache(cache_dir)
+        cache = None if args.no_cache else LLMCache(cache_dir)
         assigner = LLMThemeAssigner(provider, model=None, cache=cache)
 
         lemmatizer = create_lemmatizer(args.lang)
-        generator = LessonGenerator(provider, lemmatizer, cache=cache)
+        generator = LessonGenerator(
+            provider,
+            lemmatizer,
+            cache=cache,
+            retry_strategy=args.retry_strategy,
+        )
         orchestrator = LessonOrchestrator(
             generator,
             assigner,
@@ -412,6 +499,14 @@ def main(argv: list[str] | None = None) -> int:
 
         out_dir = Path(args.out) if args.out else lexicon_dir / "lessons" / args.cefr
         out_dir.mkdir(parents=True, exist_ok=True)
+
+        only_lesson_ids: set[str] | None = None
+        if args.regenerate_fallbacks:
+            only_lesson_ids = _load_fallback_lesson_ids(out_dir)
+            if not only_lesson_ids:
+                print(f"No fallback lessons found in {out_dir}; nothing to regenerate.")
+                return 0
+
         print("Planning (deterministic, no LLM) and generating all lessons...")
 
         generated_count = 0
@@ -421,6 +516,7 @@ def main(argv: list[str] | None = None) -> int:
                 language=language_name,
                 cefr=args.cefr,
                 verbs=verbs,
+                only=only_lesson_ids,
             ),
             start=1,
         ):

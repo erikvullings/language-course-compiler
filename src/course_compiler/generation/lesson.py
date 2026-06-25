@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
 from course_compiler.generation.base import Lemmatizer
 from course_compiler.generation.cache import LLMCache
@@ -86,8 +87,8 @@ def _fallback_content(new_words: list[str], *, lesson_id: str, reason: str) -> s
 class LessonGenerator:
     """Generate lesson text via an :class:`~course_compiler.llm.base.LLMProvider`.
 
-    Validates content words against the allowed vocabulary and retries on leakage,
-    using multi-turn feedback so the LLM knows exactly what went wrong.
+    Validates content words against the allowed vocabulary and samples multiple
+    drafts, selecting the one with the fewest violations.
 
     Extra words at or below the target CEFR level are tolerated up to
     ``extra_tolerance`` × ``len(new_words)`` (default 50 %).  Words above the
@@ -105,6 +106,7 @@ class LessonGenerator:
         cache: LLMCache | None = None,
         max_retries: int = 5,
         extra_tolerance: float = 0.5,
+        retry_strategy: Literal["natural", "corrective"] = "natural",
         fail_open_on_llm_error: bool = True,
         fail_open_on_validation_error: bool = True,
     ) -> None:
@@ -113,6 +115,7 @@ class LessonGenerator:
         self._cache = cache
         self._max_retries = max_retries
         self._extra_tolerance = extra_tolerance
+        self._retry_strategy: Literal["natural", "corrective"] = retry_strategy
         self._fail_open_on_llm_error = fail_open_on_llm_error
         self._fail_open_on_validation_error = fail_open_on_validation_error
 
@@ -173,7 +176,7 @@ class LessonGenerator:
         glosses: dict[str, str] | None = None,
         verb_lemmas: list[str] | None = None,
     ) -> GeneratedLesson:
-        """Generate and validate lesson content, retrying with feedback on violation.
+        """Generate and validate lesson content, sampling multiple drafts.
 
         Args:
             lesson_id: Unique identifier for this lesson (e.g. ``"lesson001"``).
@@ -287,12 +290,14 @@ class LessonGenerator:
                     diagnostics=tuple(diagnostics),
                 )
 
-            # Append the bad response and a correction message for the next attempt.
-            messages = [
-                *messages,
-                Message(Role.ASSISTANT, response.content),
-                Message(Role.USER, _feedback_message(result, cefr)),
-            ]
+            if self._retry_strategy == "corrective":
+                # Multi-turn corrective refinement: ask the model to revise the
+                # previous draft by explicitly removing current violations.
+                messages = [
+                    *messages,
+                    Message(Role.ASSISTANT, response.content),
+                    Message(Role.USER, _feedback_message(result, cefr)),
+                ]
 
         if self._fail_open_on_validation_error:
             if (
