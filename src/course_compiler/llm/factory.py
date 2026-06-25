@@ -11,6 +11,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from course_compiler.llm.base import LLMError, LLMProvider
+from course_compiler.llm.azure import AzureOpenAIProvider
 from course_compiler.llm.ollama import OllamaProvider
 from course_compiler.llm.openai import OpenAIProvider
 
@@ -63,5 +64,17 @@ def _build_openai(settings: Settings) -> OpenAIProvider:
     )
 
 
+def _build_azure(settings: Settings) -> AzureOpenAIProvider:
+    return AzureOpenAIProvider(
+        api_key=settings.azure_openai_api_key,
+        endpoint=settings.azure_openai_endpoint,
+        deployment=settings.azure_openai_deployment,
+        api_version=settings.azure_openai_api_version,
+        temperature=settings.llm_temperature,
+        timeout=settings.llm_timeout,
+    )
+
+
 register_provider("ollama", _build_ollama)
 register_provider("openai", _build_openai)
+register_provider("azure", _build_azure)

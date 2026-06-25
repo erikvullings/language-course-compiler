@@ -128,14 +128,40 @@ def _user_prompt(
     outline: str = "",
     glosses: dict[str, str] | None = None,
     verb_lemmas: list[str] | None = None,
+    communicative_goals: list[str] | None = None,
     mature: bool = False,
 ) -> str:
+    """Build the writer prompt for a lesson.
+
+    The prompt is structured to guide the LLM toward natural, theme-coherent text
+    while enforcing CEFR-level vocabulary constraints.
+    """
     verbs = list(verb_lemmas or [])
     verb_set = set(verbs)
     # Verbs get their own dedicated line below; keep them out of the general word
     # list so they aren't presented to the writer twice.
     other_words = [w for w in new_words if w not in verb_set]
 
+    # Build the required/optional vocabulary section
+    vocab_section_parts: list[str] = []
+
+    # REQUIRED verbs - must be used (conjugated as needed)
+    if verbs:
+        vocab_section_parts.append(
+            f"REQUIRED verbs (must appear in some conjugated form): "
+            f"{_format_new_words(verbs, glosses)}"
+        )
+
+    # OPTIONAL words to include naturally if they fit
+    if other_words:
+        vocab_section_parts.append(
+            f"OPTIONAL words to include naturally if they fit: "
+            f"{_format_new_words(other_words, glosses)}"
+        )
+
+    vocab_instructions = "\n".join(vocab_section_parts) if vocab_section_parts else ""
+
+    # Write instruction based on format
     if fmt == FORMAT_EXAMPLES:
         write_instruction = (
             f'Write several short, simple {language} example sentences or a brief '
@@ -148,39 +174,69 @@ def _user_prompt(
             f"Write a short {language} narrative — a story or dialogue — not more "
             f"than {target_length} that reads naturally from start to finish. "
         )
-        if outline:
-            write_instruction += (
-                f'The theme is "{theme}" and the scene is: {outline.strip()}'
-            )
-        else:
-            write_instruction += f'The theme is "{theme}".'
 
-    parts = [
-        f"You are a {language} writer. {write_instruction}",
+    parts: list[str] = [
+        "You are a language course lesson writer.",
+        write_instruction,
+    ]
+
+    # Theme and goals
+    if outline:
+        # Use communicative_goals if provided, otherwise fall back to defaults
+        goals = communicative_goals or []
+        goals_section_lines: list[str] = ["COMMUNICATIVE GOALS:"]
+        for goal in goals:
+            goals_section_lines.append(f"- {goal}")
+        goals_section = "\n".join(goals_section_lines) if goals else ""
+
+        parts.append(
+            f'THEME: "{theme}"\n'
+            + (goals_section + "\n" if goals_section else "")
+            + "\n"
+            + f"OUTLINE: {outline.strip()}"
+        )
+    else:
+        # For non-outline prompts, still show theme and optionally goals
+        goals = communicative_goals or []
+        goals_section_lines: list[str] = ["COMMUNICATIVE GOALS:"]
+        for goal in goals:
+            goals_section_lines.append(f"- {goal}")
+        goals_section = "\n".join(goals_section_lines) if goals else ""
+        parts.append(
+            f'THEME: "{theme}"'
+            + (("\n" + goals_section) if goals_section else "")
+        )
+
+    # Vocabulary constraints
+    parts.extend([
+        "",
         f"Keep the vocabulary at the CEFR {cefr} level — do not use words above this "
         f"level, but you may freely use other common words at or below it so the text "
-        f"reads naturally. Conjugate verbs correctly for their subject and tense. "
-        f"{_tense_guidance(cefr, mature)}"
-        "Articles, prepositions, conjunctions, and common pronouns may be used freely.",
-    ]
-    if other_words:
-        parts.append(
-            f"Try to use these {language} words, or derivatives, naturally in context "
-            f"(the English meaning is given in brackets to fix the intended sense — do "
-            f"not write the English in your text): {_format_new_words(other_words, glosses)}."
-        )
-    if verbs:
-        parts.append(
-            "Use most of these verbs where they fit naturally, conjugated as the "
-            "context requires; a few may be left out if the story reads better: "
-            f"{_format_new_words(verbs, glosses)}."
-        )
+        f"reads naturally. Conjugate verbs correctly for their subject and tense.",
+        _tense_guidance(cefr, mature),
+        "",
+        "RULES:",
+        f"1. Use ONLY words at or below CEFR {cefr} level.",
+        "2. The REQUIRED verbs above must appear (conjugated as needed).",
+        "3. Keep the story cohesive and natural.",
+    ])
+
+    # Vocabulary section (required + optional)
+    if vocab_instructions:
+        parts.extend([
+            "",
+            "VOCABULARY:",
+            vocab_instructions,
+        ])
+
+    # Output format
     parts.append(
-        f"Only output the title and text in {language}, using Markdown with this exact structure:\n\n"
-        "## <SHORT_DESCRIPTIVE_TITLE>\n\n"
-        "<NARRATIVE>"
+        f"Output ONLY the title and text in {language}, using this exact structure:\n\n"
+        "TITLE: <title>\n\n"
+        "TEXT: <markdown_text>"
     )
-    return "\n\n".join(parts)
+
+    return "\n".join(parts)
 
 
 def _feedback_message(result: ValidationResult, cefr_target: str) -> str:
@@ -325,6 +381,7 @@ class LessonGenerator:
         outline: str = "",
         glosses: dict[str, str] | None = None,
         verb_lemmas: list[str] | None = None,
+        communicative_goals: list[str] | None = None,
         mature: bool = False,
     ) -> list[Message]:
         return [
@@ -340,6 +397,7 @@ class LessonGenerator:
                     outline,
                     glosses,
                     verb_lemmas,
+                    communicative_goals,
                     mature,
                 ),
             )
@@ -355,6 +413,7 @@ class LessonGenerator:
         cefr: str = "A1",
         theme: str = "general",
         outline: str = "",
+        communicative_goals: list[str] | None = None,
         model: str | None = None,
         temperature: float = 0.7,
         function_lemmas: set[str] | None = None,
@@ -375,6 +434,7 @@ class LessonGenerator:
             theme: Semantic theme (e.g. ``"home"``). Included in the prompt.
             outline: Optional brief scenario (English) shaping a coherent narrative;
                 when present the lesson is written as narrative rather than examples.
+            communicative_goals: Optional list of communicative goals for the lesson.
             model: LLM model identifier; provider default used if omitted.
             temperature: Sampling temperature forwarded to the provider.
             function_lemmas: Extra per-call exempt lemmas (e.g. verb surface forms).
@@ -397,7 +457,7 @@ class LessonGenerator:
         mature = len(allowed_words) >= self._mature_vocab_threshold
         messages = self._build_initial_messages(
             lesson_id, language, cefr, theme, target_length, new_words, fmt, outline,
-            glosses, verb_lemmas, mature,
+            glosses, verb_lemmas, communicative_goals, mature,
         )
         # Kept verbatim so a "fresh restart" attempt can re-issue the original
         # prompt instead of continuing a conversation anchored to a broken draft.

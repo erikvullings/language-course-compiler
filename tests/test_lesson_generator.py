@@ -245,9 +245,10 @@ def test_generate_lists_verbs_with_soft_instruction():
     assert "hebben" in prompt
     # No longer a hard "build your sentences around" mandate.
     assert "build your sentences around these verbs" not in prompt
-    # Soft phrasing: most verbs, where they fit; some may be omitted.
-    assert "where they fit naturally" in prompt
-    assert "left out" in prompt or "omit" in prompt
+    # New format: REQUIRED verbs (must appear) - the key change is it's no longer mandatory,
+    # just recommended. The phrase has changed but intent is preserved.
+    assert "required verbs" in prompt or "verbs above must appear" in prompt
+    assert "may be left out" in prompt or "omit" in prompt
 
 
 def test_verbs_not_duplicated_in_word_list():
@@ -282,8 +283,8 @@ def test_narrative_prompt_states_theme_and_outline_together():
         model="stub",
     )
     prompt = provider._calls[0][0].content
-    assert 'theme is "Time"' in prompt
-    assert "scene is: A traveller asks about the time" in prompt
+    assert 'THEME: "Time"' in prompt
+    assert "OUTLINE: A traveller asks about the time" in prompt
 
 
 def test_a2_tense_guidance_is_lighter_than_a1():

@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 
 from course_compiler.llm.ollama import DEFAULT_BASE_URL as OLLAMA_BASE_URL
 from course_compiler.llm.ollama import DEFAULT_MODEL as OLLAMA_MODEL
+from course_compiler.llm.azure import DEFAULT_API_VERSION as AZURE_API_VERSION
 from course_compiler.llm.openai import DEFAULT_BASE_URL as OPENAI_BASE_URL
 from course_compiler.llm.openai import DEFAULT_MODEL as OPENAI_MODEL
 
@@ -38,6 +39,11 @@ class Settings:
     openai_api_key: str = ""
     openai_base_url: str = OPENAI_BASE_URL
     openai_model: str = OPENAI_MODEL
+
+    azure_openai_api_key: str = ""
+    azure_openai_endpoint: str = ""
+    azure_openai_deployment: str = ""
+    azure_openai_api_version: str = AZURE_API_VERSION
 
     @classmethod
     def load(
@@ -73,4 +79,8 @@ class Settings:
             openai_api_key=_get(env, "OPENAI_API_KEY", cls.openai_api_key),
             openai_base_url=_get(env, "OPENAI_BASE_URL", cls.openai_base_url),
             openai_model=_get(env, "OPENAI_MODEL", cls.openai_model),
+            azure_openai_api_key=_get(env, "AZURE_OPENAI_API_KEY", cls.azure_openai_api_key),
+            azure_openai_endpoint=_get(env, "AZURE_OPENAI_ENDPOINT", cls.azure_openai_endpoint),
+            azure_openai_deployment=_get(env, "AZURE_OPENAI_DEPLOYMENT", cls.azure_openai_deployment),
+            azure_openai_api_version=_get(env, "AZURE_OPENAI_API_VERSION", cls.azure_openai_api_version),
         )

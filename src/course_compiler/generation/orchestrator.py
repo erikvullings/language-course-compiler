@@ -6,7 +6,6 @@ a sequence of generated lessons for a target CEFR level.
 
 from __future__ import annotations
 
-import math
 import re
 from collections.abc import Collection, Iterator
 from dataclasses import dataclass, field
@@ -417,6 +416,7 @@ class LessonPlan:
     new_verbs: list[Verb] = field(default_factory=list)
     allowed_forms: set[str] = field(default_factory=set)
     outline: str = ""
+    communicative_goals: list[str] = field(default_factory=list)
     # {lemma: english seed term} for lemmas resolved from the catalog's English
     # hints, so the writer prompt can show the intended meaning in brackets.
     seed_glosses: dict[str, str] = field(default_factory=dict)
@@ -564,6 +564,7 @@ class LessonOrchestrator:
                     function_lemmas=function_lemmas,
                     new_verbs=batch_verbs,
                     allowed_forms=accumulated_forms | new_forms,
+                    communicative_goals=blueprint.communicative_goals,
                 )
             )
             accumulated |= new_lemmas
@@ -798,6 +799,7 @@ class LessonOrchestrator:
                     new_verbs=batch_verbs,
                     allowed_forms=accumulated_forms | new_forms,
                     outline=theme_plan.outline,
+                    communicative_goals=theme_plan.communicative_goals,
                     seed_glosses={
                         lemma: seed_glosses[lemma]
                         for lemma in new_lemmas
@@ -921,6 +923,7 @@ class LessonOrchestrator:
                         function_lemmas=function_lemmas,
                         new_verbs=batch_verbs,
                         allowed_forms=accumulated_forms | new_forms,
+                        communicative_goals=[],
                     )
                 )
                 accumulated |= new_lemmas
@@ -992,6 +995,7 @@ class LessonOrchestrator:
                 cefr=cefr,
                 theme=plan.theme,
                 outline=plan.outline,
+                communicative_goals=plan.communicative_goals,
                 model=model,
                 temperature=temperature,
                 function_lemmas=plan.function_lemmas | plan.allowed_forms,
