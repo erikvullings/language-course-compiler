@@ -10,7 +10,7 @@ import math
 import hashlib
 import json
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Protocol
 
 from course_compiler.generation.cache import LLMCache
@@ -31,63 +31,21 @@ _SYSTEM_PROMPT = (
 _LESSON_PLAN_SYSTEM_PROMPT = (
     "You are a language-course planner. "
     "You will receive CEFR level, vocabulary list, and words-per-lesson (n). "
-    "Design themes typically used in beginner language courses, centered on practical daily-life situations. "
-    "Prefer themes like: greetings and introductions, family and people, home and rooms, food and drink, shopping and money, "
-    "time and dates, school/work, travel and transport, weather and seasons, health and body, hobbies and sports, "
-    "city and directions, services and errands. "
-    "Each lesson must be semantically coherent and usable as a real beginner lesson unit. "
-    "Do not group by spelling, alphabetic order, or arbitrary word similarity. "
-    "Avoid mixed buckets that combine unrelated domains. "
     "First determine lesson_count = ceil(vocabulary_size / n). "
     "Then produce exactly lesson_count lesson plans, each with a concise English theme "
     "and seed_lemmas chosen from the provided vocabulary list only. "
     "Each lesson should include between n/2 and n seed lemmas (rounded down for n/2, min 1). "
     "Some seed lemmas may already be known to the learner; that is acceptable. "
-    "Use concrete theme names (no placeholders like 'theme-64'). "
     'Respond as JSON only with shape: {"lessons": [{"theme": str, "seed_lemmas": [str]}]}.'
-)
-
-_THEME_SEED_SYSTEM_PROMPT = (
-    "You are selecting vocabulary for one language lesson. "
-    "You will receive CEFR level, lesson theme, communicative goals and target seed count n. "
-    "Propose semantically relevant lemmas for this lesson. "
-    "Return at least n lemmas when possible. "
-    "Respond as JSON only with shape: {\"seed_lemmas\": [str]}."
-)
-
-_PROPOSE_VOCAB_SYSTEM_PROMPT = (
-    "You design vocabulary for a single beginner language lesson. "
-    "You will receive the target language, CEFR level, lesson theme, communicative "
-    "goals, a target word count n, and a list of already-taught lemmas to avoid. "
-    "Propose the most useful, communicatively central words a learner needs to talk "
-    "about this theme and reach these goals — drawn from your own knowledge of the "
-    "language, NOT from any provided list. "
-    "Give base dictionary forms (lemmas), lower-case, in the target language. "
-    "Prefer concrete, high-frequency, everyday words at or below the CEFR level. "
-    "If 'anchor_concepts_english' is provided, make sure the target-language "
-    "translations of those concrete concepts are among your proposals. "
-    "Do not repeat any already-taught lemma. "
-    "Return about 5×n candidates so the course can select the best ones. "
-    'Respond as JSON only with shape: {"vocabulary": [str]}.'
 )
 
 
 @dataclass(frozen=True)
 class LessonThemePlan:
-    """LLM-proposed lesson theme with seed lemmas for prompting the writer.
-
-    ``english_seed_words`` and ``outline`` are optional **English** authoring hints
-    from the theme catalog (language-agnostic): the seed words anchor vocabulary
-    selection toward concrete nouns; the outline is a brief scenario that shapes a
-    coherent narrative. Both are realized into the target language by the LLM.
-    """
+    """LLM-proposed lesson theme with seed lemmas for prompting the writer."""
 
     theme: str
     seed_lemmas: list[str]
-    communicative_goals: list[str] = field(default_factory=list)
-    english_seed_words: list[str] = field(default_factory=list)
-    english_verbs: list[str] = field(default_factory=list)
-    outline: str = ""
 
 
 class ThemeAssigner(Protocol):
@@ -96,34 +54,9 @@ class ThemeAssigner(Protocol):
     Returns ``{theme_name: [Word, ...]}``.  Every input word must appear in
     exactly one theme; implementors should collect unassigned words under a
     ``"misc"`` key.
-
-    Only :meth:`assign` is required. An assigner *may* additionally provide
-    ``plan_lessons``, ``select_seed_lemmas_for_theme`` or
-    ``propose_theme_vocabulary`` to influence catalog-driven planning; the
-    orchestrator discovers these optionally (via ``getattr``) and falls back to
-    deterministic seed-word + frequency selection when they are absent (see
-    :class:`DeterministicThemeAssigner`).
     """
 
     def assign(self, words: list[Word]) -> dict[str, list[Word]]: ...
-
-
-class DeterministicThemeAssigner:
-    """Plan lessons without any LLM calls — the default assigner.
-
-    Implements only :meth:`assign` (a single deterministic bucket, used when no
-    theme catalog is configured). It deliberately omits ``propose_theme_vocabulary``
-    and ``select_seed_lemmas_for_theme`` so the orchestrator's catalog path selects
-    each lesson's vocabulary purely from the catalog's English seed words (resolved
-    via the lexicon's glosses) and frequency ranking — fast, reproducible, offline.
-
-    This replaced LLM-backed theme proposing, which made ~2 model calls per theme
-    (minutes of latency *before any lesson was written*) without improving on
-    seed-word-anchored selection.
-    """
-
-    def assign(self, words: list[Word]) -> dict[str, list[Word]]:
-        return {"general": sorted(words, key=lambda w: w.lemma)}
 
 
 def _strip_fences(text: str) -> str:
@@ -250,123 +183,6 @@ class LLMThemeAssigner:
 
         return parsed
 
-    def select_seed_lemmas_for_theme(
-        self,
-        *,
-        cefr: str,
-        theme: str,
-        communicative_goals: list[str],
-        target_count: int,
-        already_used: list[str],
-        candidate_lemmas: list[str],
-    ) -> list[str]:
-        if target_count < 1:
-            return []
-
-        payload = {
-            "cefr": cefr,
-            "theme": theme,
-            "communicative_goals": communicative_goals,
-            "target_count": target_count,
-            "already_used_lemmas": already_used,
-            "candidate_lemmas": candidate_lemmas,
-        }
-        raw_messages = [
-            {"role": "system", "content": _THEME_SEED_SYSTEM_PROMPT},
-            {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
-        ]
-
-        if self._cache is not None:
-            cached = self._cache.get(self._model, raw_messages)
-            if cached is not None:
-                return self._parse_seed_selection(cached.content)
-
-        messages = [
-            Message(Role.SYSTEM, _THEME_SEED_SYSTEM_PROMPT),
-            Message(Role.USER, json.dumps(payload, ensure_ascii=False)),
-        ]
-
-        try:
-            response = self._provider.complete(messages, model=self._model or None)
-            selected = self._parse_seed_selection(response.content)
-        except (LLMError, json.JSONDecodeError, TypeError, ValueError):
-            return []
-
-        if self._cache is not None:
-            self._cache.put(self._model, raw_messages, response)
-        return selected
-
-    def propose_theme_vocabulary(
-        self,
-        *,
-        cefr: str,
-        theme: str,
-        communicative_goals: list[str],
-        target_count: int,
-        already_used: list[str],
-        language: str = "",
-        seed_words: list[str] | None = None,
-    ) -> list[str]:
-        """Ask the LLM to *generate* ~5×n theme-relevant lemmas from its own knowledge.
-
-        Unlike :meth:`select_seed_lemmas_for_theme`, no candidate list is supplied —
-        the LLM proposes communicatively central words for the theme, which the
-        caller then filters against the lexicon. ``seed_words`` are optional English
-        anchor concepts (from the theme catalog) that bias the proposal toward
-        concrete, scene-grounding vocabulary. Cached for reproducibility; returns
-        ``[]`` on provider/parse error so callers can fall back.
-        """
-        if target_count < 1:
-            return []
-
-        payload = {
-            "language": language,
-            "cefr": cefr,
-            "theme": theme,
-            "communicative_goals": communicative_goals,
-            "target_count": target_count,
-            "oversample_count": target_count * 5,
-            "already_used_lemmas": already_used,
-            "anchor_concepts_english": seed_words or [],
-        }
-        raw_messages = [
-            {"role": "system", "content": _PROPOSE_VOCAB_SYSTEM_PROMPT},
-            {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
-        ]
-
-        if self._cache is not None:
-            cached = self._cache.get(self._model, raw_messages)
-            if cached is not None:
-                return self._parse_proposed_vocabulary(cached.content)
-
-        messages = [
-            Message(Role.SYSTEM, _PROPOSE_VOCAB_SYSTEM_PROMPT),
-            Message(Role.USER, json.dumps(payload, ensure_ascii=False)),
-        ]
-
-        try:
-            response = self._provider.complete(messages, model=self._model or None)
-            proposed = self._parse_proposed_vocabulary(response.content)
-        except (LLMError, json.JSONDecodeError, TypeError, ValueError):
-            return []
-
-        if self._cache is not None:
-            self._cache.put(self._model, raw_messages, response)
-        return proposed
-
-    def _parse_proposed_vocabulary(self, text: str) -> list[str]:
-        raw = json.loads(_strip_fences(text))
-        if not isinstance(raw, dict) or not isinstance(raw.get("vocabulary"), list):
-            raise ValueError("Invalid proposed-vocabulary response shape.")
-
-        out: list[str] = []
-        for item in raw["vocabulary"]:
-            if isinstance(item, str):
-                lemma = item.strip()
-                if lemma and lemma not in out:
-                    out.append(lemma)
-        return out
-
     def _parse(self, text: str, by_lemma: dict[str, Word]) -> dict[str, list[Word]]:
         raw = json.loads(_strip_fences(text))
         result: dict[str, list[Word]] = {}
@@ -393,6 +209,7 @@ class LLMThemeAssigner:
 
         valid_lemmas = set(lemmas)
         lesson_count = math.ceil(len(lemmas) / words_per_lesson)
+        min_seed = max(1, words_per_lesson // 2)
         max_seed = max(1, words_per_lesson)
 
         lessons_raw = raw["lessons"]
@@ -414,32 +231,31 @@ class LLMThemeAssigner:
             if len(seeds) > max_seed:
                 seeds = seeds[:max_seed]
 
-            # Keep themes coherent: only force a seed when the lesson is empty,
-            # do not pad to n/2 with potentially unrelated leftovers.
-            if not seeds:
+            while len(seeds) < min_seed:
                 candidate = next(
                     (l for l in lemmas if l not in used and l not in seeds), None
                 )
                 if candidate is None:
                     candidate = next((l for l in lemmas if l not in seeds), None)
                 if candidate is None:
-                    continue
+                    break
                 seeds.append(candidate)
 
             used.update(seeds)
             lessons.append(LessonThemePlan(theme=theme, seed_lemmas=seeds))
 
+        remaining = [l for l in lemmas if l not in used]
+        if remaining and lessons:
+            cursor = 0
+            for lemma in remaining:
+                for _ in range(len(lessons)):
+                    bucket = lessons[cursor]
+                    if (
+                        len(bucket.seed_lemmas) < max_seed
+                        and lemma not in bucket.seed_lemmas
+                    ):
+                        bucket.seed_lemmas.append(lemma)
+                        break
+                    cursor = (cursor + 1) % len(lessons)
+
         return lessons
-
-    def _parse_seed_selection(self, text: str) -> list[str]:
-        raw = json.loads(_strip_fences(text))
-        if not isinstance(raw, dict) or not isinstance(raw.get("seed_lemmas"), list):
-            raise ValueError("Invalid seed selection response shape.")
-
-        out: list[str] = []
-        for item in raw["seed_lemmas"]:
-            if isinstance(item, str):
-                lemma = item.strip()
-                if lemma and lemma not in out:
-                    out.append(lemma)
-        return out

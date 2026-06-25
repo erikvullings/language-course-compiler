@@ -130,115 +130,11 @@ def test_plan_lessons_returns_sanitized_lesson_blueprints():
 
     # ceil(5/3) = 2 lessons
     assert len(plans) == 2
-    # Sanitizer keeps plans valid without force-mixing unrelated leftovers.
+    # For n=3, min seed is floor(n/2)=1 and max seed is 3.
     assert 1 <= len(plans[0].seed_lemmas) <= 3
     assert 1 <= len(plans[1].seed_lemmas) <= 3
-    assert plans[0].theme == "home"
-    assert plans[1].theme == "food"
-    assert set(plans[0].seed_lemmas).issubset({"huis", "deur", "eten", "brood", "lopen"})
-    assert set(plans[1].seed_lemmas).issubset({"huis", "deur", "eten", "brood", "lopen"})
-    # Unknown lemma from LLM output must be removed.
-    assert "x-unknown" not in plans[0].seed_lemmas
-    assert "x-unknown" not in plans[1].seed_lemmas
-
-
-def test_propose_theme_vocabulary_returns_parsed_lemmas():
-    """The LLM generates theme-relevant words from its own knowledge (not a pool)."""
-    payload = json.dumps({"vocabulary": ["brood", "appel", "melk", "koffie"]})
-    provider = _StubProvider(payload)
-    assigner = LLMThemeAssigner(provider, model="stub")
-
-    result = assigner.propose_theme_vocabulary(
-        cefr="A1",
-        theme="food and drink",
-        communicative_goals=["order food in a cafe"],
-        target_count=2,
-        already_used=[],
-    )
-
-    assert result == ["brood", "appel", "melk", "koffie"]
-
-
-def test_propose_theme_vocabulary_includes_english_seed_words_in_prompt():
-    """English seed-word anchors are passed to the proposer to bias selection."""
-
-    class _CapturingProvider(LLMProvider):
-        def __init__(self, response: str) -> None:
-            self._response = response
-            self.last_prompt = ""
-
-        def complete(
-            self, prompt: PromptInput, *, model=None, temperature=None, **kwargs
-        ) -> LLMResponse:
-            from course_compiler.llm.base import to_messages
-
-            self.last_prompt = " ".join(m.content for m in to_messages(prompt))
-            return LLMResponse(content=self._response, model=model or "stub", raw={})
-
-        async def acomplete(
-            self, prompt: PromptInput, *, model=None, temperature=None, **kwargs
-        ) -> LLMResponse:
-            return self.complete(prompt, model=model)
-
-    provider = _CapturingProvider(json.dumps({"vocabulary": ["huis"]}))
-    assigner = LLMThemeAssigner(provider, model="stub")
-
-    assigner.propose_theme_vocabulary(
-        cefr="A1",
-        theme="home",
-        communicative_goals=["describe your home"],
-        target_count=3,
-        already_used=[],
-        seed_words=["house", "room", "street"],
-    )
-
-    assert "house" in provider.last_prompt
-    assert "room" in provider.last_prompt
-
-
-def test_propose_theme_vocabulary_returns_empty_on_provider_error():
-    class _FailingProvider(LLMProvider):
-        def complete(
-            self, prompt: PromptInput, *, model=None, temperature=None, **kwargs
-        ) -> LLMResponse:
-            raise LLMError("timeout")
-
-        async def acomplete(
-            self, prompt: PromptInput, *, model=None, temperature=None, **kwargs
-        ) -> LLMResponse:
-            raise LLMError("timeout")
-
-    assigner = LLMThemeAssigner(_FailingProvider(), model="stub")
-    assert (
-        assigner.propose_theme_vocabulary(
-            cefr="A1",
-            theme="food",
-            communicative_goals=[],
-            target_count=5,
-            already_used=[],
-        )
-        == []
-    )
-
-
-def test_propose_theme_vocabulary_uses_cache(tmp_path):
-    from course_compiler.generation.cache import LLMCache
-
-    payload = json.dumps({"vocabulary": ["brood", "appel"]})
-    provider = _StubProvider(payload)
-    cache = LLMCache(tmp_path)
-    assigner = LLMThemeAssigner(provider, model="stub", cache=cache)
-
-    for _ in range(2):
-        assigner.propose_theme_vocabulary(
-            cefr="A1",
-            theme="food",
-            communicative_goals=["order food"],
-            target_count=2,
-            already_used=[],
-        )
-
-    assert provider.calls == 1
+    all_seeded = {lemma for plan in plans for lemma in plan.seed_lemmas}
+    assert {"huis", "deur", "eten", "brood", "lopen"}.issubset(all_seeded)
 
 
 def test_plan_lessons_returns_empty_on_provider_error():

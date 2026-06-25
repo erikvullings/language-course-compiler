@@ -19,23 +19,14 @@ Implemented so far:
 - Provider-agnostic LLM module (`course_compiler.llm`) — Ollama and OpenAI, sync + async
 - Canonical, language-agnostic lexicon schema (`course_compiler.models`)
 - Dutch importer (`course_compiler.converters.dutch`) — kaikki.org, ODWN, wordfreq, NT2Lex
-- CEFR level assignment by cumulative frequency budget (`course_compiler.leveling`)
-  and transparent-compound detection (`course_compiler.compounds`)
 - Lesson generation pipeline (`course_compiler.generation`):
   - Pluggable `Lemmatizer` registry (mirrors the LLM factory pattern)
   - Disk-based LLM response cache for reproducible, offline-safe generation
   - `VocabularyValidator` — tokenize → lemmatize → reject unknown content words
-  - `LessonGenerator` — LLM call + validation; text length scales with the
-    accumulated (recombinant) vocabulary, lesson format adapts to stage (example
-    sentences early, narrative once a base exists), and leakage triggers a
-    minimal-edit retry of the prior draft rather than a fresh rewrite
-  - `LLMThemeAssigner` — clusters vocabulary into themes and proposes
-    theme-relevant seed words (generate-then-filter against the lexicon), cached
+  - `LessonGenerator` — LLM call + validation + retry on vocabulary leakage
+  - `LLMThemeAssigner` — clusters vocabulary into semantic themes via LLM (cached)
   - `LessonOrchestrator` — filters by CEFR, assigns themes, sequences lessons,
-    accumulates allowed vocabulary, derives function-word exemptions from POS,
-    and supports an optional front-loaded per-lesson word budget
-- `course generate-images` — generates lesson cover images via a local Flux.1 API
-- `course download-audio` — downloads MP3 pronunciation files from `audio.json`
+    accumulates allowed vocabulary, derives function-word exemptions from POS
 
 ## Setup
 
@@ -94,49 +85,8 @@ course import \
   --out       courses/nl
 ```
 
-This keeps each lemma's **attested NT2Lex level** (recommended for generating
-lessons — see the caveat below) and writes canonical YAML entries into
-`courses/nl/words/` and `courses/nl/verbs/`
-(use `--limit N` for a quick smoke run). It also writes aggregate
-`courses/nl/words.json` and `courses/nl/verbs.json` indexes for faster loading in
-generation/export commands.
-
-#### CEFR level assignment (frequency budget + compounds)
-
-By default each lemma keeps its NT2Lex earliest-attested level. NT2Lex's
-earliest-attested grading dumps a large mid-frequency tail into A2, so the per
-level word counts are uneven and hard to control. Pass `--budgets` to instead
-assign levels by a **cumulative frequency budget** — each level holds the *N* most
-frequent items, with the NT2Lex level kept as a *floor* (a word is never placed
-below its attested level, but may roll forward when its level's budget is full):
-
-```bash
-course import \
-  --kaikki data/nl/kaikki.org-dictionary-Dutch.jsonl \
-  --frequency data/nl/large_nl.msgpack \
-  --nt2lex data/nl/NT2Lex-extracted/.../NT2Lex-CGN+ODWN-v01.tsv \
-  --budgets 'A1=750,A2=2000,B1=3500,B2=5500' \
-  --compounds \
-  --out courses/nl
-```
-
-`--budgets LEVEL=COUNT,...` are cumulative counts (so a learner knows ~2000 words
-by the end of A2). This gives controlled, even level sizes.
-
-> **Caveat — do not use `--budgets`/`--compounds` for lesson generation.** The
-> frequency budget orders levels by raw frequency, so pedagogically basic words
-> roll *above* A1 (e.g. `buurman`, `goedemorgen`), and `--compounds` lets the many
-> transparent Dutch compounds bypass the budget and flood a level. Both make the
-> theme catalog unable to use its own seed words and cause the vocabulary
-> validator to reject otherwise-natural lesson text. Prefer the plain attested
-> NT2Lex levels above (no `--budgets`, no `--compounds`); the generator caps each
-> lesson to `--words-per-lesson` regardless, so level size is not a problem.
-
-`--compounds` introduces transparent compounds (e.g. `koffie`+`pot` → `koffiepot`)
-**without** consuming budget: the learner already knows the parts, so the compound
-is levelled to the highest level among its parts rather than counting as a new
-word. A `(lemma, part-of-speech)` is the unit, so noun/verb homographs (e.g.
-`eten` = food / to eat) count separately and are taught as distinct items.
+This writes canonical YAML entries into `courses/nl/words/` and `courses/nl/verbs/`
+(use `--limit N` for a quick smoke run).
 
 ### Generate lessons
 
@@ -145,9 +95,8 @@ course generate-lessons --lang nl --cefr A1
 ```
 
 `--lang` is the only required flag. Defaults: lexicon at `courses/<lang>`,
-output at `<lexicon>/lessons/<CEFR>` (e.g. `courses/nl/lessons/A1`), language
-name derived from the lang code. Both words and verbs from the lexicon are used.
-Override any of these explicitly:
+output at `<lexicon>/lessons`, language name derived from the lang code,
+10 words per lesson. Override any of these explicitly:
 
 ```bash
 course generate-lessons \
@@ -155,29 +104,8 @@ course generate-lessons \
   --lexicon courses/nl \
   --language-name Dutch \
   --words-per-lesson 10 \
-  --out courses/nl/lessons/A1
+  --out courses/nl/lessons
 ```
-
-When a theme catalog is used, each configured theme becomes exactly one lesson
-and the level's full vocabulary (words + verbs) is distributed across those
-themes — so the number of lessons equals the number of themes for that level,
-and lesson size is roughly `level_vocabulary / number_of_themes`.
-
-To **front-load** vocabulary (Delft-style), introduce more words in the first
-lessons and taper to the steady-state count — useful because early lessons have
-no prior vocabulary to recombine:
-
-```bash
-course generate-lessons --lang nl --cefr A1 \
-  --first-lesson-words 40 --front-load-lessons 3 --words-per-lesson 10
-```
-
-This makes lesson 1 introduce 40 words, lesson 2 ~25, and lesson 3 onward 10.
-Omit `--first-lesson-words` for a uniform budget. Independently, early lessons
-(while little vocabulary has accumulated) are written as short example
-sentences/dialogue rather than a narrative, which reads more naturally with a
-sparse word set; the compiler switches to narrative once enough vocabulary
-exists.
 
 Preview the computed lesson blueprint first (count + theme + seed lemmas):
 
@@ -191,184 +119,11 @@ To preview and then continue in one run:
 course generate-lessons --lang nl --cefr A1 --preview --approve
 ```
 
-To use a specific predefined theme catalog YAML:
-
-```bash
-course generate-lessons --lang nl --cefr A1 --themes-file themes.yaml
-```
-
-`--themes-file` first checks the provided path. For a bare filename (like
-`themes.yaml`), it also falls back to the bundled catalog at
-`src/course_compiler/generation/themes.yaml`. If no file is found, the command
-fails with an explicit error.
-
-Without `--themes-file`, `generate-lessons` auto-discovers in this order:
-
-1. `themes.yaml` in the repository root
-2. `themes.yaml` in the selected lexicon directory (for example `courses/nl/themes.yaml`)
-3. bundled `src/course_compiler/generation/themes.yaml`
-
-The catalog controls lesson **theme names/order** and optional **communicative
-goals**, and may carry two optional **English** authoring hints per lesson (kept
-in English so the catalog stays language-agnostic):
-
-```yaml
-A1:
-  lesson001:
-    theme: Greetings
-    communicativeGoals: [greet someone, introduce yourself, say goodbye]
-    seedWords: [hello, name, neighbour, street, goodbye]   # concrete anchors
-    outline: >                                             # a brief scenario
-      Two neighbours meet on the street, greet each other, introduce
-      themselves by name, and say goodbye.
-```
-
-- **`seedWords`** resolve to lexicon entries via their English glosses and are
-  chosen as the highest-priority words for the lesson — so early lessons get
-  concrete, scene-grounding nouns instead of high-frequency function words. Each
-  theme's seeds are reserved, so an earlier theme can't "steal" a later theme's
-  anchor. Seeds whose word isn't at the target level fall back to LLM proposal,
-  then frequency.
-- **`outline`** is passed to the writer so the lesson reads as one coherent
-  scene/dialogue rather than loose sentences.
-
-Both are optional; omitting them falls back to LLM-proposed, lexicon-filtered seed
-words. Lesson text length scales with the accumulated (recombinant) vocabulary so
-early lessons stay short and natural, and validation only rejects words *above*
-the target CEFR level (any in-level word is allowed) so the text reads naturally.
-
-One lesson file per lesson is written to `courses/<lang>/lessons/<CEFR>/` as
+One lesson file per lesson is written to the output directory as
 `lesson001.json`, `lesson002.json`, … Run once per CEFR level to build a
-full A1 → B2 course. Lesson text (the only LLM step — planning is deterministic
-and offline) is cached in `courses/nl/.llm_cache/`, keyed by the prompt, so
-reruns are fast and byte-identical.
-
-> **Note:** the cache key does *not* include the model name, so switching
-> `OLLAMA_MODEL` does **not** invalidate the cache. To compare two models on the
-> same lessons, regenerate with `--no-cache` (otherwise the first model's cached
-> responses are replayed).
-
-To regenerate lessons from scratch (ignoring cache):
-
-```bash
-course generate-lessons --lang nl --cefr A1 --no-cache
-```
-
-Or manually clear the cache:
-
-```bash
-rm -rf courses/nl/.llm_cache
-```
-
-#### Regenerate specific lessons
-
-A run reports any lessons that fell back to placeholder text (the provider timed
-out or validation could not be satisfied after the retry budget). Rather than
-rerunning the whole level, regenerate just those:
-
-```bash
-course generate-lessons --lang nl --cefr A1 --regenerate-fallbacks
-```
-
-This scans the output directory for fallback lessons (those carry a `"fallback":
-true` flag in their JSON; a literal `"Untitled"` title is also treated as one for
-lessons written before the flag existed) and regenerates only them, leaving every
-other lesson file untouched.
-
-To regenerate an explicit set of lessons by id:
-
-```bash
-course generate-lessons --lang nl --cefr A1 --only lesson016 lesson019
-```
-
-Both flags **imply `--no-cache`** for the selected lessons, so the previous
-(failing) cached attempt is not replayed — the lesson is genuinely rewritten.
-Each lesson is planned with the full vocabulary it would have accumulated in a
-complete run, so a single regenerated lesson is identical in scope to its place
-in the sequence. `--only` ids must exist in the level's plan, otherwise the
-command errors without generating anything.
-
-`generate-lessons` prefers `words.json` when present (falling back to
-`words/*.yaml`), so preview mode starts much faster on large lexicons.
-
-### Generate lesson images
-
-Generates a cover illustration for every lesson by posting to a locally running
-[Flux.1](https://blackforestlabs.ai/) image API (Automatic1111-compatible,
-default port 7860). Images are written to `courses/img/<LEVEL>/<LESSON>.png` and
-are language-independent, so one image set covers all target languages.
-
-#### Installing the image generation service
-
-Open the model page on Hugging Face at [black-forest-labs](https://huggingface.co/black-forest-labs) and accept the conditions.
-
-```bash
-brew install python@3.11
-export HF_TOKEN=<YOUR_TOKEN> # Your Token from Hugging Face, should have Read access to all models
-
-huggingface-cli download black-forest-labs/FLUX.1-dev \
-    --local-dir ~/.cache/huggingface/hub/models--black-forest-labs--FLUX.1-dev
-
-git clone https://github.com/voipnuggets/flux-generator.git
-cd flux-generator
-chmod +x run_flux.sh
-
-# Run the setup script in local-only secure mode
-./run_flux.sh
-```
-
-Now you can use it
-
-```bash
-course generate-images --model dev
-```
-
-Existing images are skipped. Use `--force` to regenerate them. Narrow the run
-with `--level` and/or `--lesson`:
-
-```bash
-course generate-images --level A1 --lesson lesson001  --model dev --force
-```
-
-Override defaults:
-
-```bash
-course generate-images \
-  --themes-file themes.yaml \
-  --out courses/img \
-  --api-url http://127.0.0.1:7860/sdapi/v1/txt2img \
-  --width 1024 --height 576 --steps 4 --cfg-scale 4.0
-```
-
-Each image seed is derived deterministically from the level + lesson ID, so
-re-running without `--force` produces the same images.
-
-### Download audio files
-
-Downloads MP3 pronunciation files listed in `courses/<lang>/audio.json` (a
-`{ word: url }` map built by `course import`) and saves them locally as
-`courses/<lang>/audio/<word>.mp3`. Spaces in word keys are replaced with
-underscores; slashes with underscores.
-
-```bash
-course download-audio --lang nl
-```
-
-Existing files are skipped. Use `--force` to re-download. For a quick test:
-
-```bash
-course download-audio --lang nl --limit 100 --dry-run
-```
-
-Override defaults:
-
-```bash
-course download-audio \
-  --lang nl \
-  --audio-json courses/nl/audio.json \
-  --out courses/nl/audio \
-  --force
-```
+full A1 → B2 course. LLM responses (theme clustering and lesson text) are
+cached in `courses/nl/.llm_cache/` so subsequent runs are fast and
+byte-identical.
 
 ### Export split JSON bundles
 
@@ -378,15 +133,12 @@ course export --lang nl --course-dir courses/nl --out courses/nl/export
 
 This writes:
 
-- `manifest.json` (includes the list of CEFR `levels` present)
+- `manifest.json`
 - `words.json`
 - `verbs.json`
 - `grammar.json`
 - `exercises.json`
-- lessons — for a multi-level course, per level:
-  `lessons/A1/lesson001.json`, `lessons/A2/lesson001.json`, … (each payload carries
-  its `level`, so ids that repeat across levels don't collide). A legacy
-  single-level course still exports flat `lessons/lesson001.json`, ...
+- `lessons/lesson001.json`, `lessons/lesson002.json`, ...
 
 ## Using the LLM module directly
 

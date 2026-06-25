@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 
 from course_compiler.generation.base import Lemmatizer
@@ -10,31 +9,12 @@ from course_compiler.generation.cache import LLMCache
 from course_compiler.generation.validator import ValidationResult, VocabularyValidator
 from course_compiler.llm.base import LLMError, LLMProvider, Message, Role
 
-log = logging.getLogger(__name__)
-
 #: Words of lesson text generated per new content word introduced.
 WORDS_PER_NEW_WORD = 15
 
-#: Words of natural, low-repetition text each available content word can sustain.
-#: Caps the requested length so we never demand long prose from a tiny vocabulary
-#: (the cold-start problem: lesson 1 has only its own new words to recombine).
-WORDS_PER_ALLOWED_WORD = 4
 
-#: Smallest lesson text we will ever request.
-MIN_TARGET_WORDS = 30
-
-
-def _target_length(new_word_count: int, allowed_word_count: int) -> str:
-    """Requested lesson length: the smaller of two budgets, floored.
-
-    ``by_new`` gives each new word room to be introduced in context; ``by_vocab``
-    caps the text at what the recombinant vocabulary can sustain naturally. Early
-    lessons are vocab-limited (short, natural); mature lessons, where the allowed
-    set dwarfs the new words, stay new-word-limited (the original behaviour).
-    """
-    by_new = new_word_count * WORDS_PER_NEW_WORD
-    by_vocab = allowed_word_count * WORDS_PER_ALLOWED_WORD
-    return f"{max(min(by_new, by_vocab), MIN_TARGET_WORDS)} words"
+def _target_length(new_word_count: int) -> str:
+    return f"{max(new_word_count * WORDS_PER_NEW_WORD, 30)} words"
 
 
 @dataclass(frozen=True)
@@ -43,214 +23,43 @@ class GeneratedLesson:
     content: str
     attempts: int
     tolerated: frozenset[str] = frozenset()
-    title: str = ""
-    theme: str = ""
-    new_words: frozenset[str] = frozenset()
-    #: True when ``content`` could not be validated cleanly — either the deterministic
-    #: word placeholder (provider failed with no usable draft) or the best-effort draft
-    #: returned after retries were exhausted. ``violations`` says how bad it is.
-    fallback: bool = False
-    #: Unresolved content words in a fallback lesson (above level / out of vocabulary).
-    #: Empty for a clean lesson or a bare placeholder; non-empty marks a best-effort draft.
-    violations: frozenset[str] = frozenset()
 
 
-@dataclass(frozen=True)
-class _Draft:
-    """A validated-but-rejected attempt, retained as best-effort fallback material.
-
-    ``badness`` orders drafts for "least bad" selection: fewer violations first,
-    then (on a tie) the longer, richer draft — so we never prefer a near-empty
-    draft that merely happens to leak fewer words.
-    """
-
-    title: str
-    narrative: str
-    attempt: int
-    result: ValidationResult
-    badness: tuple[int, int]
+_LOW_CEFR: frozenset[str] = frozenset({"A1", "A2"})
 
 
-#: Levels that still benefit from a light steer toward simple tenses.
-_SIMPLE_TENSE_LEVELS: frozenset[str] = frozenset({"A1", "A2"})
-
-
-def _tense_guidance(cefr: str, mature: bool = False) -> str:
-    """Tense steer for the writer, relaxing as level and learner maturity rise.
-
-    A1 cold-start is the most constrained (present-first); A2 — and a *mature* A1
-    lesson, where the learner already has a large recombinant vocabulary — only
-    gets a gentle nudge; B1 and above carry no tense restriction at all.
-    """
-    if cefr == "A1" and not mature:
+def _tense_guidance(cefr: str) -> str:
+    if cefr in _LOW_CEFR:
         return (
             "Prefer present tense. "
             "Simple past of very frequent forms "
             "(for example equivalents of 'was/were') is allowed when natural. "
             "Avoid complex tense combinations. "
         )
-    if cefr in _SIMPLE_TENSE_LEVELS:
-        return (
-            "Present and simple past are both fine; "
-            "use other tenses only when they read naturally. "
-        )
     return ""
 
 
-#: Lesson body formats, selected by how much vocabulary the learner can recombine.
-FORMAT_EXAMPLES = "examples"
-FORMAT_NARRATIVE = "narrative"
-
-
-def _format_new_words(new_words: list[str], glosses: dict[str, str] | None) -> str:
-    """Render the new-word list, annotating each with its English meaning.
-
-    Showing ``lemma (meaning)`` keeps the writer on the intended sense — e.g. the
-    verb ``eten (to eat)`` rather than the noun ``eten (food)`` — without leaking
-    any other language into the output, which must stay in the target language.
-    """
-    if not glosses:
-        return ", ".join(new_words)
-    parts: list[str] = []
-    for word in new_words:
-        meaning = glosses.get(word)
-        parts.append(f"{word} ({meaning})" if meaning else word)
-    return ", ".join(parts)
-
-
-def _user_prompt(
-    language: str,
-    new_words: list[str],
-    target_length: str,
-    cefr: str,
-    theme: str,
-    fmt: str,
-    outline: str = "",
-    glosses: dict[str, str] | None = None,
-    verb_lemmas: list[str] | None = None,
-    communicative_goals: list[str] | None = None,
-    mature: bool = False,
-) -> str:
-    """Build the writer prompt for a lesson.
-
-    The prompt is structured to guide the LLM toward natural, theme-coherent text
-    while enforcing CEFR-level vocabulary constraints.
-    """
-    verbs = list(verb_lemmas or [])
-    verb_set = set(verbs)
-    # Verbs get their own dedicated line below; keep them out of the general word
-    # list so they aren't presented to the writer twice.
-    other_words = [w for w in new_words if w not in verb_set]
-
-    # Build the required/optional vocabulary section
-    vocab_section_parts: list[str] = []
-
-    # REQUIRED verbs - must be used (conjugated as needed)
-    if verbs:
-        vocab_section_parts.append(
-            f"REQUIRED verbs (must appear in some conjugated form): "
-            f"{_format_new_words(verbs, glosses)}"
-        )
-
-    # OPTIONAL words to include naturally if they fit
-    if other_words:
-        vocab_section_parts.append(
-            f"OPTIONAL words to include naturally if they fit: "
-            f"{_format_new_words(other_words, glosses)}"
-        )
-
-    vocab_instructions = "\n".join(vocab_section_parts) if vocab_section_parts else ""
-
-    # Write instruction based on format
-    if fmt == FORMAT_EXAMPLES:
-        write_instruction = (
-            f'Write several short, simple {language} example sentences or a brief '
-            f'dialogue on the theme "{theme}" — not more than {target_length} in total. '
-            "Keep sentences short and concrete; try to use most of the new words, "
-            "but a few may be left out if the text reads better."
-        )
-    else:
-        write_instruction = (
-            f"Write a short {language} narrative — a story or dialogue — not more "
-            f"than {target_length} that reads naturally from start to finish. "
-        )
-
-    parts: list[str] = [
-        "You are a language course lesson writer.",
-        write_instruction,
-    ]
-
-    # Theme and goals
-    if outline:
-        # Use communicative_goals if provided, otherwise fall back to defaults
-        goals = communicative_goals or []
-        goals_section_lines: list[str] = ["COMMUNICATIVE GOALS:"]
-        for goal in goals:
-            goals_section_lines.append(f"- {goal}")
-        goals_section = "\n".join(goals_section_lines) if goals else ""
-
-        parts.append(
-            f'THEME: "{theme}"\n'
-            + (goals_section + "\n" if goals_section else "")
-            + "\n"
-            + f"OUTLINE: {outline.strip()}"
-        )
-    else:
-        # For non-outline prompts, still show theme and optionally goals
-        goals = communicative_goals or []
-        goals_section_lines: list[str] = ["COMMUNICATIVE GOALS:"]
-        for goal in goals:
-            goals_section_lines.append(f"- {goal}")
-        goals_section = "\n".join(goals_section_lines) if goals else ""
-        parts.append(
-            f'THEME: "{theme}"'
-            + (("\n" + goals_section) if goals_section else "")
-        )
-
-    # Vocabulary constraints
-    parts.extend([
-        "",
-        f"Keep the vocabulary at the CEFR {cefr} level — do not use words above this "
-        f"level, but you may freely use other common words at or below it so the text "
-        f"reads naturally. Conjugate verbs correctly for their subject and tense.",
-        _tense_guidance(cefr, mature),
-        "",
-        "RULES:",
-        f"1. Use ONLY words at or below CEFR {cefr} level.",
-        "2. The REQUIRED verbs above must appear (conjugated as needed).",
-        "3. Keep the story cohesive and natural.",
-    ])
-
-    # Vocabulary section (required + optional)
-    if vocab_instructions:
-        parts.extend([
-            "",
-            "VOCABULARY:",
-            vocab_instructions,
-        ])
-
-    # Output format
-    parts.append(
-        f"Output ONLY the title and text in {language}, using this exact structure:\n\n"
-        "TITLE: <title>\n\n"
-        "TEXT: <markdown_text>"
+def _system_prompt(language: str, target_length: str, cefr: str = "") -> str:
+    return (
+        f"You are a language-learning content writer. "
+        f"Write a short lesson in {language}, approximately {target_length}. "
+        f"Introduce each new word naturally in context. "
+        f"Keep the vocabulary at the stated CEFR level — do not use advanced words. "
+        f"{_tense_guidance(cefr)}"
+        f"Articles, prepositions, conjunctions, and common pronouns may be used freely. "
+        f"Respond with lesson text only — no headings, no word lists, no meta-commentary."
     )
-
-    return "\n".join(parts)
 
 
 def _feedback_message(result: ValidationResult, cefr_target: str) -> str:
     parts: list[str] = [
-        "Your previous lesson had vocabulary problems. Revise that version with the "
-        "smallest possible change — keep the title, structure, and as much of the "
-        "wording and length as you can. Do not rewrite from scratch."
+        "Your previous response contained vocabulary problems. Please rewrite the lesson."
     ]
     if result.violations:
         words = ", ".join(sorted(result.violations))
         parts.append(
-            f"Remove or replace only these words, because they are above "
-            f"{cefr_target} level or outside the allowed vocabulary: {words}. "
-            f"Swap each for a simpler allowed word, or drop just that phrase."
+            f"These words must not appear — they are above {cefr_target} level "
+            f"or outside the allowed vocabulary: {words}."
         )
     return " ".join(parts)
 
@@ -261,65 +70,6 @@ def _fallback_content(new_words: list[str], *, lesson_id: str, reason: str) -> s
     if words:
         return f"{words}."
     return f"{lesson_id}: lesson unavailable ({reason})."
-
-
-def _lesson_from_draft(
-    draft: _Draft,
-    *,
-    lesson_id: str,
-    theme: str,
-    new_words: list[str],
-    attempts: int,
-) -> GeneratedLesson:
-    """Wrap the best-effort ``draft`` as a fallback lesson carrying its violations."""
-    return GeneratedLesson(
-        lesson_id=lesson_id,
-        content=draft.narrative,
-        attempts=attempts,
-        tolerated=draft.result.tolerated,
-        title=draft.title,
-        theme=theme,
-        new_words=frozenset(new_words),
-        fallback=True,
-        violations=frozenset(draft.result.violations),
-    )
-
-
-def _clean_title(raw: str) -> str:
-    """Strip the echoed ``Lesson Title`` placeholder weak models reproduce verbatim.
-
-    ``"Lesson Title: Begroetingen"`` → ``"Begroetingen"``; a bare ``"Lesson Title"``
-    → ``""`` (so the caller's default kicks in instead of a literal placeholder).
-    """
-    cleaned = raw.strip()
-    low = cleaned.lower()
-    if low.startswith("lesson title"):
-        cleaned = cleaned[len("lesson title") :].lstrip(" :-—").strip()
-    return cleaned
-
-
-def _parse_lesson_structure(text: str) -> tuple[str, str]:
-    """Parse structured lesson markdown into (title, narrative).
-
-    Expected format:
-    ## Lesson Title
-    [Narrative text]
-
-    Returns (title, narrative_text). Gracefully handles malformed input.
-    """
-    lines = text.strip().split("\n")
-    title = ""
-    narrative_lines: list[str] = []
-
-    for line in lines:
-        stripped = line.strip()
-        if stripped.startswith("##"):
-            title = _clean_title(stripped[2:].strip())
-        elif title:
-            narrative_lines.append(line)
-
-    narrative = "\n".join(narrative_lines).strip()
-    return title or "Untitled Lesson", narrative or text
 
 
 class LessonGenerator:
@@ -343,11 +93,7 @@ class LessonGenerator:
         function_lemmas: set[str] | None = None,
         cache: LLMCache | None = None,
         max_retries: int = 5,
-        extra_tolerance: float | None = 0.5,
-        narrative_vocab_threshold: int = 60,
-        mature_vocab_threshold: int = 300,
-        revise_violation_threshold: int = 2,
-        restart_temperature_bump: float = 0.1,
+        extra_tolerance: float = 0.5,
         fail_open_on_llm_error: bool = True,
         fail_open_on_validation_error: bool = True,
     ) -> None:
@@ -356,16 +102,6 @@ class LessonGenerator:
         self._cache = cache
         self._max_retries = max_retries
         self._extra_tolerance = extra_tolerance
-        self._narrative_vocab_threshold = narrative_vocab_threshold
-        # Once the allowed (recombinant) vocabulary reaches this size, the lesson is
-        # treated as "mature" and the cold-start tense constraints relax.
-        self._mature_vocab_threshold = mature_vocab_threshold
-        # At or below this many violations, ask for a minimal revision of the prior
-        # draft (it's nearly right). Above it — or on the final attempt — discard the
-        # broken draft and resample the original prompt afresh, since "minimally
-        # revise" only anchors the model to fundamentally-wrong text.
-        self._revise_violation_threshold = revise_violation_threshold
-        self._restart_temperature_bump = restart_temperature_bump
         self._fail_open_on_llm_error = fail_open_on_llm_error
         self._fail_open_on_validation_error = fail_open_on_validation_error
 
@@ -377,30 +113,17 @@ class LessonGenerator:
         theme: str,
         target_length: str,
         new_words: list[str],
-        fmt: str,
-        outline: str = "",
-        glosses: dict[str, str] | None = None,
-        verb_lemmas: list[str] | None = None,
-        communicative_goals: list[str] | None = None,
-        mature: bool = False,
     ) -> list[Message]:
+        user_content = (
+            f"Lesson ID: {lesson_id}\n"
+            f"CEFR level: {cefr}\n"
+            f"Theme: {theme}\n"
+            f"New words to introduce: {', '.join(new_words)}\n\n"
+            "Write the lesson now."
+        )
         return [
-            Message(
-                Role.USER,
-                _user_prompt(
-                    language,
-                    new_words,
-                    target_length,
-                    cefr,
-                    theme,
-                    fmt,
-                    outline,
-                    glosses,
-                    verb_lemmas,
-                    communicative_goals,
-                    mature,
-                ),
-            )
+            Message(Role.SYSTEM, _system_prompt(language, target_length, cefr)),
+            Message(Role.USER, user_content),
         ]
 
     def generate(
@@ -412,14 +135,10 @@ class LessonGenerator:
         language: str,
         cefr: str = "A1",
         theme: str = "general",
-        outline: str = "",
-        communicative_goals: list[str] | None = None,
         model: str | None = None,
         temperature: float = 0.7,
         function_lemmas: set[str] | None = None,
         cefr_lookup: dict[str, str] | None = None,
-        glosses: dict[str, str] | None = None,
-        verb_lemmas: list[str] | None = None,
     ) -> GeneratedLesson:
         """Generate and validate lesson content, retrying with feedback on violation.
 
@@ -432,9 +151,6 @@ class LessonGenerator:
             cefr: CEFR level (e.g. ``"A1"``). Included in the prompt and used to
                 classify extra words as tolerated vs. violations.
             theme: Semantic theme (e.g. ``"home"``). Included in the prompt.
-            outline: Optional brief scenario (English) shaping a coherent narrative;
-                when present the lesson is written as narrative rather than examples.
-            communicative_goals: Optional list of communicative goals for the lesson.
             model: LLM model identifier; provider default used if omitted.
             temperature: Sampling temperature forwarded to the provider.
             function_lemmas: Extra per-call exempt lemmas (e.g. verb surface forms).
@@ -444,106 +160,42 @@ class LessonGenerator:
         Raises:
             RuntimeError: If violations persist after ``max_retries``.
         """
-        target_length = _target_length(len(new_words), len(allowed_words))
-        # An outline gives the model a concrete scenario, so even an early lesson
-        # can sustain a coherent narrative rather than loose example sentences.
-        fmt = (
-            FORMAT_NARRATIVE
-            if outline or len(allowed_words) >= self._narrative_vocab_threshold
-            else FORMAT_EXAMPLES
-        )
-        # A large recombinant vocabulary marks a later lesson, where cold-start
-        # tense constraints can relax.
-        mature = len(allowed_words) >= self._mature_vocab_threshold
+        target_length = _target_length(len(new_words))
         messages = self._build_initial_messages(
-            lesson_id, language, cefr, theme, target_length, new_words, fmt, outline,
-            glosses, verb_lemmas, communicative_goals, mature,
+            lesson_id, language, cefr, theme, target_length, new_words
         )
-        # Kept verbatim so a "fresh restart" attempt can re-issue the original
-        # prompt instead of continuing a conversation anchored to a broken draft.
-        initial_messages = list(messages)
         raw_messages = [m.as_dict() for m in messages]
         resolved_model = model or ""
-        current_temperature = temperature
-        # Least-bad rejected draft seen so far, kept so a failed lesson degrades to
-        # real (if imperfect) text rather than a bag of words.
-        best_draft: _Draft | None = None
-
-        log.debug(
-            "[%s] Starting generation — cefr=%s theme=%r fmt=%s target=%s "
-            "new_words=%d allowed_words=%d model=%r outline=%s",
-            lesson_id, cefr, theme, fmt, target_length,
-            len(new_words), len(allowed_words), resolved_model,
-            repr(outline[:80] + "…") if len(outline) > 80 else repr(outline),
-        )
-        for msg in messages:
-            log.debug("[%s] %s PROMPT:\n%s", lesson_id, msg.role.value.upper(), msg.content)
 
         for attempt in range(1, self._max_retries + 1):
             # Cache: only the first attempt (deterministic prompt) is cached.
             if attempt == 1 and self._cache is not None:
                 cached = self._cache.get(resolved_model, raw_messages)
                 if cached is not None:
-                    log.debug("[%s] Cache hit — skipping LLM call", lesson_id)
-                    title, narrative = _parse_lesson_structure(cached.content)
                     return GeneratedLesson(
-                        lesson_id=lesson_id,
-                        content=narrative,
-                        attempts=0,
-                        title=title,
-                        theme=theme,
-                        new_words=frozenset(new_words),
+                        lesson_id=lesson_id, content=cached.content, attempts=0
                     )
 
-            log.debug("[%s] Attempt %d/%d — calling LLM", lesson_id, attempt, self._max_retries)
             try:
                 response = self._provider.complete(
-                    messages, model=model, temperature=current_temperature
+                    messages, model=model, temperature=temperature
                 )
             except LLMError:
                 if not self._fail_open_on_llm_error:
                     raise
-                if best_draft is not None:
-                    log.warning(
-                        "[%s] LLM error on attempt %d; falling back to best prior draft "
-                        "(attempt %d, %d violation(s): %s)",
-                        lesson_id, attempt, best_draft.attempt,
-                        len(best_draft.result.violations),
-                        sorted(best_draft.result.violations),
-                    )
-                    return _lesson_from_draft(
-                        best_draft,
-                        lesson_id=lesson_id,
-                        theme=theme,
-                        new_words=new_words,
-                        attempts=attempt,
-                    )
-                log.warning(
-                    "[%s] LLM error on attempt %d and no usable draft — using placeholder",
-                    lesson_id, attempt,
-                )
                 return GeneratedLesson(
                     lesson_id=lesson_id,
                     content=_fallback_content(
                         new_words, lesson_id=lesson_id, reason="llm-timeout"
                     ),
                     attempts=attempt,
-                    title="Untitled",
-                    theme=theme,
-                    new_words=frozenset(new_words),
-                    fallback=True,
                 )
-
-            log.debug("[%s] RESPONSE (attempt %d):\n%s", lesson_id, attempt, response.content)
 
             if self._cache is not None and attempt == 1:
                 self._cache.put(resolved_model, raw_messages, response)
 
-            # Parse the structured lesson response first, then validate narrative
-            title, narrative = _parse_lesson_structure(response.content)
-
             result: ValidationResult = self._validator.validate(
-                narrative,
+                response.content,
                 allowed_words,
                 extra_function_lemmas=function_lemmas,
                 cefr_target=cefr,
@@ -553,95 +205,27 @@ class LessonGenerator:
             )
 
             if result.is_valid:
-                log.debug(
-                    "[%s] Validation passed on attempt %d (tolerated=%d)",
-                    lesson_id, attempt, len(result.tolerated),
-                )
                 return GeneratedLesson(
                     lesson_id=lesson_id,
-                    content=narrative,
+                    content=response.content,
                     attempts=attempt,
                     tolerated=result.tolerated,
-                    title=title,
-                    theme=theme,
-                    new_words=frozenset(new_words),
                 )
 
-            log.debug(
-                "[%s] Validation failed on attempt %d — violations: %s",
-                lesson_id, attempt, sorted(result.violations),
-            )
-
-            # Remember the least-bad draft so an exhausted lesson can degrade to
-            # real text rather than a placeholder.
-            badness = (len(result.violations), -len(narrative.split()))
-            if best_draft is None or badness < best_draft.badness:
-                best_draft = _Draft(
-                    title=title,
-                    narrative=narrative,
-                    attempt=attempt,
-                    result=result,
-                    badness=badness,
-                )
-
-            # Decide what the *next* attempt should look like. A near-miss draft
-            # (few violations) is worth salvaging via minimal revision; a heavily
-            # broken one — or the last shot — is better restarted from scratch so
-            # the model isn't anchored to wrong text.
-            next_attempt = attempt + 1
-            heavy = len(result.violations) > self._revise_violation_threshold
-            final = next_attempt >= self._max_retries
-            if heavy or final:
-                current_temperature = min(
-                    current_temperature + self._restart_temperature_bump, 1.0
-                )
-                log.debug(
-                    "[%s] Restarting fresh (heavy=%s final=%s) at temperature %.2f",
-                    lesson_id, heavy, final, current_temperature,
-                )
-                messages = list(initial_messages)
-            else:
-                feedback = _feedback_message(result, cefr)
-                log.debug("[%s] FEEDBACK MESSAGE:\n%s", lesson_id, feedback)
-                # Append the bad response and a correction message for the next attempt.
-                messages = [
-                    *messages,
-                    Message(Role.ASSISTANT, response.content),
-                    Message(Role.USER, feedback),
-                ]
+            # Append the bad response and a correction message for the next attempt.
+            messages = [
+                *messages,
+                Message(Role.ASSISTANT, response.content),
+                Message(Role.USER, _feedback_message(result, cefr)),
+            ]
 
         if self._fail_open_on_validation_error:
-            if best_draft is not None:
-                log.warning(
-                    "[%s] No valid draft after %d attempts; using best-effort draft "
-                    "(attempt %d, %d unresolved word(s): %s)",
-                    lesson_id, self._max_retries, best_draft.attempt,
-                    len(best_draft.result.violations),
-                    sorted(best_draft.result.violations),
-                )
-                return _lesson_from_draft(
-                    best_draft,
-                    lesson_id=lesson_id,
-                    theme=theme,
-                    new_words=new_words,
-                    attempts=self._max_retries,
-                )
-            # No draft was ever produced (shouldn't happen on this path) — last-resort
-            # deterministic placeholder.
-            log.warning(
-                "[%s] No usable draft after %d attempts — using placeholder",
-                lesson_id, self._max_retries,
-            )
             return GeneratedLesson(
                 lesson_id=lesson_id,
                 content=_fallback_content(
                     new_words, lesson_id=lesson_id, reason="validation-retries"
                 ),
                 attempts=self._max_retries,
-                title="Untitled",
-                theme=theme,
-                new_words=frozenset(new_words),
-                fallback=True,
             )
 
         raise RuntimeError(
