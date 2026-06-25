@@ -82,10 +82,20 @@ class Settings:
             openai_api_key=_get(env, "OPENAI_API_KEY", cls.openai_api_key),
             openai_base_url=_get(env, "OPENAI_BASE_URL", cls.openai_base_url),
             openai_model=_get(env, "OPENAI_MODEL", cls.openai_model),
-            azure_openai_api_key=_get(env, "AZURE_OPENAI_API_KEY", cls.azure_openai_api_key),
-            azure_openai_endpoint=_get(env, "AZURE_OPENAI_ENDPOINT", cls.azure_openai_endpoint),
-            azure_openai_deployment=_get(env, "AZURE_OPENAI_DEPLOYMENT", cls.azure_openai_deployment),
-            azure_openai_api_version=_get(env, "AZURE_OPENAI_API_VERSION", cls.azure_openai_api_version),
+            azure_openai_api_key=_get(
+                env, "AZURE_OPENAI_API_KEY", cls.azure_openai_api_key
+            ),
+            azure_openai_endpoint=_get(
+                env, "AZURE_OPENAI_ENDPOINT", cls.azure_openai_endpoint
+            ),
+            azure_openai_deployment=_get(
+                env, "AZURE_OPENAI_DEPLOYMENT", cls.azure_openai_deployment
+            ),
+            azure_openai_api_version=_get(
+                env, "AZURE_OPENAI_API_VERSION", cls.azure_openai_api_version
+            ),
             voxtral_base_url=_get(env, "VOXTRAL_BASE_URL", cls.voxtral_base_url),
-            voxtral_timeout=float(_get(env, "VOXTRAL_TIMEOUT", str(cls.voxtral_timeout))),
+            voxtral_timeout=float(
+                _get(env, "VOXTRAL_TIMEOUT", str(cls.voxtral_timeout))
+            ),
         )

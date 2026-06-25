@@ -26,44 +26,60 @@ class ValidationError(BaseModel):
     type: str
     input: Any = None
     ctx: dict[str, Any] = None
+
+
 class HTTPValidationError(BaseModel):
     detail: list[ValidationError] = None
+
+
 class OpenAISpeechRequest(BaseModel):
-    model: str = 'voxtral'
+    model: str = "voxtral"
     input: str
-    voice: str = 'nl_female'
-    language: str = 'nl'
-    response_format: str = 'mp3'
+    voice: str = "nl_female"
+    language: str = "nl"
+    response_format: str = "mp3"
     speed: float = 1.0
+
+
 class VoxtralExtendedRequest(BaseModel):
     text: str
-    voice_reference_path: str | None = 'nl_female'
-    language: str = 'nl'
-    emotion: str = 'neutral'
+    voice_reference_path: str | None = "nl_female"
+    language: str = "nl"
+    emotion: str = "neutral"
     nfe_steps: int = 16
     temperature: float = 0.7
-    output_filename: str = 'output.mp3'
+    output_filename: str = "output.mp3"
+
+
 class TranscriptWord(BaseModel):
     text: str
     start: float
     end: float
+
+
 class TranscriptSentence(BaseModel):
     id: str
     text: str
     start: float
     end: float
     words: list[TranscriptWord]
+
+
 class TranscriptDocument(BaseModel):
     lesson_id: str
     sentences: list[TranscriptSentence]
+
+
 class VoxtralTranscriptRequest(BaseModel):
     audio_path: str
     text: str
-    language: str | None = 'nl'
+    language: str | None = "nl"
     lesson_id: str | None = None
     transcript_filename: str | None = None
-    alignment_model_size: str = 'small'
+    alignment_model_size: str = "small"
     beam_size: int = 5
+
+
 class VoxtralTranscriptResponse(BaseModel):
     lesson_id: str
     sentences: list[TranscriptSentence]
@@ -82,7 +98,9 @@ class VoxtralClient:
         client: httpx.Client | None = None,
     ) -> None:
         normalized_base_url = self._normalize_base_url(base_url)
-        self._client = client or httpx.Client(base_url=normalized_base_url, timeout=timeout)
+        self._client = client or httpx.Client(
+            base_url=normalized_base_url, timeout=timeout
+        )
         self._owns_client = client is None
 
     def close(self) -> None:
@@ -151,7 +169,9 @@ class VoxtralClient:
         return self.voxtral_generate_transcript_v1_voxtral_transcript_post(request)
 
     def get_transcript(self, lesson_id: str) -> TranscriptDocument:
-        return self.voxtral_get_transcript_v1_voxtral_transcript__lesson_id__get(lesson_id)
+        return self.voxtral_get_transcript_v1_voxtral_transcript__lesson_id__get(
+            lesson_id
+        )
 
     @staticmethod
     def _raise_for_status(response: httpx.Response) -> None:

@@ -12,7 +12,6 @@ import yaml
 
 from course_compiler.cli import _audio_filename, _lesson_seed, main
 
-
 # ---------------------------------------------------------------------------
 # _lesson_seed
 # ---------------------------------------------------------------------------
@@ -89,11 +88,14 @@ def _make_flux_handler(png_bytes: bytes):
     return handler
 
 
-def test_generate_images_creates_files(tmp_path: Path, minimal_themes_yaml: Path, monkeypatch):
+def test_generate_images_creates_files(
+    tmp_path: Path, minimal_themes_yaml: Path, monkeypatch
+):
     fake_png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 8  # minimal fake PNG bytes
     out_dir = tmp_path / "img"
 
     import httpx as _httpx
+
     _RealClient = _httpx.Client
 
     monkeypatch.setattr(
@@ -107,8 +109,10 @@ def test_generate_images_creates_files(tmp_path: Path, minimal_themes_yaml: Path
     rc = main(
         [
             "generate-images",
-            "--themes-file", str(minimal_themes_yaml),
-            "--out", str(out_dir),
+            "--themes-file",
+            str(minimal_themes_yaml),
+            "--out",
+            str(out_dir),
             "--no-llm-prompt",
         ]
     )
@@ -118,7 +122,9 @@ def test_generate_images_creates_files(tmp_path: Path, minimal_themes_yaml: Path
     assert (out_dir / "A1" / "lesson002.png").read_bytes() == fake_png
 
 
-def test_generate_images_skips_existing(tmp_path: Path, minimal_themes_yaml: Path, monkeypatch):
+def test_generate_images_skips_existing(
+    tmp_path: Path, minimal_themes_yaml: Path, monkeypatch
+):
     out_dir = tmp_path / "img"
     existing = out_dir / "A1" / "lesson001.png"
     existing.parent.mkdir(parents=True)
@@ -129,10 +135,15 @@ def test_generate_images_skips_existing(tmp_path: Path, minimal_themes_yaml: Pat
     def handler(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
         calls.append(body.get("prompt", ""))
-        payload = {"images": [base64.b64encode(b"new").decode()], "parameters": {}, "info": ""}
+        payload = {
+            "images": [base64.b64encode(b"new").decode()],
+            "parameters": {},
+            "info": "",
+        }
         return httpx.Response(200, content=json.dumps(payload).encode())
 
     import httpx as _httpx
+
     _RealClient = _httpx.Client
 
     monkeypatch.setattr(
@@ -144,8 +155,10 @@ def test_generate_images_skips_existing(tmp_path: Path, minimal_themes_yaml: Pat
     main(
         [
             "generate-images",
-            "--themes-file", str(minimal_themes_yaml),
-            "--out", str(out_dir),
+            "--themes-file",
+            str(minimal_themes_yaml),
+            "--out",
+            str(out_dir),
             "--no-llm-prompt",
         ]
     )
@@ -155,13 +168,16 @@ def test_generate_images_skips_existing(tmp_path: Path, minimal_themes_yaml: Pat
     assert existing.read_bytes() == b"original"
 
 
-def test_generate_images_force_overwrites(tmp_path: Path, minimal_themes_yaml: Path, monkeypatch):
+def test_generate_images_force_overwrites(
+    tmp_path: Path, minimal_themes_yaml: Path, monkeypatch
+):
     out_dir = tmp_path / "img"
     existing = out_dir / "A1" / "lesson001.png"
     existing.parent.mkdir(parents=True)
     existing.write_bytes(b"original")
 
     import httpx as _httpx
+
     _RealClient = _httpx.Client
 
     monkeypatch.setattr(
@@ -175,8 +191,10 @@ def test_generate_images_force_overwrites(tmp_path: Path, minimal_themes_yaml: P
     main(
         [
             "generate-images",
-            "--themes-file", str(minimal_themes_yaml),
-            "--out", str(out_dir),
+            "--themes-file",
+            str(minimal_themes_yaml),
+            "--out",
+            str(out_dir),
             "--force",
             "--no-llm-prompt",
         ]
@@ -185,7 +203,9 @@ def test_generate_images_force_overwrites(tmp_path: Path, minimal_themes_yaml: P
     assert existing.read_bytes() == b"replaced"
 
 
-def test_generate_images_level_filter(tmp_path: Path, minimal_themes_yaml: Path, monkeypatch):
+def test_generate_images_level_filter(
+    tmp_path: Path, minimal_themes_yaml: Path, monkeypatch
+):
     """Add a second level to the YAML and verify --level filters it out."""
     data = yaml.safe_load(minimal_themes_yaml.read_text())
     data["A2"] = {
@@ -195,6 +215,7 @@ def test_generate_images_level_filter(tmp_path: Path, minimal_themes_yaml: Path,
 
     out_dir = tmp_path / "img"
     import httpx as _httpx
+
     _RealClient = _httpx.Client
 
     monkeypatch.setattr(
@@ -208,9 +229,12 @@ def test_generate_images_level_filter(tmp_path: Path, minimal_themes_yaml: Path,
     main(
         [
             "generate-images",
-            "--themes-file", str(minimal_themes_yaml),
-            "--out", str(out_dir),
-            "--level", "A1",
+            "--themes-file",
+            str(minimal_themes_yaml),
+            "--out",
+            str(out_dir),
+            "--level",
+            "A1",
             "--no-llm-prompt",
         ]
     )
@@ -244,6 +268,7 @@ def _audio_handler(request: httpx.Request) -> httpx.Response:
 def test_download_audio_creates_files(tmp_path: Path, audio_json: Path, monkeypatch):
     out_dir = tmp_path / "audio"
     import httpx as _httpx
+
     _RealClient = _httpx.Client
 
     monkeypatch.setattr(
@@ -255,8 +280,10 @@ def test_download_audio_creates_files(tmp_path: Path, audio_json: Path, monkeypa
     rc = main(
         [
             "download-audio",
-            "--audio-json", str(audio_json),
-            "--out", str(out_dir),
+            "--audio-json",
+            str(audio_json),
+            "--out",
+            str(out_dir),
         ]
     )
 
@@ -278,6 +305,7 @@ def test_download_audio_skips_existing(tmp_path: Path, audio_json: Path, monkeyp
         return httpx.Response(200, content=b"new")
 
     import httpx as _httpx
+
     _RealClient = _httpx.Client
 
     monkeypatch.setattr(
@@ -301,6 +329,7 @@ def test_download_audio_dry_run(tmp_path: Path, audio_json: Path, monkeypatch):
         return httpx.Response(200, content=b"data")
 
     import httpx as _httpx
+
     _RealClient = _httpx.Client
 
     monkeypatch.setattr(
@@ -309,7 +338,16 @@ def test_download_audio_dry_run(tmp_path: Path, audio_json: Path, monkeypatch):
         lambda **_: _RealClient(transport=_httpx.MockTransport(handler)),
     )
 
-    main(["download-audio", "--audio-json", str(audio_json), "--out", str(out_dir), "--dry-run"])
+    main(
+        [
+            "download-audio",
+            "--audio-json",
+            str(audio_json),
+            "--out",
+            str(out_dir),
+            "--dry-run",
+        ]
+    )
 
     assert not out_dir.exists()
     assert calls == []
@@ -318,6 +356,7 @@ def test_download_audio_dry_run(tmp_path: Path, audio_json: Path, monkeypatch):
 def test_download_audio_limit(tmp_path: Path, audio_json: Path, monkeypatch):
     out_dir = tmp_path / "audio"
     import httpx as _httpx
+
     _RealClient = _httpx.Client
 
     monkeypatch.setattr(
@@ -329,9 +368,12 @@ def test_download_audio_limit(tmp_path: Path, audio_json: Path, monkeypatch):
     main(
         [
             "download-audio",
-            "--audio-json", str(audio_json),
-            "--out", str(out_dir),
-            "--limit", "1",
+            "--audio-json",
+            str(audio_json),
+            "--out",
+            str(out_dir),
+            "--limit",
+            "1",
         ]
     )
 
@@ -343,8 +385,10 @@ def test_download_audio_missing_json(tmp_path: Path):
     rc = main(
         [
             "download-audio",
-            "--audio-json", str(tmp_path / "nonexistent.json"),
-            "--out", str(tmp_path / "out"),
+            "--audio-json",
+            str(tmp_path / "nonexistent.json"),
+            "--out",
+            str(tmp_path / "out"),
         ]
     )
     assert rc == 1
@@ -427,7 +471,9 @@ def _write_lesson(path: Path, *, lesson_id: str, text: str) -> None:
 def test_generate_audio_creates_mp3_and_transcript(tmp_path: Path, monkeypatch):
     course_dir = tmp_path / "courses" / "nl"
     lessons_dir = course_dir / "lessons" / "A1"
-    _write_lesson(lessons_dir / "lesson001.json", lesson_id="lesson001", text="Hallo daar")
+    _write_lesson(
+        lessons_dir / "lesson001.json", lesson_id="lesson001", text="Hallo daar"
+    )
 
     monkeypatch.setattr("course_compiler.audio.VoxtralClient", _FakeVoxtralClient)
 

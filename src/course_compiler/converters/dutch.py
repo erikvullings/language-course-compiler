@@ -243,7 +243,7 @@ def _english_translation(entry: dict) -> str | None:
             if text and text not in seen:
                 seen.add(text)
                 translations.append(text)
-    
+
     return " ; ".join(translations) if translations else None
 
 
@@ -322,12 +322,16 @@ def word_from_kaikki(
         part_of_speech=pos,
         translations={"en": translation} if translation else {},
         gender=_gender(entry) if pos is PartOfSpeech.NOUN else None,
-        plural=Plural(regular=plural_forms[0], alternatives=plural_forms[1:])
-        if plural_forms
-        else None,
-        diminutive=Diminutive(regular=dim_forms[0], alternatives=dim_forms[1:])
-        if dim_forms
-        else None,
+        plural=(
+            Plural(regular=plural_forms[0], alternatives=plural_forms[1:])
+            if plural_forms
+            else None
+        ),
+        diminutive=(
+            Diminutive(regular=dim_forms[0], alternatives=dim_forms[1:])
+            if dim_forms
+            else None
+        ),
         ipa=_ipa(entry),
         syllables=_syllables(entry),
         frequency=frequency,
@@ -449,7 +453,9 @@ def load_cefr_levels(path: str | Path) -> dict[str, str]:
                 if value and value != "-":
                     key = normalize(lemma)
                     current = levels.get(key)
-                    if current is None or _CEFR_ORDER.index(lvl) < _CEFR_ORDER.index(current):
+                    if current is None or _CEFR_ORDER.index(lvl) < _CEFR_ORDER.index(
+                        current
+                    ):
                         levels[key] = lvl
                     break
     return levels
@@ -639,14 +645,18 @@ def convert(
     words_json: list[dict] = []
     verbs_json: list[dict] = []
     for verb in verbs:
-        (verbs_dir / f"{_safe_name(verb.id)}.yaml").write_text(to_yaml(verb), encoding="utf-8")
+        (verbs_dir / f"{_safe_name(verb.id)}.yaml").write_text(
+            to_yaml(verb), encoding="utf-8"
+        )
         verbs_json.append(
             _compact_aggregate_row(
                 verb.model_dump(by_alias=True, exclude_none=True, mode="json")
             )
         )
     for word in words:
-        (words_dir / f"{_safe_name(word.id)}.yaml").write_text(to_yaml(word), encoding="utf-8")
+        (words_dir / f"{_safe_name(word.id)}.yaml").write_text(
+            to_yaml(word), encoding="utf-8"
+        )
         words_json.append(
             _compact_aggregate_row(
                 word.model_dump(by_alias=True, exclude_none=True, mode="json")
@@ -757,7 +767,5 @@ def convert_iterables(
                 words.append(word)
 
     if budgets:
-        reassign_cefr_by_budget(
-            words, verbs, budgets, linkers=linkers, opaque=opaque
-        )
+        reassign_cefr_by_budget(words, verbs, budgets, linkers=linkers, opaque=opaque)
     return words, verbs

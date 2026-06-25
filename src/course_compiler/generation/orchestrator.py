@@ -196,7 +196,9 @@ def _resolve_seed_words(
     """
     return [
         lemma
-        for _, lemma in _resolve_seed_pairs(words, seed_words, theme_tokens=theme_tokens)
+        for _, lemma in _resolve_seed_pairs(
+            words, seed_words, theme_tokens=theme_tokens
+        )
     ]
 
 

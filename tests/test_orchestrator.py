@@ -517,7 +517,9 @@ def test_generate_non_introduced_verb_forms_are_in_level_not_unresolved():
     assigner = _StubThemeAssigner({"home": ["huis"]})
     orc = LessonOrchestrator(generator, assigner, predefined_themes={})
 
-    lessons = orc.generate(words, language="Dutch", cefr="A1", verbs=[zijn], model="stub")
+    lessons = orc.generate(
+        words, language="Dutch", cefr="A1", verbs=[zijn], model="stub"
+    )
     assert lessons[0].fallback is False
     assert lessons[0].violations == frozenset()
 
@@ -857,8 +859,13 @@ def test_verb_hints_resolve_to_verbs_via_english_glosses():
     # The 'have' verb lives in a separate file as a stub without seedWords; before
     # the stub carried its gloss, an English verb hint could never reach it.
     have = Verb(
-        id="hebben", language="nl", lemma="hebben", infinitive="hebben",
-        cefr="A1", frequency=Frequency(rank=42), present={"ik": "heb"},
+        id="hebben",
+        language="nl",
+        lemma="hebben",
+        infinitive="hebben",
+        cefr="A1",
+        frequency=Frequency(rank=42),
+        present={"ik": "heb"},
         translations={"en": "to have"},
     )
     generator = LessonGenerator(_StubProvider(), _IdentityLemmatizer())
@@ -890,14 +897,24 @@ def test_form_pointer_verbs_are_excluded_and_seed_glosses_recorded():
     """Inflected-form verb entries are dropped; resolved lemmas record their meaning."""
     words = [_word("winkel", rank=50, en="shop")]
     pay = Verb(
-        id="betalen", language="nl", lemma="betalen", infinitive="betalen",
-        cefr="A1", frequency=Frequency(rank=100), present={"ik": "betaal"},
+        id="betalen",
+        language="nl",
+        lemma="betalen",
+        infinitive="betalen",
+        cefr="A1",
+        frequency=Frequency(rank=100),
+        present={"ik": "betaal"},
         translations={"en": "pay"},
     )
     # Bogus verb entry: an inflected form of 'winkelen', not a real infinitive.
     bogus = Verb(
-        id="winkel", language="nl", lemma="winkel", infinitive="winkel",
-        cefr="A1", frequency=Frequency(rank=60), present={"ik": "winkel"},
+        id="winkel",
+        language="nl",
+        lemma="winkel",
+        infinitive="winkel",
+        cefr="A1",
+        frequency=Frequency(rank=60),
+        present={"ik": "winkel"},
         translations={"en": "inflection of winkelen:"},
     )
     generator = LessonGenerator(_StubProvider(), _IdentityLemmatizer())
