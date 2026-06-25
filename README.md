@@ -157,6 +157,54 @@ This writes:
 - `exercises.json`
 - `lessons/lesson001.json`, `lessons/lesson002.json`, ...
 
+### Generate lesson audio + karaoke transcript
+
+Use Voxtral (OpenAPI-compatible TTS + alignment service) to create one mp3 and
+one word-timestamp transcript per lesson JSON file.
+
+```bash
+course generate-audio --lang nl --cefr A1
+```
+
+Generate only one lesson:
+
+```bash
+course generate-audio --lang nl --cefr A1 --lesson-id lesson003
+```
+
+Override input path or voice settings:
+
+```bash
+course generate-audio \
+  --lang nl --cefr A1 \
+  --lessons-dir courses/nl/lessons/A1 \
+  --voice nl_female \
+  --speed 1.0
+```
+
+Outputs:
+
+- `courses/<lang>/audio/<cefr>/<lessonId>.mp3`
+- `courses/<lang>/audio/transcripts/<cefr>/<lessonId>.json`
+
+Required `.env` settings:
+
+- `VOXTRAL_BASE_URL` (for example `http://localhost:8001`)
+- `VOXTRAL_TIMEOUT` (seconds)
+
+### Regenerate Voxtral API client from OpenAPI
+
+The Voxtral client is generated into a standalone file from the live OpenAPI
+schema exposed by the running service.
+
+```bash
+uv run python scripts/generate_voxtral_client.py
+```
+
+This rewrites:
+
+- `src/course_compiler/audio/voxtral_client.py`
+
 ## Using the LLM module directly
 
 ```python

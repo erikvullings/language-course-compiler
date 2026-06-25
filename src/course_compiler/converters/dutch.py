@@ -219,7 +219,14 @@ def _is_form_pointer_gloss(gloss: str | None) -> bool:
 
 
 def _english_translation(entry: dict) -> str | None:
-    """Best single English equivalent, taken from the first usable gloss."""
+    """All English equivalents from all senses, joined by " ; ".
+
+    Collects the first gloss fragment from each sense, removes article prefixes,
+    deduplicates, and joins with " ; ". This preserves all meanings from Wiktionary.
+    E.g., lopen → "to run; to walk; to stretch; to be current; to progress".
+    """
+    translations: list[str] = []
+    seen: set[str] = set()
 
     for sense in entry.get("senses") or []:
         for gloss in sense.get("glosses") or []:
@@ -232,8 +239,12 @@ def _english_translation(entry: dict) -> str | None:
                     text = text[len(prefix) :]
                     break
             # Keep only the first listed sense fragment, e.g. "house, home" -> "house".
-            return text.split(",")[0].split(";")[0].strip()
-    return None
+            text = text.split(",")[0].split(";")[0].strip()
+            if text and text not in seen:
+                seen.add(text)
+                translations.append(text)
+    
+    return " ; ".join(translations) if translations else None
 
 
 def _audio_url(entry: dict) -> str | None:

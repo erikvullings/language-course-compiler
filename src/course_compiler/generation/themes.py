@@ -6,10 +6,11 @@ implements it using an LLM call (with optional disk caching for reproducibility)
 
 from __future__ import annotations
 
-import math
 import hashlib
 import json
+import math
 import re
+import sys
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -19,7 +20,7 @@ from course_compiler.models import Word
 
 _FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL)
 
-_SYSTEM_PROMPT = (
+_THEME_ASSIGN_INSTRUCTIONS = (
     "You are a language-teaching curriculum designer. "
     "You will receive a list of vocabulary lemmas and must group them into "
     "semantic themes suitable for language lessons (e.g. 'home', 'food', 'transport'). "
@@ -28,7 +29,7 @@ _SYSTEM_PROMPT = (
     "Use concise English theme names. No explanation, only JSON."
 )
 
-_LESSON_PLAN_SYSTEM_PROMPT = (
+_LESSON_PLAN_INSTRUCTIONS = (
     "You are a language-course planner. "
     "You will receive CEFR level, vocabulary list, and words-per-lesson (n). "
     "First determine lesson_count = ceil(vocabulary_size / n). "
@@ -105,32 +106,44 @@ class LLMThemeAssigner:
         model: str | None = None,
         *,
         cache: LLMCache | None = None,
+        verbose: bool = False,
     ) -> None:
         self._provider = provider
         self._model = model or ""
         self._cache = cache
+        self._verbose = verbose
+
+    def _log_messages(self, label: str, messages: list[Message]) -> None:
+        if not self._verbose:
+            return
+        print(f"[llm][themes][{label}] prompt follows", file=sys.stderr)
+        for index, message in enumerate(messages, start=1):
+            print(
+                f"--- message {index} ({message.role.value}) ---",
+                file=sys.stderr,
+            )
+            print(message.content, file=sys.stderr)
 
     def assign(self, words: list[Word]) -> dict[str, list[Word]]:
         by_lemma = {w.lemma: w for w in words}
         lemmas = sorted(by_lemma)
 
         # Build a synthetic single-turn message list for cache keying.
-        raw_messages = [
-            {"role": "system", "content": _SYSTEM_PROMPT},
-            {"role": "user", "content": json.dumps(lemmas, ensure_ascii=False)},
-        ]
+        prompt = (
+            f"{_THEME_ASSIGN_INSTRUCTIONS}\n\n"
+            f"Lemmas:\n{json.dumps(lemmas, ensure_ascii=False)}"
+        )
+        raw_messages = [{"role": "user", "content": prompt}]
 
         if self._cache is not None:
             cached = self._cache.get(self._model, raw_messages)
             if cached is not None:
                 return self._parse(cached.content, by_lemma)
 
-        messages = [
-            Message(Role.SYSTEM, _SYSTEM_PROMPT),
-            Message(Role.USER, json.dumps(lemmas, ensure_ascii=False)),
-        ]
+        messages = [Message(Role.USER, prompt)]
 
         try:
+            self._log_messages("assign", messages)
             response = self._provider.complete(messages, model=self._model or None)
             parsed = self._parse(response.content, by_lemma)
         except (LLMError, json.JSONDecodeError, TypeError, ValueError):
@@ -171,10 +184,11 @@ class LLMThemeAssigner:
             "lesson_count": lesson_count,
             "lemmas": lemmas,
         }
-        raw_messages = [
-            {"role": "system", "content": _LESSON_PLAN_SYSTEM_PROMPT},
-            {"role": "user", "content": json.dumps(user_payload, ensure_ascii=False)},
-        ]
+        prompt = (
+            f"{_LESSON_PLAN_INSTRUCTIONS}\n\n"
+            f"Input:\n{json.dumps(user_payload, ensure_ascii=False)}"
+        )
+        raw_messages = [{"role": "user", "content": prompt}]
 
         if self._cache is not None:
             cached = self._cache.get(self._model, raw_messages)
@@ -185,12 +199,10 @@ class LLMThemeAssigner:
                     words_per_lesson=words_per_lesson,
                 )
 
-        messages = [
-            Message(Role.SYSTEM, _LESSON_PLAN_SYSTEM_PROMPT),
-            Message(Role.USER, json.dumps(user_payload, ensure_ascii=False)),
-        ]
+        messages = [Message(Role.USER, prompt)]
 
         try:
+            self._log_messages("plan_lessons", messages)
             response = self._provider.complete(messages, model=self._model or None)
             parsed = self._parse_lesson_plan(
                 response.content,
@@ -210,7 +222,9 @@ class LLMThemeAssigner:
         result: dict[str, list[Word]] = {}
         assigned: set[str] = set()
         for theme, lemma_list in raw.items():
-            result[theme] = [by_lemma[l] for l in lemma_list if l in by_lemma]
+            result[theme] = [
+                by_lemma[lemma] for lemma in lemma_list if lemma in by_lemma
+            ]
             assigned.update(lemma_list)
         leftover = [w for lemma, w in by_lemma.items() if lemma not in assigned]
         if leftover:
@@ -255,10 +269,18 @@ class LLMThemeAssigner:
 
             while len(seeds) < min_seed:
                 candidate = next(
-                    (l for l in lemmas if l not in used and l not in seeds), None
+                    (
+                        lemma
+                        for lemma in lemmas
+                        if lemma not in used and lemma not in seeds
+                    ),
+                    None,
                 )
                 if candidate is None:
-                    candidate = next((l for l in lemmas if l not in seeds), None)
+                    candidate = next(
+                        (lemma for lemma in lemmas if lemma not in seeds),
+                        None,
+                    )
                 if candidate is None:
                     break
                 seeds.append(candidate)
@@ -266,7 +288,7 @@ class LLMThemeAssigner:
             used.update(seeds)
             lessons.append(LessonThemePlan(theme=theme, seed_lemmas=seeds))
 
-        remaining = [l for l in lemmas if l not in used]
+        remaining = [lemma for lemma in lemmas if lemma not in used]
         if remaining and lessons:
             cursor = 0
             for lemma in remaining:

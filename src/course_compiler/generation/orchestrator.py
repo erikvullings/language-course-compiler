@@ -962,6 +962,9 @@ class LessonOrchestrator:
         for verb in verbs or []:
             if verb.cefr is not None:
                 cefr_lookup[verb.infinitive] = verb.cefr
+                for form in _verb_surface_forms(verb):
+                    for token in _tokens(form):
+                        cefr_lookup[token] = verb.cefr
 
         plans = self.plan(words, cefr=cefr, verbs=verbs, language=language)
         for plan in plans:

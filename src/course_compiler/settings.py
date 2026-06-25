@@ -45,6 +45,9 @@ class Settings:
     azure_openai_deployment: str = ""
     azure_openai_api_version: str = AZURE_API_VERSION
 
+    voxtral_base_url: str = "http://localhost:8001"
+    voxtral_timeout: float = 120.0
+
     @classmethod
     def load(
         cls,
@@ -83,4 +86,6 @@ class Settings:
             azure_openai_endpoint=_get(env, "AZURE_OPENAI_ENDPOINT", cls.azure_openai_endpoint),
             azure_openai_deployment=_get(env, "AZURE_OPENAI_DEPLOYMENT", cls.azure_openai_deployment),
             azure_openai_api_version=_get(env, "AZURE_OPENAI_API_VERSION", cls.azure_openai_api_version),
+            voxtral_base_url=_get(env, "VOXTRAL_BASE_URL", cls.voxtral_base_url),
+            voxtral_timeout=float(_get(env, "VOXTRAL_TIMEOUT", str(cls.voxtral_timeout))),
         )

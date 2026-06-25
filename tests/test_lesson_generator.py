@@ -105,7 +105,7 @@ def test_target_length_floor():
 # ---------------------------------------------------------------------------
 
 
-def test_generate_language_in_system_prompt():
+def test_generate_language_in_user_prompt():
     provider = _StubProvider(["huis"])
     gen = LessonGenerator(provider, _lemmatizer(["huis"]))
     gen.generate("lesson001", ["huis"], {"huis"}, language="Dutch", model="stub")
@@ -118,7 +118,7 @@ def test_generate_cefr_in_user_prompt():
     gen.generate(
         "lesson001", ["huis"], {"huis"}, language="Dutch", cefr="A1", model="stub"
     )
-    assert "A1" in provider._calls[0][1].content
+    assert "A1" in provider._calls[0][0].content
 
 
 def test_generate_theme_in_user_prompt():
@@ -127,7 +127,19 @@ def test_generate_theme_in_user_prompt():
     gen.generate(
         "lesson001", ["huis"], {"huis"}, language="Dutch", theme="home", model="stub"
     )
-    assert "home" in provider._calls[0][1].content
+    assert "home" in provider._calls[0][0].content
+
+
+def test_user_prompt_requests_title_text_format_and_grammar_check():
+    provider = _StubProvider(["huis"])
+    gen = LessonGenerator(provider, _lemmatizer(["huis"]))
+    gen.generate("lesson001", ["huis"], {"huis"}, language="Dutch", model="stub")
+    user_prompt = provider._calls[0][0].content
+    assert "verb agrees with its subject" in user_prompt
+    assert "MUST be 2-6 words exactly" in user_prompt
+    assert "TITLE: <title>" in user_prompt
+    assert "TEXT: <markdown_text>" in user_prompt
+    assert "Dutch grammar checklist" in user_prompt
 
 
 def test_low_cefr_system_prompt_allows_frequent_simple_past_forms():
@@ -136,9 +148,9 @@ def test_low_cefr_system_prompt_allows_frequent_simple_past_forms():
     gen.generate(
         "lesson001", ["huis"], {"huis"}, language="Dutch", cefr="A1", model="stub"
     )
-    system_prompt = provider._calls[0][0].content
-    assert "Prefer present tense" in system_prompt
-    assert "equivalents of 'was/were'" in system_prompt
+    user_prompt = provider._calls[0][0].content
+    assert "Prefer present tense" in user_prompt
+    assert "equivalents of 'was/were'" in user_prompt
 
 
 def test_allowed_words_not_in_prompt():
@@ -178,6 +190,54 @@ def test_generate_returns_valid_content():
     assert result.lesson_id == "lesson001"
 
 
+def test_generate_parses_json_title_and_text_payload():
+    provider = _StubProvider(
+        ['{"title":"Mijn Kleine Stad","text":"ik woon in een stad"}']
+    )
+    gen = LessonGenerator(provider, _lemmatizer(["ik", "woon", "in", "een", "stad"]))
+    result = gen.generate(
+        "lesson001",
+        ["stad"],
+        {"ik", "woon", "in", "een", "stad"},
+        language="Dutch",
+        model="stub",
+    )
+    assert result.title == "Mijn Kleine Stad"
+    assert result.content == "ik woon in een stad"
+
+
+def test_generate_shortens_overlong_json_title():
+    provider = _StubProvider(
+        [
+            '{"title":"Dit Is Een Erg Lange Titel Voor Een Korte Les","text":"ik woon in een stad"}'
+        ]
+    )
+    gen = LessonGenerator(provider, _lemmatizer(["ik", "woon", "in", "een", "stad"]))
+    result = gen.generate(
+        "lesson001",
+        ["stad"],
+        {"ik", "woon", "in", "een", "stad"},
+        language="Dutch",
+        model="stub",
+    )
+    # Titles longer than 6 words are aggressively shortened to first 4 words
+    assert result.title == "Dit Is Een Erg"
+
+
+def test_generate_parses_title_text_output_format():
+    provider = _StubProvider(["TITLE: Mijn Tuin\nTEXT: ik werk in de tuin"])
+    gen = LessonGenerator(provider, _lemmatizer(["ik", "werk", "in", "de", "tuin"]))
+    result = gen.generate(
+        "lesson001",
+        ["tuin"],
+        {"ik", "werk", "in", "de", "tuin"},
+        language="Dutch",
+        model="stub",
+    )
+    assert result.title == "Mijn Tuin"
+    assert result.content == "ik werk in de tuin"
+
+
 def test_extra_word_at_same_cefr_is_tolerated():
     """An extra word at the same CEFR level passes without retry."""
     mapping = {"huis": "huis", "tafel": "tafel"}
@@ -215,8 +275,8 @@ def test_extra_word_above_cefr_triggers_retry_with_fresh_sampling():
     )
     assert result.content == "huis"
     assert len(provider._calls) == 2
-    assert len(provider._calls[0]) == 2
-    assert len(provider._calls[1]) == 2
+    assert len(provider._calls[0]) == 1
+    assert len(provider._calls[1]) == 1
 
 
 def test_retry_messages_use_fresh_single_turn_prompt_each_attempt():
@@ -231,10 +291,10 @@ def test_retry_messages_use_fresh_single_turn_prompt_each_attempt():
         language="Dutch",
         model="stub",
     )
-    # First call: 2 messages (system + user)
-    assert len(provider._calls[0]) == 2
+    # First call: 1 message (single user prompt)
+    assert len(provider._calls[0]) == 1
     # Second call stays single-turn as well.
-    assert len(provider._calls[1]) == 2
+    assert len(provider._calls[1]) == 1
 
 
 def test_corrective_retry_strategy_uses_feedback_turns():
@@ -253,9 +313,9 @@ def test_corrective_retry_strategy_uses_feedback_turns():
         model="stub",
     )
     assert result.content == "huis"
-    assert len(provider._calls[0]) == 2
+    assert len(provider._calls[0]) == 1
     # Second call includes assistant draft + user correction request.
-    assert len(provider._calls[1]) == 4
+    assert len(provider._calls[1]) == 3
 
 
 def test_function_words_are_exempt():

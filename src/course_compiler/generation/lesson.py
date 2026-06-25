@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+import re
+import sys
 from dataclasses import dataclass
 from typing import Literal
 
@@ -30,6 +33,7 @@ class GeneratedLesson:
     lesson_id: str
     content: str
     attempts: int
+    title: str | None = None
     tolerated: frozenset[str] = frozenset()
     fallback: bool = False
     violations: frozenset[str] = frozenset()
@@ -38,6 +42,10 @@ class GeneratedLesson:
 
 
 _LOW_CEFR: frozenset[str] = frozenset({"A1", "A2"})
+_JSON_FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL)
+_TITLE_TEXT_RE = re.compile(
+    r"(?is)^\s*TITLE:\s*(.*?)\s*^\s*TEXT:\s*(.*)$", re.MULTILINE
+)
 
 
 def _tense_guidance(cefr: str) -> str:
@@ -51,16 +59,107 @@ def _tense_guidance(cefr: str) -> str:
     return ""
 
 
-def _system_prompt(language: str, target_length: str, cefr: str = "") -> str:
+def _user_instructions(language: str, target_length: str, cefr: str = "") -> str:
     return (
-        f"You are a language-learning content writer. "
-        f"Write a short lesson in {language}, approximately {target_length}. "
-        f"Introduce each new word naturally in context. "
+        "You are a language course lesson writer. "
+        f"Write a short story in {language} with less than {target_length} at CEFR {cefr}. "
+        "Introduce each new word naturally in context. "
         f"Keep the vocabulary at the stated CEFR level — do not use advanced words. "
         f"{_tense_guidance(cefr)}"
+        "Before returning, verify spelling and grammar agreement "
+        "(including subject-verb agreement) "
+        "and correct any errors. "
         f"Articles, prepositions, conjunctions, and common pronouns may be used freely. "
-        f"Respond with lesson text only — no headings, no word lists, no meta-commentary."
+        "Use plain paragraphs with minimal Markdown. "
+        "Do not italicize or bold full sentences/lines. "
+        "If you add emphasis, keep it sparse (at most a few words, not whole dialogue). "
+        "Before returning, apply this Dutch grammar checklist: "
+        "(1) Every verb agrees with its subject (ik ben, jij bent, hij is, etc.). "
+        "(2) Every sentence has a complete structure (subject-verb-object where applicable). "
+        "(3) No fragments or incomplete thoughts. "
+        "(4) Correct prepositions and word order. "
+        "Fix all errors found. "
+        "Only output the title and markdown text in this exact format: "
+        "TITLE: <title>\n"
+        "TEXT: <markdown_text>. "
+        "The title MUST be 2-6 words exactly, noun-phrase style, "
+        "not a sentence fragment, and not a question. "
+        "No markdown fences and no commentary outside TITLE/TEXT."
     )
+
+
+def _extract_json_payload(raw: str) -> dict[str, object] | None:
+    text = raw.strip()
+    if not text:
+        return None
+    candidates = [text]
+    fenced = _JSON_FENCE_RE.search(text)
+    if fenced is not None:
+        candidates.append(fenced.group(1).strip())
+    for candidate in candidates:
+        try:
+            loaded = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(loaded, dict):
+            return loaded
+    return None
+
+
+def _extract_labeled_payload(raw: str) -> tuple[str | None, str] | None:
+    match = _TITLE_TEXT_RE.search(raw.strip())
+    if match is None:
+        return None
+    title = match.group(1).strip()
+    text = match.group(2).strip()
+    if not text:
+        return None
+    return (title or None), text
+
+
+def _shorten_title(title: str, fallback_text: str) -> str:
+    base = title.strip()
+    if not base:
+        for line in fallback_text.splitlines():
+            stripped = line.strip().lstrip("#").strip()
+            if stripped:
+                base = stripped
+                break
+
+    # Remove trailing punctuation
+    while base and base[-1] in ".!?,;:":
+        base = base[:-1].strip()
+
+    words = [w for w in base.split() if w]
+
+    # If title is already suspiciously long (looks like a full sentence or paragraph),
+    # take only the first few words as a conservative estimate.
+    if len(words) > 8:
+        base = " ".join(words[:4])  # Reduce to first 4 words for long inputs
+    elif len(words) > 6:
+        base = " ".join(words[:6])
+
+    return base.strip()
+
+
+def _extract_title_and_text(raw: str) -> tuple[str | None, str]:
+    labeled = _extract_labeled_payload(raw)
+    if labeled is not None:
+        title, text = labeled
+        return _shorten_title(title or "", text) or None, text
+
+    payload = _extract_json_payload(raw)
+    if payload is None:
+        return None, raw
+
+    text_value = payload.get("text")
+    text = text_value.strip() if isinstance(text_value, str) else ""
+    if not text:
+        return None, raw
+
+    title_value = payload.get("title")
+    title = title_value.strip() if isinstance(title_value, str) else ""
+    return _shorten_title(title, text) or None, text
 
 
 def _feedback_message(result: ValidationResult, cefr_target: str) -> str:
@@ -105,10 +204,11 @@ class LessonGenerator:
         function_lemmas: set[str] | None = None,
         cache: LLMCache | None = None,
         max_retries: int = 5,
-        extra_tolerance: float = 0.5,
+        extra_tolerance: float | None = 0.5,
         retry_strategy: Literal["natural", "corrective"] = "natural",
         fail_open_on_llm_error: bool = True,
         fail_open_on_validation_error: bool = True,
+        verbose: bool = False,
     ) -> None:
         self._provider = provider
         self._validator = VocabularyValidator(lemmatizer, function_lemmas)
@@ -118,6 +218,21 @@ class LessonGenerator:
         self._retry_strategy: Literal["natural", "corrective"] = retry_strategy
         self._fail_open_on_llm_error = fail_open_on_llm_error
         self._fail_open_on_validation_error = fail_open_on_validation_error
+        self._verbose = verbose
+
+    def _log_messages(self, attempt: int, messages: list[Message]) -> None:
+        if not self._verbose:
+            return
+        print(
+            f"[llm][lesson][attempt {attempt}] prompt follows",
+            file=sys.stderr,
+        )
+        for index, message in enumerate(messages, start=1):
+            print(
+                f"--- message {index} ({message.role.value}) ---",
+                file=sys.stderr,
+            )
+            print(message.content, file=sys.stderr)
 
     def _build_initial_messages(
         self,
@@ -144,6 +259,7 @@ class LessonGenerator:
         goals = communicative_goals or []
         verbs = verb_lemmas or []
         user_content = (
+            f"{_user_instructions(language, target_length, cefr)}\n\n"
             f"Lesson ID: {lesson_id}\n"
             f"CEFR level: {cefr}\n"
             f"Theme: {theme}\n"
@@ -153,10 +269,7 @@ class LessonGenerator:
             f"New words to introduce: {', '.join(rendered_words)}\n\n"
             "Write the lesson now."
         )
-        return [
-            Message(Role.SYSTEM, _system_prompt(language, target_length, cefr)),
-            Message(Role.USER, user_content),
-        ]
+        return [Message(Role.USER, user_content)]
 
     def generate(
         self,
@@ -229,6 +342,7 @@ class LessonGenerator:
                     )
 
             try:
+                self._log_messages(attempt, messages)
                 response = self._provider.complete(
                     messages, model=model, temperature=temperature
                 )
@@ -249,8 +363,10 @@ class LessonGenerator:
             if self._cache is not None and attempt == 1:
                 self._cache.put(resolved_model, raw_messages, response)
 
+            parsed_title, parsed_text = _extract_title_and_text(response.content)
+
             result: ValidationResult = self._validator.validate(
-                response.content,
+                parsed_text,
                 allowed_words,
                 extra_function_lemmas=function_lemmas,
                 cefr_target=cefr,
@@ -271,19 +387,20 @@ class LessonGenerator:
                 or len(result.violations) < len(best_result.violations)
                 or (
                     len(result.violations) == len(best_result.violations)
-                    and response.content.strip()
+                    and parsed_text.strip()
                     and best_content is not None
-                    and len(response.content) > len(best_content)
+                    and len(parsed_text) > len(best_content)
                 )
             ):
-                best_content = response.content
+                best_content = parsed_text
                 best_result = result
                 best_attempt = attempt
 
             if result.is_valid:
                 return GeneratedLesson(
                     lesson_id=lesson_id,
-                    content=response.content,
+                    content=parsed_text,
+                    title=parsed_title,
                     attempts=attempt,
                     tolerated=result.tolerated,
                     best_attempt=attempt,

@@ -491,6 +491,37 @@ def test_generate_verb_forms_exempt_from_validation():
     assert lessons[0].content == "loop loopt lopen"
 
 
+def test_generate_non_introduced_verb_forms_are_in_level_not_unresolved():
+    """Conjugations of CEFR-level verbs stay valid even when the infinitive is not introduced yet."""
+
+    class _VerbFormProvider(LLMProvider):
+        def complete(
+            self, prompt: PromptInput, *, model=None, temperature=None, **kwargs
+        ) -> LLMResponse:
+            return LLMResponse(content="ben is huis", model=model or "stub", raw={})
+
+        async def acomplete(
+            self, prompt: PromptInput, *, model=None, temperature=None, **kwargs
+        ) -> LLMResponse:
+            return self.complete(prompt, model=model, temperature=temperature)
+
+    words = [_word("huis", cefr="A1")]
+    # 'zijn' exists in the CEFR-level verb inventory, but is not introduced in this lesson.
+    zijn = _verb("zijn", cefr="A1", ik="ben", hij="is")
+
+    generator = LessonGenerator(
+        lemmatizer=_IdentityLemmatizer(),
+        provider=_VerbFormProvider(),
+        extra_tolerance=None,
+    )
+    assigner = _StubThemeAssigner({"home": ["huis"]})
+    orc = LessonOrchestrator(generator, assigner, predefined_themes={})
+
+    lessons = orc.generate(words, language="Dutch", cefr="A1", verbs=[zijn], model="stub")
+    assert lessons[0].fallback is False
+    assert lessons[0].violations == frozenset()
+
+
 def test_generate_function_lemmas_passed_through():
     """function_lemmas from the plan are forwarded to the generator/validator."""
     article = _word("de", pos=PartOfSpeech.ARTICLE, cefr="A1")

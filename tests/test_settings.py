@@ -14,6 +14,8 @@ def test_defaults_when_env_is_empty():
     assert settings.llm_thinking is False
     assert settings.llm_timeout == 300.0
     assert settings.llm_max_retries == 2
+    assert settings.voxtral_base_url == "http://localhost:8001"
+    assert settings.voxtral_timeout == 120.0
 
 
 def test_env_values_override_defaults():
@@ -37,3 +39,14 @@ def test_env_values_override_defaults():
 def test_blank_values_fall_back_to_defaults():
     settings = Settings.load(env={"OLLAMA_MODEL": ""})
     assert settings.ollama_model == "llama3"
+
+
+def test_voxtral_env_values_override_defaults():
+    settings = Settings.load(
+        env={
+            "VOXTRAL_BASE_URL": "http://localhost:9000/docs",
+            "VOXTRAL_TIMEOUT": "42",
+        }
+    )
+    assert settings.voxtral_base_url == "http://localhost:9000/docs"
+    assert settings.voxtral_timeout == 42.0

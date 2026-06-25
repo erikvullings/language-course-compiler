@@ -7,7 +7,7 @@ import json
 import yaml
 
 from course_compiler.cli import main
-from course_compiler.llm.base import LLMProvider, LLMResponse, Message, PromptInput
+from course_compiler.llm.base import LLMProvider, LLMResponse, PromptInput
 
 
 class _GenerateLessonsProvider(LLMProvider):
@@ -53,6 +53,43 @@ class _GenerateLessonsProvider(LLMProvider):
         **kwargs: object,
     ) -> LLMResponse:
         return self.complete(prompt, model=model, temperature=temperature, **kwargs)
+
+
+class _GenerateLessonsJsonProvider(_GenerateLessonsProvider):
+    def complete(
+        self,
+        prompt: PromptInput,
+        *,
+        model: str | None = None,
+        temperature: float | None = None,
+        **kwargs: object,
+    ) -> LLMResponse:
+        from course_compiler.llm.base import to_messages
+
+        messages = to_messages(prompt)
+        user = messages[0].content if messages else ""
+
+        if "language-course planner" in user:
+            content = json.dumps(
+                {"lessons": [{"theme": "home", "seed_lemmas": ["huis", "deur"]}]}
+            )
+            return LLMResponse(content=content, model=model or "stub", raw={})
+
+        if "writer" in user:
+            return LLMResponse(
+                content=json.dumps(
+                    {"title": "Korte Titel", "text": "huis deur"},
+                    ensure_ascii=False,
+                ),
+                model=model or "stub",
+                raw={},
+            )
+
+        return LLMResponse(
+            content=json.dumps({"home": ["huis", "deur"]}),
+            model=model or "stub",
+            raw={},
+        )
 
 
 def _write_minimal_lexicon(course_dir):
@@ -500,3 +537,63 @@ def test_generate_lessons_accepts_no_cache_flag(tmp_path, monkeypatch):
 
     assert rc == 0
     assert (out_dir / "lesson001.json").exists()
+
+
+def test_generate_lessons_uses_json_title_when_provided(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "course_compiler.cli.create_provider",
+        lambda settings: _GenerateLessonsJsonProvider(),
+    )
+
+    course_dir = tmp_path / "courses" / "nl"
+    _write_minimal_lexicon(course_dir)
+    out_dir = tmp_path / "out"
+
+    rc = main(
+        [
+            "generate-lessons",
+            "--lang",
+            "nl",
+            "--cefr",
+            "A1",
+            "--lexicon",
+            str(course_dir),
+            "--out",
+            str(out_dir),
+        ]
+    )
+
+    assert rc == 0
+    payload = json.loads((out_dir / "lesson001.json").read_text(encoding="utf-8"))
+    assert payload["title"] == "Korte Titel"
+    assert payload["text"] == "huis deur"
+
+
+def test_generate_lessons_verbose_logs_prompts_to_stderr(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(
+        "course_compiler.cli.create_provider",
+        lambda settings: _GenerateLessonsProvider(),
+    )
+
+    course_dir = tmp_path / "courses" / "nl"
+    _write_minimal_lexicon(course_dir)
+    out_dir = tmp_path / "out"
+
+    rc = main(
+        [
+            "generate-lessons",
+            "--lang",
+            "nl",
+            "--cefr",
+            "A1",
+            "--lexicon",
+            str(course_dir),
+            "--out",
+            str(out_dir),
+            "--verbose",
+        ]
+    )
+
+    assert rc == 0
+    captured = capsys.readouterr()
+    assert "[llm][lesson][attempt 1]" in captured.err

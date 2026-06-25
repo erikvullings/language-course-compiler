@@ -348,3 +348,132 @@ def test_download_audio_missing_json(tmp_path: Path):
         ]
     )
     assert rc == 1
+
+
+# ---------------------------------------------------------------------------
+# generate-audio
+# ---------------------------------------------------------------------------
+
+
+class _FakeTranscript:
+    def __init__(self, payload: dict):
+        self._payload = payload
+
+    def model_dump(self, mode: str = "json") -> dict:
+        return dict(self._payload)
+
+
+class _FakeVoxtralClient:
+    def __init__(self, *, base_url: str, timeout: float):
+        self.base_url = base_url
+        self.timeout = timeout
+        self.calls: list[tuple[str, object]] = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        return None
+
+    def synthesize_speech(self, request) -> bytes:
+        self.calls.append(("speech", request))
+        return b"ID3fake"
+
+    def generate_transcript(self, request):
+        self.calls.append(("transcript", request))
+        return _FakeTranscript(
+            {
+                "lesson_id": request.lesson_id,
+                "audio_path": request.audio_path,
+                "transcript_path": request.audio_path.replace(".mp3", ".json"),
+                "sentences": [
+                    {
+                        "id": "s1",
+                        "text": "Hallo wereld",
+                        "start": 0.0,
+                        "end": 1.0,
+                        "words": [
+                            {"text": "Hallo", "start": 0.0, "end": 0.4},
+                            {"text": "wereld", "start": 0.4, "end": 1.0},
+                        ],
+                    }
+                ],
+            }
+        )
+
+
+def _write_lesson(path: Path, *, lesson_id: str, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "id": lesson_id,
+                "language": "nl",
+                "cefr": "A1",
+                "title": "t",
+                "theme": "Numbers",
+                "newWords": ["een"],
+                "text": text,
+            },
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+def test_generate_audio_creates_mp3_and_transcript(tmp_path: Path, monkeypatch):
+    course_dir = tmp_path / "courses" / "nl"
+    lessons_dir = course_dir / "lessons" / "A1"
+    _write_lesson(lessons_dir / "lesson001.json", lesson_id="lesson001", text="Hallo daar")
+
+    monkeypatch.setattr("course_compiler.audio.VoxtralClient", _FakeVoxtralClient)
+
+    rc = main(
+        [
+            "generate-audio",
+            "--lang",
+            "nl",
+            "--cefr",
+            "A1",
+            "--course-dir",
+            str(course_dir),
+        ]
+    )
+
+    assert rc == 0
+    mp3 = course_dir / "audio" / "A1" / "lesson001.mp3"
+    transcript = course_dir / "audio" / "transcripts" / "A1" / "lesson001.json"
+    assert mp3.read_bytes() == b"ID3fake"
+    payload = json.loads(transcript.read_text(encoding="utf-8"))
+    assert payload["lesson_id"] == "lesson001"
+    assert payload["sentences"][0]["id"] == "s1"
+
+
+def test_generate_audio_lesson_id_filter(tmp_path: Path, monkeypatch):
+    course_dir = tmp_path / "courses" / "nl"
+    lessons_dir = course_dir / "lessons" / "A1"
+    _write_lesson(lessons_dir / "lesson001.json", lesson_id="lesson001", text="Een")
+    _write_lesson(lessons_dir / "lesson002.json", lesson_id="lesson002", text="Twee")
+
+    monkeypatch.setattr("course_compiler.audio.VoxtralClient", _FakeVoxtralClient)
+
+    rc = main(
+        [
+            "generate-audio",
+            "--lang",
+            "nl",
+            "--cefr",
+            "A1",
+            "--course-dir",
+            str(course_dir),
+            "--lesson-id",
+            "lesson002",
+        ]
+    )
+
+    assert rc == 0
+    assert not (course_dir / "audio" / "A1" / "lesson001.mp3").exists()
+    assert (course_dir / "audio" / "A1" / "lesson002.mp3").exists()
