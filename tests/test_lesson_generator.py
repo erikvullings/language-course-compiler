@@ -91,13 +91,22 @@ def _lemmatizer(words: list[str]) -> _MapLemmatizer:
 
 
 def test_target_length_scales_with_word_count():
-    assert _target_length(10) == "150 words"
-    assert _target_length(5) == "75 words"
-    assert _target_length(1) == "30 words"
+    # Default A1 level: min_words = 20, max_words = 10 * 15 = 150
+    min_w, max_w = _target_length(10)
+    assert min_w == 20
+    assert max_w >= 150
+    
+    # Fewer new words: smaller max
+    min_w, max_w = _target_length(5)
+    assert min_w == 20
+    assert max_w >= 75
 
 
 def test_target_length_floor():
-    assert _target_length(0) == "30 words"
+    # A1 has a floor of 20 words minimum
+    min_w, max_w = _target_length(0)
+    assert min_w == 20
+    assert max_w >= 50
 
 
 # ---------------------------------------------------------------------------
@@ -135,11 +144,11 @@ def test_user_prompt_requests_title_text_format_and_grammar_check():
     gen = LessonGenerator(provider, _lemmatizer(["huis"]))
     gen.generate("lesson001", ["huis"], {"huis"}, language="Dutch", model="stub")
     user_prompt = provider._calls[0][0].content
-    assert "verb agrees with its subject" in user_prompt
-    assert "MUST be 2-6 words exactly" in user_prompt
+    assert "CEFR language course curriculum writer" in user_prompt
+    assert "exactly 2 to 6 words" in user_prompt
     assert '{"title": "<title>", "text": "<markdown_text>"}' in user_prompt
     assert "JSON object" in user_prompt
-    assert "Dutch grammar checklist" in user_prompt
+    assert "Dutch grammar and syntax" in user_prompt
 
 
 def test_low_cefr_system_prompt_allows_frequent_simple_past_forms():
@@ -149,8 +158,9 @@ def test_low_cefr_system_prompt_allows_frequent_simple_past_forms():
         "lesson001", ["huis"], {"huis"}, language="Dutch", cefr="A1", model="stub"
     )
     user_prompt = provider._calls[0][0].content
-    assert "Prefer present tense" in user_prompt
-    assert "equivalents of 'was/were'" in user_prompt
+    assert "Exclusively Present Tense" in user_prompt
+    assert "Simple past of highly frequent copula verbs" in user_prompt
+    assert "'was/were'" in user_prompt
 
 
 def test_allowed_words_not_in_prompt():

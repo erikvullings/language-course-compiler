@@ -16,9 +16,37 @@ from course_compiler.llm.base import LLMError, LLMProvider, Message, Role
 #: Words of lesson text generated per new content word introduced.
 WORDS_PER_NEW_WORD = 15
 
+#: Level-specific structural and tense constraints for CEFR A1-B2
+LEVEL_CONSTRAINTS = {
+    "A1": {
+        "sentence_structure": "Simple, short, declarative sentences. Avoid complex subordinate clauses, relative clauses, or passive voice.",
+        "tenses": "Exclusively Present Tense. Simple past of highly frequent copula verbs (e.g., 'was/were') is allowed only if completely necessary for natural flow.",
+    },
+    "A2": {
+        "sentence_structure": "Simple sentences linked with basic connectors like 'and', 'but', 'because'. Direct subordination is allowed, but keep syntax clean.",
+        "tenses": "Primarily Present Tense, but basic Past Tenses (Perfect/Imperfect) should be integrated naturally where narrative requires.",
+    },
+    "B1": {
+        "sentence_structure": "A mix of simple and complex sentences. Can link narratives smoothly using various coordinating and subordinating conjunctions.",
+        "tenses": "Full range of narrative tenses (Present, Past, Perfect). Future and basic conditional expressions can be used naturally.",
+    },
+    "B2": {
+        "sentence_structure": "Complex, fluid sentence structures showing clear control of syntax, sub-clauses, and stylistic variation.",
+        "tenses": "Advanced narrative tenses, including passives, conditionals, and subjunctive forms if native to the target language.",
+    },
+}
 
-def _target_length(new_word_count: int) -> str:
-    return f"{max(new_word_count * WORDS_PER_NEW_WORD, 30)} words"
+
+def _target_length(new_word_count: int, cefr: str = "A1") -> tuple[int, int]:
+    """Return (min_words, max_words) for lesson text based on vocabulary and CEFR level.
+    
+    Scales minimum length by CEFR level to ensure richer, more natural narratives
+    at higher proficiency levels.
+    """
+    level_min_factor = {"A1": 20, "A2": 25, "B1": 30, "B2": 35}.get(cefr, 20)
+    min_words = max(level_min_factor, 20)
+    max_words = max(new_word_count * WORDS_PER_NEW_WORD, min_words + 30)
+    return (min_words, max_words)
 
 
 @dataclass(frozen=True)
@@ -48,42 +76,110 @@ _TITLE_TEXT_RE = re.compile(
 )
 
 
-def _tense_guidance(cefr: str) -> str:
-    if cefr in _LOW_CEFR:
-        return (
-            "Prefer present tense. "
-            "Simple past of very frequent forms "
-            "(for example equivalents of 'was/were') is allowed when natural. "
-            "Avoid complex tense combinations. "
-        )
-    return ""
+def _language_specific_checklist(language: str) -> str:
+    """Return language-specific grammar checklist for quality control.
+    
+    Each language has unique structural and agreement rules that should be
+    verified before returning the final lesson text.
+    """
+    checklists = {
+        "nl": (
+            "1. Subject-Verb Agreement: Ensure absolute agreement for all pronouns "
+            "(e.g., 'ik ben', 'jij bent', 'hij is', 'wij zijn').\n"
+            "2. V2 Word Order in Main Clauses: The finite verb must be the second element. "
+            "In subordinate clauses, the verb moves to the end.\n"
+            "3. Adjective Inflection: Apply correct gender and number agreement to adjectives "
+            "when used attributively (e.g., 'een mooie stad').\n"
+            "4. Contextual Semantic Precision: Distinguish between related verbs "
+            "(e.g., 'wonen' = to live/reside vs. 'leven' = to live/exist).\n"
+            "5. Completeness: Every sentence must have a clear, complete structure "
+            "appropriate for the target CEFR level."
+        ),
+        "de": (
+            "1. Subject-Verb-Object Word Order: In main clauses, follow SVO order. "
+            "In subordinate clauses, the verb moves to the end.\n"
+            "2. Case Agreement: Ensure correct nominative, accusative, dative, and genitive cases "
+            "for articles, adjectives, and pronouns.\n"
+            "3. Gender-Number Agreement: Verify gender/number agreement between "
+            "nouns, articles, and adjectives.\n"
+            "4. Separable Verbs: Ensure correct separation in main clauses "
+            "(e.g., 'Ich rufe dich an').\n"
+            "5. Completeness: Every sentence must be structurally complete and appropriate "
+            "for the target CEFR level."
+        ),
+        "fr": (
+            "1. Subject-Verb Agreement: Verify conjugation matches the subject pronoun "
+            "(e.g., 'je suis', 'tu es', 'il est').\n"
+            "2. Gender-Number Harmony: Adjectives and articles must agree in gender and number "
+            "with their nouns.\n"
+            "3. Verb Placement: Main clause verbs typically follow the subject. "
+            "Subordinate clauses follow the same SVO order.\n"
+            "4. Reflexive Accuracy: When using reflexive verbs, ensure the correct reflexive "
+            "pronoun and word order (e.g., 'Je me lève').\n"
+            "5. Completeness: Every sentence must be clear, complete, and appropriate "
+            "for the target CEFR level."
+        ),
+    }
+    # Return language-specific checklist or a generic one if language not defined
+    return checklists.get(
+        language.lower()[:2],
+        (
+            "1. Verb Conjugation: Ensure verbs are conjugated to match their subject.\n"
+            "2. Agreement: Apply correct agreement rules for articles, adjectives, and pronouns.\n"
+            "3. Word Order: Follow target language word order conventions.\n"
+            "4. Completeness: Every sentence must be structurally complete and clear.\n"
+            "5. Coherence: The narrative should flow naturally and make sense."
+        ),
+    )
 
 
-def _user_instructions(language: str, target_length: str, cefr: str = "") -> str:
+def _user_instructions(
+    language: str,
+    min_words: int,
+    max_words: int,
+    cefr: str = "A1",
+) -> str:
+    """Generate dynamic, level-aware instructions for lesson writing.
+    
+    Args:
+        language: Target language (e.g., 'Dutch', 'German', 'French').
+        min_words: Minimum target lesson length.
+        max_words: Maximum target lesson length.
+        cefr: CEFR level ('A1', 'A2', 'B1', 'B2').
+    
+    Returns:
+        A parameterized prompt template ready for format() with theme, goals, etc.
+    """
+    constraints = LEVEL_CONSTRAINTS.get(cefr, LEVEL_CONSTRAINTS["A1"])
+    checklist = _language_specific_checklist(language)
+
     return (
-        "You are a language course lesson writer. "
-        f"Write a short story in {language} with less than {target_length} at CEFR {cefr}. "
-        "Introduce each new word naturally in context. "
-        f"Keep the vocabulary at the stated CEFR level — do not use advanced words. "
-        f"{_tense_guidance(cefr)}"
-        "Before returning, verify spelling and grammar agreement "
-        "(including subject-verb agreement) "
-        "and correct any errors. "
-        f"Articles, prepositions, conjunctions, and common pronouns may be used freely. "
-        "Use plain paragraphs with minimal Markdown. "
-        "Do not italicize or bold full sentences/lines. "
-        "If you add emphasis, keep it sparse (at most a few words, not whole dialogue). "
-        "Before returning, apply this Dutch grammar checklist: "
-        "(1) Every verb agrees with its subject (ik ben, jij bent, hij is, etc.). "
-        "(2) Every sentence has a complete structure (subject-verb-object where applicable). "
-        "(3) No fragments or incomplete thoughts. "
-        "(4) Correct prepositions and word order. "
-        "Fix all errors found. "
-        "Return the lesson as a JSON object with exactly these two fields: "
-        '{"title": "<title>", "text": "<markdown_text>"}. '
-        "The title MUST be 2-6 words exactly, noun-phrase style, "
-        "not a sentence fragment, and not a question. "
-        "Only output the JSON object, no markdown fences or commentary."
+        f"You are an expert CEFR language course curriculum writer and a native speaker of {language}. "
+        f"Your task is to write a highly natural, grammatically flawless short story tailored precisely to the parameters provided below.\n\n"
+        f"### Core Constraints\n"
+        f"1. Length: Minimum {min_words} words, Maximum {max_words} words.\n"
+        f"2. CEFR Level: Strict {cefr}. Structure sentences according to these criteria: {constraints['sentence_structure']}\n"
+        f"3. Tense: Apply these tense constraints: {constraints['tenses']}\n"
+        f"4. Formatting: Output ONLY a raw JSON object with exactly two keys: "
+        f'{{{{\"title\": \"<title>\", \"text\": \"<markdown_text>\"}}}}. '
+        f"Do not wrap the JSON in markdown code fences (```json ... ```). No pre- or post-commentary.\n"
+        f"5. Markdown inside JSON: Use plain paragraphs. No bold or italicized full sentences. "
+        f"Sparse emphasis (1-2 words max) on key vocabulary is allowed if natural.\n"
+        f"6. Title Style: A noun phrase of exactly 2 to 6 words in {language}. "
+        f"It must not be a question or a sentence fragment.\n\n"
+        f"### Target Content Parameters\n"
+        f"- Theme: {{theme}}\n"
+        f"- Communicative Goals:\n{{communicative_goals_list}}\n"
+        f"- Preferred Vocabulary / Concepts:\n"
+        f"  * Key Words: {{seed_words}}\n"
+        f"  * Target Verbs: {{verbs}}\n"
+        f"  *(Note: Prioritize weaving these words/concepts naturally into the context of the story. "
+        f"They are preferred guidelines rather than hard, robotic insertions.)*\n\n"
+        f"### Target Language Quality Control Checklist\n"
+        f"Before rendering the JSON, run a multi-pass internal verification to ensure perfect {language} grammar and syntax:\n"
+        f"{checklist}\n\n"
+        f"### Story Outline\n{{outline}}\n\n"
+        f"Generate the raw JSON response now:"
     )
 
 
@@ -239,8 +335,9 @@ class LessonGenerator:
         language: str,
         cefr: str,
         theme: str,
-        target_length: str,
         new_words: list[str],
+        min_words: int,
+        max_words: int,
         *,
         outline: str = "",
         communicative_goals: list[str] | None = None,
@@ -248,6 +345,8 @@ class LessonGenerator:
         verb_lemmas: list[str] | None = None,
         english_seed_words: list[str] | None = None,
     ) -> list[Message]:
+        """Build the initial LLM prompt with dynamic level-appropriate constraints."""
+        # Format lesson vocabulary for display
         rendered_words = [
             (
                 f"{lemma} ({glosses[lemma]})"
@@ -256,27 +355,29 @@ class LessonGenerator:
             )
             for lemma in new_words
         ]
+        
+        # Format communicative goals for display
         goals = communicative_goals or []
+        goals_str = "\n".join(f"  - {goal}" for goal in goals) if goals else "  - (None specified)"
+        
+        # Format verbs for display
         verbs = verb_lemmas or []
+        verbs_str = ", ".join(verbs) if verbs else "(None)"
+        
+        # Format seed words for display
         seeds = english_seed_words or []
-        seed_instruction = ""
-        if seeds:
-            seed_instruction = (
-                f"\nKey scene-setting words (in English) to weave naturally into the story "
-                f"(translate them to {language} in context): {', '.join(seeds)}."
-            )
-        user_content = (
-            f"{_user_instructions(language, target_length, cefr)}\n\n"
-            f"Lesson ID: {lesson_id}\n"
-            f"CEFR level: {cefr}\n"
-            f"Theme: {theme}\n"
-            f"Communicative goals: {', '.join(goals) if goals else '-'}\n"
-            f"Focus verbs: {', '.join(verbs) if verbs else '-'}\n"
-            f"Story outline: {outline or '-'}\n"
-            f"New words to introduce: {', '.join(rendered_words)}"
-            f"{seed_instruction}\n\n"
-            "Write the lesson now."
+        seeds_str = ", ".join(seeds) if seeds else "(None)"
+        
+        # Get the template and format it with all parameters
+        prompt_template = _user_instructions(language, min_words, max_words, cefr)
+        user_content = prompt_template.format(
+            theme=theme,
+            communicative_goals_list=goals_str,
+            seed_words=seeds_str,
+            verbs=verbs_str,
+            outline=outline or "(No outline provided)",
         )
+        
         return [Message(Role.USER, user_content)]
 
     def generate(
@@ -318,14 +419,15 @@ class LessonGenerator:
         Raises:
             RuntimeError: If violations persist after ``max_retries``.
         """
-        target_length = _target_length(len(new_words))
+        min_words, max_words = _target_length(len(new_words), cefr)
         messages = self._build_initial_messages(
             lesson_id,
             language,
             cefr,
             theme,
-            target_length,
             new_words,
+            min_words,
+            max_words,
             outline=outline,
             communicative_goals=communicative_goals,
             glosses=glosses,
