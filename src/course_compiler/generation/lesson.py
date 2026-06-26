@@ -43,8 +43,8 @@ def _target_length(new_word_count: int, cefr: str = "A1") -> tuple[int, int]:
     Scales minimum length by CEFR level to ensure richer, more natural narratives
     at higher proficiency levels.
     """
-    level_min_factor = {"A1": 20, "A2": 25, "B1": 30, "B2": 35}.get(cefr, 20)
-    min_words = max(level_min_factor, 20)
+    level_min_factor = {"A1": 60, "A2": 75, "B1": 90, "B2": 105}.get(cefr, 60)
+    min_words = max(level_min_factor, 60)
     max_words = max(new_word_count * WORDS_PER_NEW_WORD, min_words + 30)
     return (min_words, max_words)
 

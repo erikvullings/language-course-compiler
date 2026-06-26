@@ -91,22 +91,22 @@ def _lemmatizer(words: list[str]) -> _MapLemmatizer:
 
 
 def test_target_length_scales_with_word_count():
-    # Default A1 level: min_words = 20, max_words = 10 * 15 = 150
+    # Default A1 level: min_words = 60, max_words = 10 * 15 = 150
     min_w, max_w = _target_length(10)
-    assert min_w == 20
+    assert min_w == 60
     assert max_w >= 150
     
     # Fewer new words: smaller max
     min_w, max_w = _target_length(5)
-    assert min_w == 20
+    assert min_w == 60
     assert max_w >= 75
 
 
 def test_target_length_floor():
-    # A1 has a floor of 20 words minimum
+    # A1 has a floor of 60 words minimum
     min_w, max_w = _target_length(0)
-    assert min_w == 20
-    assert max_w >= 50
+    assert min_w == 60
+    assert max_w >= 90
 
 
 # ---------------------------------------------------------------------------
