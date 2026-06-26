@@ -170,6 +170,23 @@ def _audio_filename(word: str) -> str:
     return word.strip().replace(" ", "_").replace("/", "_")
 
 
+def _compose_audio_sample_text(title: str, text: str) -> str:
+    """Build the spoken sample text, with title first and a brief pause."""
+    body = text.strip()
+    spoken_title = title.strip()
+    if not spoken_title:
+        return body
+
+    if body.lower().startswith(spoken_title.lower()):
+        return body
+
+    if spoken_title[-1] not in ".!?":
+        spoken_title = f"{spoken_title}."
+
+    # Blank line yields a small pause for most TTS engines.
+    return f"{spoken_title}\n\n{body}"
+
+
 def _parse_budgets(spec: str | None) -> dict[str, int] | None:
     """Parse budgets like ``A1=2000,A2=4000`` into ``{level: cumulative}``."""
     if not spec:
@@ -764,9 +781,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="Lessons directory (defaults to <course-dir>/lessons/<cefr>)",
     )
     gen_audio.add_argument(
-        "--lesson-id",
+        "--only",
         default=None,
-        help="Generate audio only for a single lesson id",
+        help="Generate audio only for lesson ids (comma-separated)",
+    )
+    gen_audio.add_argument(
+        "--lesson-id",
+        dest="lesson_id",
+        default=None,
+        help=argparse.SUPPRESS,
     )
     gen_audio.add_argument(
         "--voice",
@@ -783,6 +806,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--force",
         action="store_true",
         help="Overwrite existing mp3/transcript files",
+    )
+    gen_audio.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Ignore existing mp3/transcript outputs and regenerate",
     )
 
     return parser
@@ -1333,12 +1361,30 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Error: lessons directory not found: {lessons_dir}", file=sys.stderr)
             return 1
 
+        if args.only and args.lesson_id:
+            print(
+                "Error: use only one of --only or --lesson-id.",
+                file=sys.stderr,
+            )
+            return 1
+
+        lesson_filter_raw = args.only or args.lesson_id
+        only_lesson_ids: set[str] | None = None
+        if lesson_filter_raw:
+            only_lesson_ids = _parse_lesson_id_filter(lesson_filter_raw)
+            if not only_lesson_ids:
+                print(
+                    "Error: --only was provided but no valid lesson ids were parsed.",
+                    file=sys.stderr,
+                )
+                return 1
+
         lesson_files = sorted(lessons_dir.glob("*.json"))
-        if args.lesson_id:
-            lesson_files = [p for p in lesson_files if p.stem == args.lesson_id]
+        if only_lesson_ids is not None:
+            lesson_files = [p for p in lesson_files if p.stem in only_lesson_ids]
             if not lesson_files:
                 print(
-                    f"Error: lesson {args.lesson_id!r} not found in {lessons_dir}",
+                    f"Error: no lessons from --only found in {lessons_dir}",
                     file=sys.stderr,
                 )
                 return 1
@@ -1349,6 +1395,7 @@ def main(argv: list[str] | None = None) -> int:
         transcript_dir.mkdir(parents=True, exist_ok=True)
 
         generated = 0
+        disable_cache = args.no_cache or only_lesson_ids is not None
         with VoxtralClient(
             base_url=settings.voxtral_base_url,
             timeout=settings.voxtral_timeout,
@@ -1366,11 +1413,19 @@ def main(argv: list[str] | None = None) -> int:
 
                 mp3_path = audio_dir / f"{lesson_id}.mp3"
                 transcript_path = transcript_dir / f"{lesson_id}.json"
-                if mp3_path.exists() and transcript_path.exists() and not args.force:
+                if (
+                    mp3_path.exists()
+                    and transcript_path.exists()
+                    and not args.force
+                    and not disable_cache
+                ):
                     continue
 
+                title = str(payload.get("title") or "").strip()
+                sample_text = _compose_audio_sample_text(title, text)
+
                 speech = OpenAISpeechRequest(
-                    input=text,
+                    input=sample_text,
                     language=args.lang,
                     voice=args.voice,
                     speed=args.speed,
@@ -1382,7 +1437,7 @@ def main(argv: list[str] | None = None) -> int:
                 transcript = client.generate_transcript(
                     VoxtralTranscriptRequest(
                         audio_path=str(mp3_path.resolve()),
-                        text=text,
+                        text=sample_text,
                         language=args.lang,
                         lesson_id=lesson_id,
                     )

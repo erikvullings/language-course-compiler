@@ -169,7 +169,13 @@ course generate-audio --lang nl --cefr A1
 Generate only one lesson:
 
 ```bash
-course generate-audio --lang nl --cefr A1 --lesson-id lesson003
+course generate-audio --lang nl --cefr A1 --only lesson003
+```
+
+Generate selected lessons and bypass existing audio/transcript outputs:
+
+```bash
+course generate-audio --lang nl --cefr A1 --only lesson001,lesson003
 ```
 
 Override input path or voice settings:
@@ -181,6 +187,18 @@ course generate-audio \
   --voice nl_female \
   --speed 1.0
 ```
+
+Force regeneration for all lessons in scope (ignore existing outputs):
+
+```bash
+course generate-audio --lang nl --cefr A1 --no-cache
+```
+
+Notes:
+
+- `--only` is consistent with `generate-lessons --only` and bypasses existing
+  mp3/transcript outputs for the selected lessons.
+- `--no-cache` bypasses existing mp3/transcript outputs for all targeted lessons.
 
 Outputs:
 

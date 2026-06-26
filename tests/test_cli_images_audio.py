@@ -408,10 +408,13 @@ class _FakeTranscript:
 
 
 class _FakeVoxtralClient:
+    instances: list["_FakeVoxtralClient"] = []
+
     def __init__(self, *, base_url: str, timeout: float):
         self.base_url = base_url
         self.timeout = timeout
         self.calls: list[tuple[str, object]] = []
+        self.__class__.instances.append(self)
 
     def __enter__(self):
         return self
@@ -469,6 +472,7 @@ def _write_lesson(path: Path, *, lesson_id: str, text: str) -> None:
 
 
 def test_generate_audio_creates_mp3_and_transcript(tmp_path: Path, monkeypatch):
+    _FakeVoxtralClient.instances.clear()
     course_dir = tmp_path / "courses" / "nl"
     lessons_dir = course_dir / "lessons" / "A1"
     _write_lesson(
@@ -497,8 +501,15 @@ def test_generate_audio_creates_mp3_and_transcript(tmp_path: Path, monkeypatch):
     assert payload["lesson_id"] == "lesson001"
     assert payload["sentences"][0]["id"] == "s1"
 
+    client = _FakeVoxtralClient.instances[-1]
+    speech_req = next(req for kind, req in client.calls if kind == "speech")
+    transcript_req = next(req for kind, req in client.calls if kind == "transcript")
+    assert speech_req.input == "t.\n\nHallo daar"
+    assert transcript_req.text == "t.\n\nHallo daar"
+
 
 def test_generate_audio_lesson_id_filter(tmp_path: Path, monkeypatch):
+    _FakeVoxtralClient.instances.clear()
     course_dir = tmp_path / "courses" / "nl"
     lessons_dir = course_dir / "lessons" / "A1"
     _write_lesson(lessons_dir / "lesson001.json", lesson_id="lesson001", text="Een")
@@ -515,7 +526,7 @@ def test_generate_audio_lesson_id_filter(tmp_path: Path, monkeypatch):
             "A1",
             "--course-dir",
             str(course_dir),
-            "--lesson-id",
+            "--only",
             "lesson002",
         ]
     )
@@ -523,3 +534,99 @@ def test_generate_audio_lesson_id_filter(tmp_path: Path, monkeypatch):
     assert rc == 0
     assert not (course_dir / "audio" / "A1" / "lesson001.mp3").exists()
     assert (course_dir / "audio" / "A1" / "lesson002.mp3").exists()
+
+
+def test_generate_audio_only_bypasses_existing_outputs(tmp_path: Path, monkeypatch):
+    _FakeVoxtralClient.instances.clear()
+    course_dir = tmp_path / "courses" / "nl"
+    lessons_dir = course_dir / "lessons" / "A1"
+    _write_lesson(
+        lessons_dir / "lesson001.json", lesson_id="lesson001", text="Hallo daar"
+    )
+
+    audio_dir = course_dir / "audio" / "A1"
+    transcript_dir = course_dir / "audio" / "transcripts" / "A1"
+    audio_dir.mkdir(parents=True, exist_ok=True)
+    transcript_dir.mkdir(parents=True, exist_ok=True)
+    (audio_dir / "lesson001.mp3").write_bytes(b"cached")
+    (transcript_dir / "lesson001.json").write_text("{}", encoding="utf-8")
+
+    monkeypatch.setattr("course_compiler.audio.VoxtralClient", _FakeVoxtralClient)
+
+    rc = main(
+        [
+            "generate-audio",
+            "--lang",
+            "nl",
+            "--cefr",
+            "A1",
+            "--course-dir",
+            str(course_dir),
+            "--only",
+            "lesson001",
+        ]
+    )
+
+    assert rc == 0
+    assert (audio_dir / "lesson001.mp3").read_bytes() == b"ID3fake"
+    payload = json.loads((transcript_dir / "lesson001.json").read_text(encoding="utf-8"))
+    assert payload["lesson_id"] == "lesson001"
+
+
+def test_generate_audio_no_cache_bypasses_existing_outputs(tmp_path: Path, monkeypatch):
+    _FakeVoxtralClient.instances.clear()
+    course_dir = tmp_path / "courses" / "nl"
+    lessons_dir = course_dir / "lessons" / "A1"
+    _write_lesson(lessons_dir / "lesson001.json", lesson_id="lesson001", text="Een")
+
+    audio_dir = course_dir / "audio" / "A1"
+    transcript_dir = course_dir / "audio" / "transcripts" / "A1"
+    audio_dir.mkdir(parents=True, exist_ok=True)
+    transcript_dir.mkdir(parents=True, exist_ok=True)
+    (audio_dir / "lesson001.mp3").write_bytes(b"cached")
+    (transcript_dir / "lesson001.json").write_text("{}", encoding="utf-8")
+
+    monkeypatch.setattr("course_compiler.audio.VoxtralClient", _FakeVoxtralClient)
+
+    rc = main(
+        [
+            "generate-audio",
+            "--lang",
+            "nl",
+            "--cefr",
+            "A1",
+            "--course-dir",
+            str(course_dir),
+            "--no-cache",
+        ]
+    )
+
+    assert rc == 0
+    assert (audio_dir / "lesson001.mp3").read_bytes() == b"ID3fake"
+
+
+def test_generate_audio_only_and_lesson_id_conflict(tmp_path: Path, monkeypatch):
+    _FakeVoxtralClient.instances.clear()
+    course_dir = tmp_path / "courses" / "nl"
+    lessons_dir = course_dir / "lessons" / "A1"
+    _write_lesson(lessons_dir / "lesson001.json", lesson_id="lesson001", text="Een")
+
+    monkeypatch.setattr("course_compiler.audio.VoxtralClient", _FakeVoxtralClient)
+
+    rc = main(
+        [
+            "generate-audio",
+            "--lang",
+            "nl",
+            "--cefr",
+            "A1",
+            "--course-dir",
+            str(course_dir),
+            "--only",
+            "lesson001",
+            "--lesson-id",
+            "lesson001",
+        ]
+    )
+
+    assert rc == 1
