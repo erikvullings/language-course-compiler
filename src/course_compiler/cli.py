@@ -276,6 +276,20 @@ def _load_fallback_lesson_ids(lessons_dir: Path) -> set[str]:
     return fallback_ids
 
 
+def _parse_lesson_id_filter(raw: str) -> set[str]:
+    """Parse ``--only`` values into a normalized lesson-id set.
+
+    Accepts comma-separated ids and trims whitespace.
+    Example: ``lesson003, lesson004`` -> {"lesson003", "lesson004"}.
+    """
+    result: set[str] = set()
+    for part in raw.split(","):
+        lesson_id = part.strip()
+        if lesson_id:
+            result.add(lesson_id)
+    return result
+
+
 def _load_level_lessons_for_export(
     lessons_dir: Path,
 ) -> tuple[dict[str, dict[str, dict]], list[str]]:
@@ -578,6 +592,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="Regenerate only lessons previously marked with fallback=true",
     )
     gen.add_argument(
+        "--only",
+        default=None,
+        help=(
+            "Generate only these lesson ids (comma-separated), "
+            "e.g. lesson003 or lesson003,lesson004"
+        ),
+    )
+    gen.add_argument(
         "--retry-strategy",
         choices=["natural", "corrective"],
         default="natural",
@@ -848,11 +870,30 @@ def main(argv: list[str] | None = None) -> int:
         out_dir.mkdir(parents=True, exist_ok=True)
 
         only_lesson_ids: set[str] | None = None
-        if args.regenerate_fallbacks:
-            only_lesson_ids = _load_fallback_lesson_ids(out_dir)
+        if args.only:
+            only_lesson_ids = _parse_lesson_id_filter(args.only)
             if not only_lesson_ids:
+                print(
+                    "Error: --only was provided but no valid lesson ids were parsed.",
+                    file=sys.stderr,
+                )
+                return 1
+
+        if args.regenerate_fallbacks:
+            fallback_only = _load_fallback_lesson_ids(out_dir)
+            if not fallback_only:
                 print(f"No fallback lessons found in {out_dir}; nothing to regenerate.")
                 return 0
+            if only_lesson_ids is None:
+                only_lesson_ids = fallback_only
+            else:
+                only_lesson_ids = only_lesson_ids & fallback_only
+                if not only_lesson_ids:
+                    print(
+                        "No lessons matched both --only and --regenerate-fallbacks; "
+                        "nothing to regenerate."
+                    )
+                    return 0
 
         print("Planning (deterministic, no LLM) and generating all lessons...")
 
