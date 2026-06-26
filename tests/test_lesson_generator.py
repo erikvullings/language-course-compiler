@@ -248,8 +248,8 @@ def test_generate_shortens_overlong_json_title():
         language="Dutch",
         model="stub",
     )
-    # Titles longer than 6 words are aggressively shortened to first 4 words
-    assert result.title == "Dit Is Een Erg"
+    # Titles are no longer shortened; full title is preserved
+    assert result.title == "Dit Is Een Erg Lange Titel Voor Een Korte Les"
 
 
 def test_generate_parses_title_text_output_format():

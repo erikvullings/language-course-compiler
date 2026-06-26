@@ -184,7 +184,7 @@ def _user_instructions(
         f"Before rendering the JSON, run a multi-pass internal verification to ensure perfect {language} grammar and syntax:\n"
         f"{checklist}\n\n"
         f"### Story Outline\n{{outline}}\n\n"
-        f"Generate the raw JSON response now:"
+        f'Generate the raw JSON response {{{{"title": "<title>", "text": "<markdown_text>"}}}} now:'
     )
 
 
@@ -217,36 +217,24 @@ def _extract_labeled_payload(raw: str) -> tuple[str | None, str] | None:
     return (title or None), text
 
 
-def _shorten_title(title: str, fallback_text: str) -> str:
+def _clean_title(title: str) -> str | None:
+    """Clean a title by removing trailing punctuation. No shortening or rejection."""
     base = title.strip()
     if not base:
-        for line in fallback_text.splitlines():
-            stripped = line.strip().lstrip("#").strip()
-            if stripped:
-                base = stripped
-                break
+        return None
 
     # Remove trailing punctuation
     while base and base[-1] in ".!?,;:":
         base = base[:-1].strip()
 
-    words = [w for w in base.split() if w]
-
-    # If title is already suspiciously long (looks like a full sentence or paragraph),
-    # take only the first few words as a conservative estimate.
-    if len(words) > 8:
-        base = " ".join(words[:4])  # Reduce to first 4 words for long inputs
-    elif len(words) > 6:
-        base = " ".join(words[:6])
-
-    return base.strip()
+    return base or None
 
 
 def _extract_title_and_text(raw: str) -> tuple[str | None, str]:
     labeled = _extract_labeled_payload(raw)
     if labeled is not None:
         title, text = labeled
-        return _shorten_title(title or "", text) or None, text
+        return _clean_title(title or "") or None, text
 
     payload = _extract_json_payload(raw)
     if payload is None:
@@ -259,7 +247,7 @@ def _extract_title_and_text(raw: str) -> tuple[str | None, str]:
 
     title_value = payload.get("title")
     title = title_value.strip() if isinstance(title_value, str) else ""
-    return _shorten_title(title, text) or None, text
+    return _clean_title(title) or None, text
 
 
 def _feedback_message(result: ValidationResult, cefr_target: str) -> str:
@@ -333,6 +321,15 @@ class LessonGenerator:
                 file=sys.stderr,
             )
             print(message.content, file=sys.stderr)
+
+    def _log_response(self, attempt: int, raw_content: str) -> None:
+        if not self._verbose:
+            return
+        print(
+            f"[llm][lesson][attempt {attempt}] raw response follows",
+            file=sys.stderr,
+        )
+        print(raw_content, file=sys.stderr)
 
     def _build_initial_messages(
         self,
@@ -456,6 +453,7 @@ class LessonGenerator:
                 cached = self._cache.get(resolved_model, raw_messages)
                 if cached is not None:
                     self._log_messages(attempt, messages)
+                    self._log_response(attempt, cached.content)
                     parsed_title, parsed_text = _extract_title_and_text(cached.content)
                     result: ValidationResult = self._validator.validate(
                         parsed_text,
@@ -506,6 +504,7 @@ class LessonGenerator:
             if self._cache is not None and attempt == 1:
                 self._cache.put(resolved_model, raw_messages, response)
 
+            self._log_response(attempt, response.content)
             parsed_title, parsed_text = _extract_title_and_text(response.content)
 
             result: ValidationResult = self._validator.validate(

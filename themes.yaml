@@ -57,8 +57,8 @@ A1:
       - describe relationships
       - ask about family
     seedWords:
-      [mother, father, brother, sister, child, grandparent, show, photo, friend]
-    verbs: [explain]
+      [mother, father, brother, sister, child, grandparent, photo, friend]
+    verbs: [show, explain]
     outline: >
       A girl shows a family photo to a friend and explains who each person is —
       her mother, father, brother, sister and grandparents — and how old they

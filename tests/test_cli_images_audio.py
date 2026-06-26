@@ -569,7 +569,9 @@ def test_generate_audio_only_bypasses_existing_outputs(tmp_path: Path, monkeypat
 
     assert rc == 0
     assert (audio_dir / "lesson001.mp3").read_bytes() == b"ID3fake"
-    payload = json.loads((transcript_dir / "lesson001.json").read_text(encoding="utf-8"))
+    payload = json.loads(
+        (transcript_dir / "lesson001.json").read_text(encoding="utf-8")
+    )
     assert payload["lesson_id"] == "lesson001"
 
 
