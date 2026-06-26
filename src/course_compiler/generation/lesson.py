@@ -79,12 +79,11 @@ def _user_instructions(language: str, target_length: str, cefr: str = "") -> str
         "(3) No fragments or incomplete thoughts. "
         "(4) Correct prepositions and word order. "
         "Fix all errors found. "
-        "Only output the title and markdown text in this exact format: "
-        "TITLE: <title>\n"
-        "TEXT: <markdown_text>. "
+        "Return the lesson as a JSON object with exactly these two fields: "
+        '{"title": "<title>", "text": "<markdown_text>"}. '
         "The title MUST be 2-6 words exactly, noun-phrase style, "
         "not a sentence fragment, and not a question. "
-        "No markdown fences and no commentary outside TITLE/TEXT."
+        "Only output the JSON object, no markdown fences or commentary."
     )
 
 
@@ -247,6 +246,7 @@ class LessonGenerator:
         communicative_goals: list[str] | None = None,
         glosses: dict[str, str] | None = None,
         verb_lemmas: list[str] | None = None,
+        english_seed_words: list[str] | None = None,
     ) -> list[Message]:
         rendered_words = [
             (
@@ -258,6 +258,13 @@ class LessonGenerator:
         ]
         goals = communicative_goals or []
         verbs = verb_lemmas or []
+        seeds = english_seed_words or []
+        seed_instruction = ""
+        if seeds:
+            seed_instruction = (
+                f"\nKey scene-setting words (in English) to weave naturally into the story "
+                f"(translate them to {language} in context): {', '.join(seeds)}."
+            )
         user_content = (
             f"{_user_instructions(language, target_length, cefr)}\n\n"
             f"Lesson ID: {lesson_id}\n"
@@ -266,7 +273,8 @@ class LessonGenerator:
             f"Communicative goals: {', '.join(goals) if goals else '-'}\n"
             f"Focus verbs: {', '.join(verbs) if verbs else '-'}\n"
             f"Story outline: {outline or '-'}\n"
-            f"New words to introduce: {', '.join(rendered_words)}\n\n"
+            f"New words to introduce: {', '.join(rendered_words)}"
+            f"{seed_instruction}\n\n"
             "Write the lesson now."
         )
         return [Message(Role.USER, user_content)]
@@ -288,6 +296,7 @@ class LessonGenerator:
         communicative_goals: list[str] | None = None,
         glosses: dict[str, str] | None = None,
         verb_lemmas: list[str] | None = None,
+        english_seed_words: list[str] | None = None,
     ) -> GeneratedLesson:
         """Generate and validate lesson content, sampling multiple drafts.
 
@@ -321,6 +330,7 @@ class LessonGenerator:
             communicative_goals=communicative_goals,
             glosses=glosses,
             verb_lemmas=verb_lemmas,
+            english_seed_words=english_seed_words,
         )
         raw_messages = [m.as_dict() for m in messages]
         resolved_model = model or ""

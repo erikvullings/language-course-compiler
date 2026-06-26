@@ -137,8 +137,8 @@ def test_user_prompt_requests_title_text_format_and_grammar_check():
     user_prompt = provider._calls[0][0].content
     assert "verb agrees with its subject" in user_prompt
     assert "MUST be 2-6 words exactly" in user_prompt
-    assert "TITLE: <title>" in user_prompt
-    assert "TEXT: <markdown_text>" in user_prompt
+    assert '{"title": "<title>", "text": "<markdown_text>"}' in user_prompt
+    assert "JSON object" in user_prompt
     assert "Dutch grammar checklist" in user_prompt
 
 

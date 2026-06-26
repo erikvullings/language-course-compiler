@@ -419,6 +419,7 @@ class LessonPlan:
     allowed_forms: set[str] = field(default_factory=set)
     outline: str = ""
     communicative_goals: list[str] = field(default_factory=list)
+    english_seed_words: list[str] = field(default_factory=list)
     # {lemma: english seed term} for lemmas resolved from the catalog's English
     # hints, so the writer prompt can show the intended meaning in brackets.
     seed_glosses: dict[str, str] = field(default_factory=dict)
@@ -567,6 +568,7 @@ class LessonOrchestrator:
                     new_verbs=batch_verbs,
                     allowed_forms=accumulated_forms | new_forms,
                     communicative_goals=blueprint.communicative_goals,
+                    english_seed_words=blueprint.english_seed_words,
                 )
             )
             accumulated |= new_lemmas
@@ -672,14 +674,14 @@ class LessonOrchestrator:
             )
 
             # Highest priority: concrete anchor words resolved from the catalog's
-            # English verb + seed-word hints via the lexicon's English glosses.
+            # English verb hints via the lexicon's English glosses.
             # Deterministic and independent of LLM quality, so early lessons get the
-            # verbs that drive sentences plus scene-grounding nouns, instead of the
-            # high-frequency function words the fallback would pick. Verbs come first
-            # so the sentence "engine" is reliably taught even under a tight budget.
+            # verbs that drive sentences, ensuring reliable sentence construction.
+            # Note: english_seed_words are now passed directly to the LLM for
+            # context-aware translation, not resolved here.
             seed_pairs = _resolve_seed_pairs(
                 remaining_words,
-                theme_plan.english_verbs + theme_plan.english_seed_words,
+                theme_plan.english_verbs,
                 theme_tokens=_plan_theme_tokens(theme_plan),
             )
             # Remember the English meaning each lemma was resolved from, so the
@@ -802,6 +804,7 @@ class LessonOrchestrator:
                     allowed_forms=accumulated_forms | new_forms,
                     outline=theme_plan.outline,
                     communicative_goals=theme_plan.communicative_goals,
+                    english_seed_words=theme_plan.english_seed_words,
                     seed_glosses={
                         lemma: seed_glosses[lemma]
                         for lemma in new_lemmas
@@ -1007,6 +1010,7 @@ class LessonOrchestrator:
                 cefr_lookup=cefr_lookup,
                 glosses=glosses,
                 verb_lemmas=verb_lemmas,
+                english_seed_words=plan.english_seed_words,
             )
             yield plan, lesson
 

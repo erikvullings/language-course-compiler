@@ -941,7 +941,9 @@ def test_form_pointer_verbs_are_excluded_and_seed_glosses_recorded():
     assert "betalen" in verb_infinitives
     assert "winkel" not in verb_infinitives  # form-pointer verb dropped
     # The English meaning each lemma resolved from is recorded for the prompt.
-    assert plans[0].seed_glosses.get("winkel") == "shop"
+    # Note: english_seed_words are now handled by the LLM for context-aware
+    # translation, so only english_verbs are recorded in seed_glosses.
+    assert "winkel" not in plans[0].seed_glosses  # seed word no longer resolved here
     assert plans[0].seed_glosses.get("betalen") == "pay"
 
 
