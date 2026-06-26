@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from course_compiler.generation.base import Lemmatizer
-from course_compiler.generation.lesson import LessonGenerator
+from course_compiler.generation.lesson import GeneratedLesson, LessonGenerator
 from course_compiler.generation.orchestrator import LessonOrchestrator
 from course_compiler.generation.themes import LessonThemePlan, ThemeAssigner
 from course_compiler.llm.base import LLMProvider, LLMResponse, PromptInput
@@ -966,6 +966,52 @@ def test_catalog_verbs_field_is_parsed(tmp_path):
     plan = loaded["A1"][0]
     assert plan.english_seed_words == ["hello", "name"]
     assert plan.english_verbs == ["be", "have", "greet"]
+
+
+def test_generate_iter_passes_catalog_english_verbs_to_generator():
+    words = [_word("huis", en="house")]
+    pay = Verb(
+        id="betalen",
+        language="nl",
+        lemma="betalen",
+        infinitive="betalen",
+        cefr="A1",
+        frequency=Frequency(rank=100),
+        present={"ik": "betaal"},
+        translations={"en": "pay"},
+    )
+
+    class _CaptureGenerator:
+        def __init__(self) -> None:
+            self.verb_lemmas_calls: list[list[str] | None] = []
+
+        def generate(self, *args, **kwargs) -> GeneratedLesson:  # type: ignore[no-untyped-def]
+            self.verb_lemmas_calls.append(kwargs.get("verb_lemmas"))
+            lesson_id = str(args[0])
+            return GeneratedLesson(lesson_id=lesson_id, content="ok", attempts=1)
+
+    generator = _CaptureGenerator()
+    assigner = _StubProposingThemeAssigner({"misc": []}, proposals_by_theme={})
+    orc = LessonOrchestrator(
+        generator,  # type: ignore[arg-type]
+        assigner,
+        words_per_lesson=10,
+        predefined_themes={
+            "A1": [
+                LessonThemePlan(
+                    theme="Shopping",
+                    seed_lemmas=[],
+                    english_seed_words=["shop"],
+                    english_verbs=["pay"],
+                )
+            ]
+        },
+    )
+
+    list(orc.generate_iter(words, language="Dutch", cefr="A1", verbs=[pay]))
+
+    assert generator.verb_lemmas_calls
+    assert generator.verb_lemmas_calls[0] == ["pay"]
 
 
 def test_seed_words_are_reserved_from_earlier_themes():

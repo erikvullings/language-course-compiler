@@ -420,6 +420,7 @@ class LessonPlan:
     outline: str = ""
     communicative_goals: list[str] = field(default_factory=list)
     english_seed_words: list[str] = field(default_factory=list)
+    english_verbs: list[str] = field(default_factory=list)
     # {lemma: english seed term} for lemmas resolved from the catalog's English
     # hints, so the writer prompt can show the intended meaning in brackets.
     seed_glosses: dict[str, str] = field(default_factory=dict)
@@ -569,6 +570,7 @@ class LessonOrchestrator:
                     allowed_forms=accumulated_forms | new_forms,
                     communicative_goals=blueprint.communicative_goals,
                     english_seed_words=blueprint.english_seed_words,
+                    english_verbs=blueprint.english_verbs,
                 )
             )
             accumulated |= new_lemmas
@@ -591,6 +593,7 @@ class LessonOrchestrator:
                     function_lemmas=function_lemmas,
                     new_verbs=batch_verbs,
                     allowed_forms=accumulated_forms | new_forms,
+                    english_verbs=[],
                 )
             )
             accumulated |= new_lemmas
@@ -805,6 +808,7 @@ class LessonOrchestrator:
                     outline=theme_plan.outline,
                     communicative_goals=theme_plan.communicative_goals,
                     english_seed_words=theme_plan.english_seed_words,
+                    english_verbs=theme_plan.english_verbs,
                     seed_glosses={
                         lemma: seed_glosses[lemma]
                         for lemma in new_lemmas
@@ -929,6 +933,7 @@ class LessonOrchestrator:
                         new_verbs=batch_verbs,
                         allowed_forms=accumulated_forms | new_forms,
                         communicative_goals=[],
+                        english_verbs=[],
                     )
                 )
                 accumulated |= new_lemmas
@@ -994,7 +999,12 @@ class LessonOrchestrator:
                 term = _gloss_primary_term(en)
                 if term:
                     glosses[lemma] = term
-            verb_lemmas = [v.infinitive for v in plan.new_verbs]
+            # Keep catalog verbs in English when provided; otherwise use lemma infinitives.
+            verb_lemmas = (
+                list(plan.english_verbs)
+                if plan.english_verbs
+                else [v.infinitive for v in plan.new_verbs]
+            )
             lesson = self._generator.generate(
                 plan.lesson_id,
                 new_word_lemmas,

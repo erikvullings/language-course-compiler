@@ -39,7 +39,7 @@ LEVEL_CONSTRAINTS = {
 
 def _target_length(new_word_count: int, cefr: str = "A1") -> tuple[int, int]:
     """Return (min_words, max_words) for lesson text based on vocabulary and CEFR level.
-    
+
     Scales minimum length by CEFR level to ensure richer, more natural narratives
     at higher proficiency levels.
     """
@@ -78,7 +78,7 @@ _TITLE_TEXT_RE = re.compile(
 
 def _language_specific_checklist(language: str) -> str:
     """Return language-specific grammar checklist for quality control.
-    
+
     Each language has unique structural and agreement rules that should be
     verified before returning the final lesson text.
     """
@@ -140,18 +140,23 @@ def _user_instructions(
     cefr: str = "A1",
 ) -> str:
     """Generate dynamic, level-aware instructions for lesson writing.
-    
+
     Args:
         language: Target language (e.g., 'Dutch', 'German', 'French').
         min_words: Minimum target lesson length.
         max_words: Maximum target lesson length.
         cefr: CEFR level ('A1', 'A2', 'B1', 'B2').
-    
+
     Returns:
         A parameterized prompt template ready for format() with theme, goals, etc.
     """
     constraints = LEVEL_CONSTRAINTS.get(cefr, LEVEL_CONSTRAINTS["A1"])
     checklist = _language_specific_checklist(language)
+    markdown_formatting_criteria = (
+        "   * Use italics (*text*) exclusively for spoken dialogue lines.\n"
+        "   * Use bold (**text**) exclusively for imperative verbs and strong command formats.\n"
+        "   * Do not bold or italicize full narrative sentences or use formatting for general emphasis.\n"
+    )
 
     return (
         f"You are an expert CEFR language course curriculum writer and a native speaker of {language}. "
@@ -161,10 +166,10 @@ def _user_instructions(
         f"2. CEFR Level: Strict {cefr}. Structure sentences according to these criteria: {constraints['sentence_structure']}\n"
         f"3. Tense: Apply these tense constraints: {constraints['tenses']}\n"
         f"4. Formatting: Output ONLY a raw JSON object with exactly two keys: "
-        f'{{{{\"title\": \"<title>\", \"text\": \"<markdown_text>\"}}}}. '
+        f'{{{{"title": "<title>", "text": "<markdown_text>"}}}}. '
         f"Do not wrap the JSON in markdown code fences (```json ... ```). No pre- or post-commentary.\n"
-        f"5. Markdown inside JSON: Use plain paragraphs. No bold or italicized full sentences. "
-        f"Sparse emphasis (1-2 words max) on key vocabulary is allowed if natural.\n"
+        f"5. Markdown inside JSON: Use plain paragraphs. No bold or italicized full sentences.\n"
+        f"{markdown_formatting_criteria}"
         f"6. Title Style: A noun phrase of exactly 2 to 6 words in {language}. "
         f"It must not be a question or a sentence fragment.\n\n"
         f"### Target Content Parameters\n"
@@ -355,19 +360,23 @@ class LessonGenerator:
             )
             for lemma in new_words
         ]
-        
+
         # Format communicative goals for display
         goals = communicative_goals or []
-        goals_str = "\n".join(f"  - {goal}" for goal in goals) if goals else "  - (None specified)"
-        
+        goals_str = (
+            "\n".join(f"  - {goal}" for goal in goals)
+            if goals
+            else "  - (None specified)"
+        )
+
         # Format verbs for display
         verbs = verb_lemmas or []
         verbs_str = ", ".join(verbs) if verbs else "(None)"
-        
+
         # Format seed words for display
         seeds = english_seed_words or []
         seeds_str = ", ".join(seeds) if seeds else "(None)"
-        
+
         # Get the template and format it with all parameters
         prompt_template = _user_instructions(language, min_words, max_words, cefr)
         user_content = prompt_template.format(
@@ -377,7 +386,7 @@ class LessonGenerator:
             verbs=verbs_str,
             outline=outline or "(No outline provided)",
         )
-        
+
         return [Message(Role.USER, user_content)]
 
     def generate(
@@ -447,11 +456,32 @@ class LessonGenerator:
                 cached = self._cache.get(resolved_model, raw_messages)
                 if cached is not None:
                     self._log_messages(attempt, messages)
+                    parsed_title, parsed_text = _extract_title_and_text(cached.content)
+                    result: ValidationResult = self._validator.validate(
+                        parsed_text,
+                        allowed_words,
+                        extra_function_lemmas=function_lemmas,
+                        cefr_target=cefr,
+                        cefr_lookup=cefr_lookup,
+                        extra_tolerance=self._extra_tolerance,
+                        new_word_count=len(new_words),
+                    )
                     return GeneratedLesson(
                         lesson_id=lesson_id,
-                        content=cached.content,
+                        content=parsed_text,
                         attempts=1,
+                        title=parsed_title,
+                        tolerated=result.tolerated,
+                        violations=result.violations,
+                        fallback=not result.is_valid,
                         best_attempt=1,
+                        diagnostics=(
+                            AttemptDiagnostics(
+                                attempt=1,
+                                violations=result.violations,
+                                tolerated=result.tolerated,
+                            ),
+                        ),
                     )
 
             try:

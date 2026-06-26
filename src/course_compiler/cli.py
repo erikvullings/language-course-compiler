@@ -832,7 +832,9 @@ def main(argv: list[str] | None = None) -> int:
         from course_compiler.generation.cache import LLMCache
 
         cache_dir = lexicon_dir / ".llm_cache"
-        cache = None if args.no_cache else LLMCache(cache_dir)
+        # Targeted regeneration must be fresh: ``--only`` always bypasses cache.
+        disable_cache = args.no_cache or bool(args.only)
+        cache = None if disable_cache else LLMCache(cache_dir)
         assigner = LLMThemeAssigner(
             provider,
             model=None,

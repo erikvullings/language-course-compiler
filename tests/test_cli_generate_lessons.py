@@ -570,6 +570,36 @@ def test_generate_lessons_only_filter_generates_selected_lesson(tmp_path, monkey
     assert (out_dir / "lesson002.json").exists()
 
 
+def test_generate_lessons_only_filter_disables_cache(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "course_compiler.cli.create_provider",
+        lambda settings: _GenerateLessonsProvider(),
+    )
+
+    course_dir = tmp_path / "courses" / "nl"
+    _write_minimal_lexicon(course_dir)
+    out_dir = tmp_path / "out"
+
+    rc = main(
+        [
+            "generate-lessons",
+            "--lang",
+            "nl",
+            "--cefr",
+            "A1",
+            "--lexicon",
+            str(course_dir),
+            "--out",
+            str(out_dir),
+            "--only",
+            "lesson002",
+        ]
+    )
+
+    assert rc == 0
+    assert not (course_dir / ".llm_cache").exists()
+
+
 def test_generate_lessons_uses_json_title_when_provided(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "course_compiler.cli.create_provider",

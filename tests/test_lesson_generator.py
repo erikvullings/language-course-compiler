@@ -95,7 +95,7 @@ def test_target_length_scales_with_word_count():
     min_w, max_w = _target_length(10)
     assert min_w == 60
     assert max_w >= 150
-    
+
     # Fewer new words: smaller max
     min_w, max_w = _target_length(5)
     assert min_w == 60
@@ -137,6 +137,24 @@ def test_generate_theme_in_user_prompt():
         "lesson001", ["huis"], {"huis"}, language="Dutch", theme="home", model="stub"
     )
     assert "home" in provider._calls[0][0].content
+
+
+def test_prompt_includes_seed_words_and_target_verbs():
+    provider = _StubProvider(["huis"])
+    gen = LessonGenerator(provider, _lemmatizer(["huis"]))
+    gen.generate(
+        "lesson001",
+        ["huis"],
+        {"huis"},
+        language="Dutch",
+        theme="Personal Information",
+        english_seed_words=["name", "city", "country"],
+        verb_lemmas=["introduce", "come", "live"],
+        model="stub",
+    )
+    user_prompt = provider._calls[0][0].content
+    assert "* Key Words: name, city, country" in user_prompt
+    assert "* Target Verbs: introduce, come, live" in user_prompt
 
 
 def test_user_prompt_requests_title_text_format_and_grammar_check():
@@ -377,6 +395,26 @@ def test_generate_uses_cache(tmp_path):
     r1 = gen.generate("lesson001", words, set(words), language="Dutch", model="stub")
     r2 = gen.generate("lesson001", words, set(words), language="Dutch", model="stub")
     assert r1.content == r2.content
+    assert len(provider._calls) == 1
+
+
+def test_generate_uses_cache_and_still_parses_json_title_and_text(tmp_path):
+    from course_compiler.generation.cache import LLMCache
+
+    words = ["ik", "woon", "in", "een", "stad"]
+    provider = _StubProvider(
+        ['{"title":"Mijn Kleine Stad","text":"ik woon in een stad"}']
+    )
+    cache = LLMCache(tmp_path)
+    gen = LessonGenerator(provider, _lemmatizer(words), cache=cache)
+
+    r1 = gen.generate("lesson001", ["stad"], set(words), language="Dutch", model="stub")
+    r2 = gen.generate("lesson001", ["stad"], set(words), language="Dutch", model="stub")
+
+    assert r1.title == "Mijn Kleine Stad"
+    assert r1.content == "ik woon in een stad"
+    assert r2.title == "Mijn Kleine Stad"
+    assert r2.content == "ik woon in een stad"
     assert len(provider._calls) == 1
 
 
