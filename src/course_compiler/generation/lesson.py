@@ -334,11 +334,12 @@ class LessonGenerator:
             if attempt == 1 and self._cache is not None:
                 cached = self._cache.get(resolved_model, raw_messages)
                 if cached is not None:
+                    self._log_messages(attempt, messages)
                     return GeneratedLesson(
                         lesson_id=lesson_id,
                         content=cached.content,
-                        attempts=0,
-                        best_attempt=0,
+                        attempts=1,
+                        best_attempt=1,
                     )
 
             try:
