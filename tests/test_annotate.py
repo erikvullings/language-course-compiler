@@ -432,3 +432,28 @@ def test_function_word_homograph_is_not_sent_to_the_picker():
 
     annotate(text, vocab, tagger, sense_picker=picker)
     assert seen == []  # function-word homographs are not disambiguated by the LLM
+
+
+def test_noun_after_determiner_not_coerced_to_rare_verb_form():
+    # "Ze is nieuw in de buurt." — buurt (neighbourhood, NOUN) is also "ik buurt"
+    # of the rare verb buurten; spaCy's NOUN must win over the verb-form fallback.
+    text = "Ze is nieuw in de buurt."
+    vocab = build_lesson_vocab(
+        [_word("buurt", PartOfSpeech.NOUN, ["neighbourhood"], gender=Gender.COMMON)],
+        [
+            _verb("zijn", ["be"], present={"hij": "is"}),
+            _verb("buurten", ["visit a neighbour"], present={"ik": "buurt"}),
+        ],
+    )
+    tagger = FakeTagger(
+        {
+            "is": [("zijn", PartOfSpeech.VERB, "VERB")],
+            "de": [("de", PartOfSpeech.DETERMINER, "DET")],
+            "buurt": [("buurt", PartOfSpeech.NOUN, "NOUN")],
+        }
+    )
+    stream = annotate(text, vocab, tagger)
+    [tok] = [t for t in _tokens(stream) if t.w == "buurt"]
+    assert tok.ref == "buurt|noun"
+    assert tok.pos == "noun"
+    assert tok.gloss == "neighbourhood"
