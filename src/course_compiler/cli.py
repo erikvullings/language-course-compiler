@@ -86,6 +86,33 @@ def _load_words_from_lexicon(lexicon_dir: Path, *, default_language: str | None 
     raise FileNotFoundError(f"neither {words_json} nor {words_yaml_dir} found")
 
 
+def _load_separable_verbs(course_dir: Path) -> dict[str, dict[str, str]]:
+    """Load ``separable-verbs.json`` (``{lemma: {prefix, stem}}``), or empty."""
+    path = course_dir / "separable-verbs.json"
+    if not path.exists():
+        return {}
+    loaded = json.loads(path.read_text(encoding="utf-8"))
+    return loaded if isinstance(loaded, dict) else {}
+
+
+def _build_sense_picker(course_dir: Path, *, no_cache: bool):
+    """Construct a cached LLM sense picker, or ``None`` if no provider is available."""
+    try:
+        from course_compiler.generation.cache import LLMCache
+        from course_compiler.generation.sense import make_llm_sense_picker
+
+        settings = Settings.load()
+        provider = create_provider(settings)
+    except Exception as exc:  # noqa: BLE001 - optional feature, degrade gracefully
+        print(
+            f"Warning: LLM sense fallback disabled ({exc}); POS tagging only.",
+            file=sys.stderr,
+        )
+        return None
+    cache = None if no_cache else LLMCache(course_dir / ".llm_cache")
+    return make_llm_sense_picker(provider, model=None, cache=cache)
+
+
 def _hydrate_compact_verb_entry(entry: dict, *, default_language: str) -> dict:
     """Fill required Verb fields when loading compact aggregate JSON rows."""
     hydrated = dict(entry)
@@ -813,6 +840,38 @@ def build_parser() -> argparse.ArgumentParser:
         help="Ignore existing mp3/transcript outputs and regenerate",
     )
 
+    ann = sub.add_parser(
+        "annotate",
+        help="POS-tag lessons: add tokens[] + vocabulary[] to existing lesson JSON",
+    )
+    ann.add_argument("--lang", required=True, help="BCP-47 language code (e.g. nl)")
+    ann.add_argument("--cefr", required=True, help="Target CEFR level (A1, A2, ...)")
+    ann.add_argument(
+        "--course-dir",
+        default=None,
+        help="Course directory (defaults to courses/<lang>)",
+    )
+    ann.add_argument(
+        "--lessons-dir",
+        default=None,
+        help="Lessons directory (defaults to <course-dir>/lessons/<cefr>)",
+    )
+    ann.add_argument(
+        "--only",
+        default=None,
+        help="Annotate only these lesson ids (comma-separated); useful after a manual edit",
+    )
+    ann.add_argument(
+        "--no-llm-senses",
+        action="store_true",
+        help="Skip the LLM same-POS sense fallback (POS tagging only)",
+    )
+    ann.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Bypass the LLM sense cache",
+    )
+
     return parser
 
 
@@ -1449,6 +1508,86 @@ def main(argv: list[str] | None = None) -> int:
             f"Generated audio for {generated} lesson(s) into {audio_dir} "
             f"with transcripts in {transcript_dir}"
         )
+        return 0
+
+    if args.command == "annotate":
+        from course_compiler.generation.annotate import (
+            LessonOverrides,
+            build_lesson_vocab,
+            build_vocabulary,
+        )
+        from course_compiler.generation.annotate import (
+            annotate as annotate_text,
+        )
+        from course_compiler.models import Lesson
+        from course_compiler.nlp import PosTaggerError, create_tagger
+
+        course_dir = Path(args.course_dir or f"courses/{args.lang}")
+        lessons_dir = (
+            Path(args.lessons_dir)
+            if args.lessons_dir
+            else course_dir / "lessons" / args.cefr
+        )
+        if not lessons_dir.is_dir():
+            print(f"Error: lessons directory not found: {lessons_dir}", file=sys.stderr)
+            return 1
+
+        only_lesson_ids = _parse_lesson_id_filter(args.only) if args.only else None
+
+        try:
+            tagger = create_tagger(args.lang)
+        except PosTaggerError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            return 1
+
+        words = _load_words_from_lexicon(course_dir, default_language=args.lang)
+        verbs = _load_verbs_from_lexicon(course_dir, default_language=args.lang)
+        separable = _load_separable_verbs(course_dir)
+        vocab = build_lesson_vocab(words, verbs, separable=separable)
+
+        sense_picker = None
+        if not args.no_llm_senses:
+            sense_picker = _build_sense_picker(course_dir, no_cache=args.no_cache)
+
+        annotated = 0
+        cumulative: set[str] = set()
+        for lesson_path in sorted(lessons_dir.glob("*.json")):
+            payload = _load_lesson_payload(lesson_path)
+            lesson_id = str(payload.get("id") or lesson_path.stem)
+            new_words = payload.get("newWords") or payload.get("new_words") or []
+            cumulative |= {w.lower() for w in new_words}
+
+            if only_lesson_ids is not None and lesson_id not in only_lesson_ids:
+                continue  # still accumulated above so allowed vocab stays correct
+
+            text = str(payload.get("text") or "").strip()
+            if not text:
+                print(f"Skipping {lesson_id}: empty text", file=sys.stderr)
+                continue
+
+            meta_path = lessons_dir / f"{lesson_id}.meta.yaml"
+            overrides = LessonOverrides.from_dict(
+                yaml.safe_load(meta_path.read_text(encoding="utf-8"))
+                if meta_path.exists()
+                else None
+            )
+
+            vocab.allowed_lemmas = cumulative
+            stream = annotate_text(
+                text, vocab, tagger, sense_picker=sense_picker, overrides=overrides
+            )
+            vocabulary = build_vocabulary(list(new_words), vocab, stream, tagger)
+
+            lesson = Lesson.model_validate(payload)
+            lesson.tokens = stream
+            lesson.vocabulary = vocabulary
+            _write_json(
+                lesson_path,
+                lesson.model_dump(by_alias=True, exclude_none=True, mode="json"),
+            )
+            annotated += 1
+
+        print(f"Annotated {annotated} lesson(s) in {lessons_dir}")
         return 0
 
     parser.print_help()

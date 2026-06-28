@@ -69,7 +69,7 @@ WEAK_VERB = {
 def test_noun_maps_core_fields():
     word = dutch.word_from_kaikki(NOUN)
     assert word is not None
-    assert word.id == "huis"
+    assert word.id == "huis|noun"
     assert word.part_of_speech is PartOfSpeech.NOUN
     assert word.gender is Gender.NEUTER
     assert word.ipa == "/ɦœys/"  # phonemic form preferred over [..]
@@ -153,7 +153,7 @@ def test_unknown_pos_is_skipped():
 def test_convert_iterables_routes_and_enriches():
     synonyms = {"huis": ["woning"]}
     words, verbs = dutch.convert_iterables([NOUN, STRONG_VERB], synonyms=synonyms)
-    assert [w.id for w in words] == ["huis"]
+    assert [w.id for w in words] == ["huis|noun"]
     assert words[0].synonyms == ["woning"]
     assert [v.id for v in verbs] == ["lopen"]
 
@@ -285,3 +285,69 @@ def test_load_wordnet_synonyms(tmp_path):
     assert syn["huis"] == ["woning"]
     assert syn["woning"] == ["huis"]
     assert "auto" not in syn  # no synset peers -> no synonyms
+
+
+# --- POS-keyed lexicon + glosses + separable verbs (task 0023) ------------------
+
+MORGEN_NOUN = {
+    "pos": "noun",
+    "word": "morgen",
+    "head_templates": [{"name": "nl-noun", "args": {"1": "m"}}],
+    "senses": [{"glosses": ["morning"]}],
+}
+MORGEN_ADV = {
+    "pos": "adv",
+    "word": "morgen",
+    "senses": [{"glosses": ["tomorrow"]}],
+}
+
+
+def test_homograph_pos_entries_both_survive_with_composite_ids():
+    words, _ = dutch.convert_iterables([MORGEN_NOUN, MORGEN_ADV])
+    ids = sorted(w.id for w in words)
+    assert ids == ["morgen|adverb", "morgen|noun"]
+    by_id = {w.id: w for w in words}
+    assert by_id["morgen|noun"].translations["en"] == "morning"
+    assert by_id["morgen|adverb"].translations["en"] == "tomorrow"
+
+
+def test_glosses_list_drops_usage_notes_but_translation_keeps_them():
+    entry = {
+        "pos": "verb",
+        "word": "zijn",
+        "forms": [{"form": "zijn", "tags": ["infinitive"]}],
+        "senses": [
+            {"glosses": ["to be"]},
+            {"glosses": ["Used to form the perfect tense of some verbs"]},
+            {"glosses": ["go"]},
+        ],
+    }
+    verb = dutch.verb_from_kaikki(entry)
+    assert verb.glosses == ["be", "go"]  # usage note filtered from candidates
+    assert "Used to form" in verb.translations["en"]  # display string unchanged
+
+
+def test_detect_separable_splits_known_prefix_and_stem():
+    known = {"stellen", "staan", "nemen"}
+    assert dutch.detect_separable("voorstellen", known) == ("voor", "stellen")
+    assert dutch.detect_separable("opstaan", known) == ("op", "staan")
+    assert dutch.detect_separable("begrijpen", known) is None  # be- not separable
+
+
+def test_annotate_separable_verbs_flags_and_maps():
+    from course_compiler.models import Verb
+
+    verbs = [
+        Verb(id="stellen", language="nl", lemma="stellen", infinitive="stellen"),
+        Verb(
+            id="voorstellen",
+            language="nl",
+            lemma="voorstellen",
+            infinitive="voorstellen",
+        ),
+    ]
+    mapping = dutch.annotate_separable_verbs(verbs)
+    assert mapping == {"voorstellen": {"prefix": "voor", "stem": "stellen"}}
+    assert verbs[1].separable is True
+    assert verbs[1].prefix == "voor"
+    assert verbs[0].separable is False

@@ -29,6 +29,7 @@ uv.lock
 /courses/**/words.json
 /courses/**/verbs/
 /courses/**/verbs.json
+/courses/**/separable-verbs.json
 
 # Authored course content (grammar lessons, toc.yaml) is tracked
 

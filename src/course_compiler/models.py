@@ -91,6 +91,10 @@ class Word(_Model):
     normalized: str
     part_of_speech: PartOfSpeech
     translations: dict[str, str] = {}
+    #: Cleaned, de-duplicated English sense fragments (e.g. ["morning", "tomorrow"]).
+    #: ``translations.en`` stays the joined display default; this list is the candidate
+    #: set used for per-token sense selection.
+    glosses: list[str] = []
     gender: Gender | None = None
     plural: Plural | None = None
     diminutive: Diminutive | None = None
@@ -115,6 +119,14 @@ class Verb(_Model):
     lemma: str
     infinitive: str
     translations: dict[str, str] = {}
+    #: Cleaned English sense fragments (see :attr:`Word.glosses`).
+    glosses: list[str] = []
+    #: ``True`` for separable verbs (e.g. ``voorstellen`` → ``stelt … voor``).
+    separable: bool = False
+    #: Detached prefix for a separable verb (e.g. ``voor``), else ``None``.
+    prefix: str | None = None
+    #: ``True`` for reflexive verbs (used with ``zich``), e.g. ``zich voelen``.
+    reflexive: bool = False
     auxiliary: str | None = None
     # Tense tables keyed by slot (pronoun / "singular" / "participle" / ...).
     present: dict[str, str] = {}
@@ -131,6 +143,45 @@ class Verb(_Model):
     tags: list[str] = []
 
 
+class LessonWord(_Model):
+    """One vocabulary item introduced by a lesson, with its resolved sense.
+
+    Built from the lexicon entry the compiler selected — POS, gender, gloss and a
+    stable ``ref`` are all known here, so the frontend never has to guess.
+    """
+
+    lemma: str
+    pos: str | None = None
+    #: Stable lexicon key the token ``ref`` points at (``lemma|pos`` for words,
+    #: the infinitive for verbs).
+    ref: str | None = None
+    gloss: str | None = None
+    gender: str | None = None
+    #: Display article for the learner's target language (e.g. ``de``/``het``); only
+    #: set when the language plugin provides a gender→article mapping.
+    article: str | None = None
+
+
+class LessonToken(_Model):
+    """A single linked word in a lesson's annotated token stream.
+
+    The stream (``Lesson.tokens``) is a list of ``LessonToken | str``: plain strings
+    are the inter-word gaps (whitespace/punctuation), objects are linkable words —
+    mirroring the frontend's ``Token = string | {w, ref}`` model.
+    """
+
+    #: Surface form as it appears in the text.
+    w: str
+    #: Lexicon key this surface form resolves to, or ``None`` when unlinked
+    #: (proper names, out-of-lexicon words).
+    ref: str | None = None
+    pos: str | None = None
+    gloss: str | None = None
+    #: Surface pieces of a fused separable verb (e.g. ``["stelt", "voor"]``); ``None``
+    #: for ordinary single-word tokens.
+    span: list[str] | None = None
+
+
 class Lesson(_Model):
     id: str
     language: str
@@ -138,6 +189,10 @@ class Lesson(_Model):
     title: str
     theme: str = ""
     new_words: list[str] = []
+    #: Resolved vocabulary for the lesson (lemma + POS + sense + ref).
+    vocabulary: list[LessonWord] = []
+    #: Annotated token stream of ``text`` (strings for gaps, objects for words).
+    tokens: list[LessonToken | str] = []
     text: str
     attempts: int = 1
     tolerated: list[str] = []

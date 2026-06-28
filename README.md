@@ -27,6 +27,13 @@ Implemented so far:
   - `LLMThemeAssigner` — clusters vocabulary into semantic themes via LLM (cached)
   - `LessonOrchestrator` — filters by CEFR, assigns themes, sequences lessons,
     accumulates allowed vocabulary, derives function-word exemptions from POS
+- POS tagging + sense linking (`course annotate`): a standalone, re-runnable pass
+  that adds `tokens[]` (per-occurrence POS, lemma `ref`, sense gloss; separable
+  verbs fused) and `vocabulary[]` to existing lesson JSON. Pluggable `PosTagger`
+  registry (`course_compiler.nlp`) with an optional spaCy Dutch plugin, plus a
+  batched, cached LLM fallback for same-POS ambiguity. See
+  [`docs/frontend-integration.md`](docs/frontend-integration.md) for the output
+  contract.
 
 ## Setup
 
@@ -38,10 +45,10 @@ uv sync
 cp .env.example .env   # then edit
 ```
 
-Alternative for editable installs:
+Optional: POS tagging for `course annotate` needs a spaCy model:
 
 ```bash
-uv pip install -e ".[dev]"
+python -m spacy download nl_core_news_lg
 ```
 
 ## Develop
@@ -85,8 +92,11 @@ course import \
   --out       courses/nl
 ```
 
-This writes canonical YAML entries into `courses/nl/words/` and `courses/nl/verbs/`
-(use `--limit N` for a quick smoke run).
+This writes canonical YAML entries into `courses/nl/words/` and `courses/nl/verbs/`,
+plus aggregate `words.json` / `verbs.json` / `audio.json` and `separable-verbs.json`
+(use `--limit N` for a quick smoke run). Words are keyed by a composite
+`lemma|pos` id so homograph parts of speech (e.g. `morgen` as noun *morning* and
+adverb *tomorrow*) both survive, and each entry carries a cleaned `glosses` list.
 
 ### Generate lessons
 
@@ -209,6 +219,43 @@ Required `.env` settings:
 
 - `VOXTRAL_BASE_URL` (for example `http://localhost:8001`)
 - `VOXTRAL_TIMEOUT` (seconds)
+
+### Annotate lessons (POS tagging + sense linking)
+
+Add per-token POS, lemma links and sense glosses to **existing** lesson JSON, so
+the frontend can look words up correctly by part of speech and meaning. This is a
+separate, re-runnable pass — it does not regenerate lessons.
+
+```bash
+course annotate --lang nl --cefr A1
+```
+
+Re-tag a single lesson (e.g. after editing its text by hand):
+
+```bash
+course annotate --lang nl --cefr A1 --only lesson003
+```
+
+POS tagging only, skipping the LLM same-POS sense fallback:
+
+```bash
+course annotate --lang nl --cefr A1 --no-llm-senses
+```
+
+For each lesson this writes two fields back into the same JSON file:
+
+- `tokens` — the text tokenized and linked: an ordered `string | {w, ref, pos,
+  gloss, span}` stream (strings are gaps; objects are linkable words; `span` marks
+  fused separable verbs like `stelt … voor` → `voorstellen`).
+- `vocabulary` — the lesson's new words with resolved `pos`, `gloss`, `gender`,
+  `article` and a stable `ref`.
+
+Requires a spaCy model (see Setup). How a word resolves uses
+spaCy POS first, a verb-form map as a deterministic fallback, and a batched,
+cached LLM call only for genuine same-POS ambiguity. Residual cases can be fixed
+with an optional `courses/<lang>/lessons/<CEFR>/<lessonId>.meta.yaml` sidecar
+(`linkAs` / `glossOverrides` / `separableVerbs`). The output contract for the
+frontend is documented in [`docs/frontend-integration.md`](docs/frontend-integration.md).
 
 ### Regenerate Voxtral API client from OpenAPI
 

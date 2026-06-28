@@ -1,0 +1,159 @@
+# Dutch (nl) grammar catalog — A2.
+#
+# Continues from A1 (lessons 1–18). Topics are dependency-ordered and
+# pegged to vocabulary lessons so examples reuse only words a learner
+# has seen. All A1 topics are implicitly available throughout A2.
+
+A2:
+  simple-past:
+    title: Simple past (weak verbs)
+    dependsOn: [present-tense, perfect-tense]
+    introducedInLesson: 19
+    focus: >
+      The imperfect of regular weak verbs: stem + -te for 't kofschip
+      stems, stem + -de for all others. Signal words: vroeger, toen,
+      altijd (habitual past), ooit.
+
+  simple-past-strong:
+    title: Simple past (strong and irregular verbs)
+    dependsOn: [simple-past, zijn-en-hebben]
+    introducedInLesson: 20
+    focus: >
+      Vowel-changing strong verbs (rijden→reed, schrijven→schreef) and
+      the most common irregulars: zijn→was/waren, hebben→had/hadden,
+      gaan→ging, komen→kwam, zien→zag, zeggen→zei, doen→deed.
+
+  subordinate-clauses:
+    title: Subordinate clauses
+    dependsOn: [word-order]
+    introducedInLesson: 21
+    focus: >
+      In a subordinate clause the finite verb moves to the end of the
+      clause. Common subordinating conjunctions: dat, omdat, als,
+      wanneer, terwijl, hoewel, of (whether).
+
+  object-pronouns:
+    title: Object pronouns
+    dependsOn: [personal-pronouns]
+    introducedInLesson: 22
+    focus: >
+      Direct and indirect object forms: me/mij, je/jou, u, hem, haar,
+      het, ons, jullie, hen/hun/ze. Stressed vs unstressed forms and
+      when each is used.
+
+  er:
+    title: er
+    dependsOn: [word-order, prepositions-of-place]
+    introducedInLesson: 23
+    focus: >
+      The four uses of er: existential (er is/zijn een …), locative
+      (er staat een bank), quantitative (er + number), and pronominal
+      (er + preposition replacing a thing).
+
+  relative-clauses:
+    title: Relative clauses (die / dat)
+    dependsOn: [subordinate-clauses, articles]
+    introducedInLesson: 24
+    focus: >
+      die for de-words and all plurals; dat for singular het-words.
+      The relative pronoun follows its antecedent directly; the finite
+      verb goes to the end of the relative clause.
+
+  om-te-infinitive:
+    title: om … te + infinitive
+    dependsOn: [subordinate-clauses, modal-verbs]
+    introducedInLesson: 25
+    focus: >
+      Expressing purpose and intention with om + te + infinitive at the
+      end of the clause (e.g. Ik ga naar de winkel om brood te kopen).
+      Contrast with te + infinitive without om.
+
+  reflexive-verbs:
+    title: Reflexive verbs
+    dependsOn: [object-pronouns]
+    introducedInLesson: 26
+    focus: >
+      Verbs that take a reflexive pronoun (zich): me, je, zich, ons,
+      zich. Common reflexives: zich voelen, zich herinneren, zich
+      vergissen, zich voorstellen, zich gedragen.
+
+  ordinal-numbers:
+    title: Ordinal numbers
+    dependsOn: [cardinal-numbers]
+    introducedInLesson: 27
+    focus: >
+      Forming ordinals with -de (tweede, derde, vierde) or -ste
+      (eerste, achtste, twintigste). Use in dates, rankings and
+      sequences.
+
+  future-with-zullen:
+    title: Future with zullen
+    dependsOn: [future-with-gaan, word-order]
+    introducedInLesson: 28
+    focus: >
+      zal/zullen + infinitive for promises, predictions and formal
+      future. Contrast with gaan (intention/plan) and simple present
+      (scheduled events).
+
+  conditional:
+    title: Conditional (zou / zouden)
+    dependsOn: [future-with-zullen]
+    introducedInLesson: 29
+    focus: >
+      zou/zouden + infinitive for polite requests, hypothetical
+      situations and reported speech. Signal phrases: als … zou,
+      ik zou graag, zou jij kunnen …?
+
+  passive-voice:
+    title: Passive voice
+    dependsOn: [perfect-tense, word-order]
+    introducedInLesson: 30
+    focus: >
+      Present passive: worden + past participle. Past passive: zijn +
+      past participle. Optional agent with door. Contrast active vs
+      passive focus.
+
+  temporal-conjunctions:
+    title: Temporal conjunctions
+    dependsOn: [subordinate-clauses, simple-past]
+    introducedInLesson: 31
+    focus: >
+      toen (single completed past event), terwijl (simultaneous),
+      nadat (after), voordat (before), totdat (until), zodra (as soon
+      as). Tense interaction with main clause.
+
+  er-preposition:
+    title: er + preposition / waar + preposition
+    dependsOn: [er, prepositions-of-place]
+    introducedInLesson: 32
+    focus: >
+      Pronominal adverbs for things: erover, ermee, erop, eraan.
+      Question forms: waarover, waarmee, waarop, waaraan. Contrast
+      with preposition + wie/wie for people.
+
+  degree-adverbs:
+    title: Degree adverbs
+    dependsOn: [adjectives, comparative-superlative]
+    introducedInLesson: 33
+    focus: >
+      Intensifiers: heel, erg, zeer. Mid-range: vrij, tamelijk, nogal,
+      behoorlijk. Downtoners: een beetje, wat, enigszins. Limit words:
+      te (too), genoeg (enough), bijna (almost).
+
+  double-infinitive:
+    title: Double infinitive in the perfect
+    dependsOn: [perfect-tense, modal-verbs, separable-verbs]
+    introducedInLesson: 34
+    focus: >
+      When a modal or perception verb is in the perfect tense it
+      appears as a bare infinitive rather than a past participle:
+      ik heb kunnen komen, ik heb zien lopen, ze heeft laten maken.
+
+  direction-vs-location:
+    title: Direction vs location
+    dependsOn: [prepositions-of-place, word-order]
+    introducedInLesson: 35
+    focus: >
+      naar for motion towards a destination; in/op/aan for static
+      location. Key pairs: in vs naar, thuis vs naar huis, liggen/
+      staan/zitten vs gaan/komen/lopen.
