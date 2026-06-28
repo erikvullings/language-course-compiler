@@ -64,10 +64,16 @@ POS of a homograph (e.g. `morgen` adverb → only "morning" survives). See the p
   errors in untouched files.
 - To get full benefit on real data: re-run `course import` (regenerates `words.json` with
   composite ids + glosses + `separable-verbs.json`), then `course annotate`.
-- Fix (post-review, lesson003 "zijn ... aan" → bogus "aanzijn/visit"): (1) `_verb_infinitive`
-  no longer coerces a token into a verb when spaCy confidently tags it a closed-class
-  non-verb (DET/PRON/ADP/CCONJ/ART/NUM/INTJ) — a possessive `zijn` (DET) stays a determiner
-  rather than the verb `zijn`; (2) added `TaggedDoc.parsed` — when the backend ran a parse,
-  separable `particle_links` are authoritative and the dictionary scan-ahead is skipped, so a
-  stray preposition (`aan de tafel`) is never fused into a separable verb. Scan-ahead remains
-  for parser-less taggers. Regression tests added in `test_annotate.py`.
+- Fix (post-review, lesson003 "zijn ... aan" → bogus "aanzijn/visit"): (1) closed-class POS
+  (DET/PRON/ADP/CCONJ/ART/NUM/INTJ) are never coerced into verbs — possessive `zijn` (DET)
+  stays a determiner; (2) added `TaggedDoc.parsed` — when the backend parsed, separable
+  `particle_links` are authoritative and the dictionary scan-ahead is skipped, so a stray
+  preposition (`aan de tafel`) is never fused. Scan-ahead remains for parser-less taggers.
+- Fix (post-review, lesson001 "zon"→contemplate, "morgen"→tomorrow): resolution now **trusts
+  spaCy's POS** — a token resolves to the word entry at spaCy's POS and the verb-form map is
+  only a *fallback when no word entry exists at that POS* (so `zon` NOUN ≠ the verb `zonnen`).
+  And the LLM sense fallback was generalised from same-POS to **cross-POS content homographs**:
+  `_word_candidates` gathers all senses across POS (spaCy's first = default), and the picker
+  can switch a token's ref/pos/gloss (e.g. `morgen` adverb→noun). Function-word homographs are
+  left to spaCy. Needs the LLM enabled (not `--no-llm-senses`) for `morgen`-class fixes.
+  Regression tests in `test_annotate.py`.

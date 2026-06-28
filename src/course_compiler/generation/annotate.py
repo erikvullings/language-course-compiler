@@ -124,6 +124,11 @@ class SenseQuery:
 #: Picks one gloss per ambiguous token: ``{token_index: chosen_gloss}``.
 SensePicker = Callable[[list[SenseQuery]], dict[int, str]]
 
+#: A sense candidate for a token: ``(gloss, lexicon ref, pos value)``. Cross-POS
+#: candidates (e.g. ``morgen`` noun "morning" vs adverb "tomorrow") let the picker
+#: change the token's ref/pos, not just its gloss.
+_Candidate = tuple[str, str, str]
+
 
 # --------------------------------------------------------------------------- #
 # Authoring overrides (the ``lessonNNN.meta.yaml`` escape hatch)
@@ -180,8 +185,9 @@ def annotate(
 
     resolved: list[LessonToken | None] = [None] * len(tags)
     consumed: set[int] = set()
-    # tag index -> (candidate glosses, sentence) for ambiguous tokens
-    ambiguity: dict[int, tuple[list[str], str]] = {}
+    # tag index -> (sense candidates, sentence). Each candidate is (gloss, ref, pos);
+    # cross-POS candidates let the picker change a token's ref/pos, not just its gloss.
+    ambiguity: dict[int, tuple[list[_Candidate], str]] = {}
 
     for i, tag in enumerate(tags):
         if i in consumed or resolved[i] is not None:
@@ -197,7 +203,7 @@ def annotate(
     _apply_forced_separable(overrides, tags, vocab, resolved, consumed, ambiguity)
     _apply_link_as(overrides, tags, vocab, resolved, consumed, ambiguity)
 
-    stream, queries = _build_stream(text, tags, resolved, ambiguity)
+    stream, queries, candidates_by_index = _build_stream(text, tags, resolved, ambiguity)
 
     if overrides.gloss_overrides:
         queries = _apply_gloss_overrides(stream, queries, overrides.gloss_overrides)
@@ -206,11 +212,25 @@ def annotate(
         chosen = sense_picker(queries)
         for query in queries:
             gloss = chosen.get(query.token_index)
-            if gloss:
-                token = stream[query.token_index]
-                if isinstance(token, LessonToken):
-                    token.gloss = gloss
+            if not gloss:
+                continue
+            token = stream[query.token_index]
+            if isinstance(token, LessonToken):
+                _apply_chosen_sense(
+                    token, gloss, candidates_by_index.get(query.token_index, [])
+                )
     return stream
+
+
+def _apply_chosen_sense(
+    token: LessonToken, gloss: str, candidates: list[_Candidate]
+) -> None:
+    """Apply the picker's choice — including ref/pos for a cross-POS homograph."""
+    for cand_gloss, ref, pos in candidates:
+        if cand_gloss == gloss:
+            token.gloss, token.ref, token.pos = cand_gloss, ref, pos
+            return
+    token.gloss = gloss  # gloss not among candidates: set the display text only
 
 
 def _token_from_ref(surface: str, ref: str, vocab: LessonVocab) -> LessonToken:
@@ -238,7 +258,7 @@ def _apply_link_as(
     vocab: LessonVocab,
     resolved: list[LessonToken | None],
     consumed: set[int],
-    ambiguity: dict[int, tuple[list[str], str]],
+    ambiguity: dict[int, tuple[list[_Candidate], str]],
 ) -> None:
     if not overrides.link_as:
         return
@@ -258,7 +278,7 @@ def _apply_forced_separable(
     vocab: LessonVocab,
     resolved: list[LessonToken | None],
     consumed: set[int],
-    ambiguity: dict[int, tuple[list[str], str]],
+    ambiguity: dict[int, tuple[list[_Candidate], str]],
 ) -> None:
     for span in overrides.separable_spans:
         surface = str(span.get("surface", "")).strip()
@@ -327,7 +347,7 @@ def _resolve_token(
     particle_of: dict[int, int],
     resolved: list[LessonToken | None],
     consumed: set[int],
-    ambiguity: dict[int, tuple[list[str], str]],
+    ambiguity: dict[int, tuple[list[_Candidate], str]],
     *,
     parsed: bool,
 ) -> None:
@@ -335,47 +355,38 @@ def _resolve_token(
     sl = surface.lower()
     lemma = tag.lemma or sl
 
-    # --- verb path (POS says verb, or the surface/lemma is a known verb form) ---
-    base_inf = _verb_infinitive(tag, sl, lemma, vocab)
-    # Even if the bare stem isn't itself in the lesson vocab, the spaCy lemma may be
-    # the stem of a separable verb that is (``stellen`` → ``voorstellen``).
-    if base_inf is None and tag.pos is PartOfSpeech.VERB and lemma in vocab.separable_by_stem:
-        base_inf = lemma
-    if base_inf is not None:
-        fused_inf, part_idx = _separable_override(
-            i, base_inf, tags, vocab, particle_of, parsed=parsed
-        )
-        inf = fused_inf if (fused_inf and fused_inf in vocab.verb_entries) else base_inf
-        if inf in vocab.verb_entries:
-            verb = vocab.verb_entries[inf]
-            glosses = _candidate_glosses(verb)
-            gloss = glosses[0] if glosses else None
-            span = None
-            if fused_inf == inf and part_idx is not None and part_idx not in consumed:
-                span = [tags[i].surface, tags[part_idx].surface]
-                resolved[part_idx] = LessonToken(
-                    w=tags[part_idx].surface, ref=inf, pos="verb", gloss=gloss, span=span
-                )
-                consumed.add(part_idx)
-            resolved[i] = LessonToken(
-                w=surface, ref=inf, pos="verb", gloss=gloss, span=span
-            )
-            if len(glosses) > 1:
-                ambiguity[i] = (glosses, _sentence_for(text, tag.start))
+    # 1. spaCy says verb -> verb path (incl. separable verbs).
+    if tag.pos is PartOfSpeech.VERB:
+        base_inf = _verb_inf_when_verb(sl, lemma, vocab)
+        # The spaCy lemma may be the stem of a separable verb that *is* in the lesson
+        # vocab even when the bare stem isn't (``stellen`` → ``voorstellen``).
+        if base_inf is None and lemma in vocab.separable_by_stem:
+            base_inf = lemma
+        if base_inf is not None and _emit_verb(
+            i, base_inf, surface, tag.start, tags, text, vocab, particle_of,
+            resolved, consumed, ambiguity, parsed=parsed,
+        ):
             return
-        # Not a resolvable verb entry — fall through to the word path.
+        # spaCy said verb but it didn't resolve to a known entry -> fall through.
 
-    # --- word path ---
-    ref = _word_ref(tag, sl, lemma, vocab)
-    if ref is not None:
-        entry = vocab.word_entries[ref]
-        glosses = _candidate_glosses(entry)
-        gloss = glosses[0] if glosses else None
-        resolved[i] = LessonToken(
-            w=surface, ref=ref, pos=entry.part_of_speech.value, gloss=gloss
+    # 2. Word path. Trust spaCy's POS (the matching entry comes first), but gather all
+    #    senses across POS so a content homograph (e.g. ``morgen`` noun/adverb) is
+    #    handed to the LLM sense picker rather than locked to spaCy's biased POS.
+    candidates = _word_candidates(tag, sl, lemma, vocab)
+    if candidates:
+        gloss, ref, wpos = candidates[0]
+        resolved[i] = LessonToken(w=surface, ref=ref, pos=wpos, gloss=gloss)
+        if len(candidates) > 1 and wpos in _CONTENT_POS:
+            ambiguity[i] = (candidates, _sentence_for(text, tag.start))
+        return
+
+    # 3. Verb-form fallback: a non-trusted POS with NO word hit whose surface is a
+    #    known conjugated form is probably a mis-tagged verb (``loopt`` as NOUN).
+    if tag.pos not in _TRUSTED_NON_VERB_POS and sl in vocab.form_to_verb:
+        _emit_verb(
+            i, vocab.form_to_verb[sl], surface, tag.start, tags, text, vocab,
+            particle_of, resolved, consumed, ambiguity, parsed=parsed,
         )
-        if len(glosses) > 1:
-            ambiguity[i] = (glosses, _sentence_for(text, tag.start))
 
 
 # POS tags we trust as confidently NON-verb, so the verb-form map never coerces
@@ -395,52 +406,85 @@ _TRUSTED_NON_VERB_POS = frozenset(
 )
 
 
-def _verb_infinitive(
-    tag: TokenTag, sl: str, lemma: str, vocab: LessonVocab
-) -> str | None:
-    """Resolve a token to a verb infinitive, or ``None`` if it is not a verb here."""
-    if tag.pos is PartOfSpeech.VERB:
-        if lemma in vocab.verb_entries:
-            return lemma
-        if sl in vocab.form_to_verb:
-            return vocab.form_to_verb[sl]
-        if lemma in vocab.form_to_verb:
-            return vocab.form_to_verb[lemma]
-        return None
-    if tag.pos in _TRUSTED_NON_VERB_POS:
-        # e.g. possessive "zijn" (DET) must not become the verb "zijn" (to be).
-        return None
-    # spaCy is unsure (None) or tagged a plausibly-mistaggable content category
-    # (NOUN/ADJ/ADV): a known conjugated form beats a homograph noun ("loopt"→lopen).
+# Content POS whose homographs are worth sending to the LLM sense picker. Function
+# words (DET/PRON/ADP/...) are left to spaCy — learners don't look them up for meaning.
+_CONTENT_POS = frozenset({"noun", "verb", "adjective", "adverb"})
+
+
+def _verb_inf_when_verb(sl: str, lemma: str, vocab: LessonVocab) -> str | None:
+    """Map a token spaCy tagged VERB to an infinitive, or ``None``."""
+    if lemma in vocab.verb_entries:
+        return lemma
     if sl in vocab.form_to_verb:
         return vocab.form_to_verb[sl]
+    if lemma in vocab.form_to_verb:
+        return vocab.form_to_verb[lemma]
     return None
 
 
-def _word_ref(tag: TokenTag, sl: str, lemma: str, vocab: LessonVocab) -> str | None:
+def _emit_verb(
+    i: int,
+    base_inf: str,
+    surface: str,
+    start: int,
+    tags: list[TokenTag],
+    text: str,
+    vocab: LessonVocab,
+    particle_of: dict[int, int],
+    resolved: list[LessonToken | None],
+    consumed: set[int],
+    ambiguity: dict[int, tuple[list[_Candidate], str]],
+    *,
+    parsed: bool,
+) -> bool:
+    """Resolve a verb token (recovering separable verbs); return False if no entry."""
+    fused_inf, part_idx = _separable_override(
+        i, base_inf, tags, vocab, particle_of, parsed=parsed
+    )
+    inf = fused_inf if (fused_inf and fused_inf in vocab.verb_entries) else base_inf
+    if inf not in vocab.verb_entries:
+        return False
+    glosses = _candidate_glosses(vocab.verb_entries[inf])
+    gloss = glosses[0] if glosses else None
+    span = None
+    if fused_inf == inf and part_idx is not None and part_idx not in consumed:
+        span = [tags[i].surface, tags[part_idx].surface]
+        resolved[part_idx] = LessonToken(
+            w=tags[part_idx].surface, ref=inf, pos="verb", gloss=gloss, span=span
+        )
+        consumed.add(part_idx)
+    resolved[i] = LessonToken(w=surface, ref=inf, pos="verb", gloss=gloss, span=span)
+    if len(glosses) > 1:
+        ambiguity[i] = ([(g, inf, "verb") for g in glosses], _sentence_for(text, start))
+    return True
+
+
+def _word_candidates(
+    tag: TokenTag, sl: str, lemma: str, vocab: LessonVocab
+) -> list[_Candidate]:
+    """All ``(gloss, ref, pos)`` senses for the surface, spaCy's POS first, deduped."""
     pos = tag.pos.value if tag.pos else None
-    if pos is not None:
-        ref = vocab.words_by_lemma_pos.get((lemma, pos))
-        if ref is None:
-            ref = vocab.words_by_lemma_pos.get((sl, pos))
-        if ref is not None:
-            return ref
-    # No POS match: any entry for this lemma (prefer in-lesson / matching POS).
-    candidates = vocab.words_by_lemma.get(lemma) or vocab.words_by_lemma.get(sl)
-    if candidates:
-        return _prefer(candidates, pos, vocab)
-    return None
+    refs: list[str] = []
+    if pos is not None:  # spaCy-preferred POS entry leads, so it's the default sense
+        for key in ((lemma, pos), (sl, pos)):
+            ref = vocab.words_by_lemma_pos.get(key)
+            if ref and ref not in refs:
+                refs.append(ref)
+    for key in (lemma, sl):
+        for ref in vocab.words_by_lemma.get(key, ()):
+            if ref not in refs:
+                refs.append(ref)
 
-
-def _prefer(refs: list[str], pos: str | None, vocab: LessonVocab) -> str:
-    if pos is not None:
-        for ref in refs:
-            if vocab.word_entries[ref].part_of_speech.value == pos:
-                return ref
+    out: list[_Candidate] = []
+    seen: set[str] = set()
     for ref in refs:
-        if vocab.word_entries[ref].normalized in vocab.allowed_lemmas:
-            return ref
-    return refs[0]
+        entry = vocab.word_entries[ref]
+        entry_pos = entry.part_of_speech.value
+        for gloss in _candidate_glosses(entry):
+            if gloss not in seen:
+                seen.add(gloss)
+                out.append((gloss, ref, entry_pos))
+    return out
 
 
 def _separable_override(
@@ -500,11 +544,12 @@ def _build_stream(
     text: str,
     tags: list[TokenTag],
     resolved: list[LessonToken | None],
-    ambiguity: dict[int, tuple[list[str], str]],
-) -> tuple[list[LessonToken | str], list[SenseQuery]]:
+    ambiguity: dict[int, tuple[list[_Candidate], str]],
+) -> tuple[list[LessonToken | str], list[SenseQuery], dict[int, list[_Candidate]]]:
     """Interleave resolved tokens with the verbatim inter-token gap text."""
     stream: list[LessonToken | str] = []
     queries: list[SenseQuery] = []
+    candidates_by_index: dict[int, list[_Candidate]] = {}
     buf: list[str] = []
     cursor = 0
 
@@ -521,23 +566,25 @@ def _build_stream(
             buf.append(text[cursor : tag.start])
         flush()
         if i in ambiguity:
-            glosses, sentence = ambiguity[i]
+            cands, sentence = ambiguity[i]
+            token_index = len(stream)
             queries.append(
                 SenseQuery(
-                    token_index=len(stream),
+                    token_index=token_index,
                     lemma=(token.ref or "").split("|")[0],
                     pos=token.pos or "",
                     sentence=sentence,
-                    candidates=glosses,
+                    candidates=[gloss for gloss, _, _ in cands],
                 )
             )
+            candidates_by_index[token_index] = cands
         stream.append(token)
         cursor = max(cursor, tag.end)
 
     if cursor < len(text):
         buf.append(text[cursor:])
     flush()
-    return stream, queries
+    return stream, queries, candidates_by_index
 
 
 def _candidate_glosses(entry: Word | Verb) -> list[str]:

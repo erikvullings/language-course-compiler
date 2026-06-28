@@ -355,3 +355,80 @@ def test_separable_fuses_via_parser_particle_link():
     fused = [t for t in _tokens(stream) if t.ref == "voorstellen"]
     assert {t.w for t in fused} == {"stelt", "voor"}
     assert all(t.span == ["stelt", "voor"] for t in fused)
+
+
+# --- regression: zon (NOUN) vs a verb form; morgen cross-POS homograph ----------
+
+def test_noun_is_not_coerced_to_verb_when_it_is_a_verb_form():
+    # "zon" (sun, NOUN) is also the 1sg of "zonnen"; spaCy's NOUN must win.
+    text = "De zon schijnt."
+    vocab = build_lesson_vocab(
+        [_word("zon", PartOfSpeech.NOUN, ["sun"])],
+        [_verb("zonnen", ["contemplate"], present={"ik": "zon"})],
+    )
+    tagger = FakeTagger({"zon": [("zon", PartOfSpeech.NOUN, "NOUN")]})
+    stream = annotate(text, vocab, tagger)
+    [tok] = [t for t in _tokens(stream) if t.w == "zon"]
+    assert tok.ref == "zon|noun" and tok.pos == "noun" and tok.gloss == "sun"
+
+
+def test_cross_pos_homograph_defaults_to_spacy_but_llm_can_switch_ref():
+    text = "Het is morgen."
+    vocab = build_lesson_vocab(
+        [
+            _word("morgen", PartOfSpeech.NOUN, ["morning"]),
+            _word("morgen", PartOfSpeech.ADVERB, ["tomorrow"]),
+        ],
+        [_verb("zijn", ["be"], present={"hij": "is"})],
+    )
+    # spaCy biases bare "morgen" to the adverb ("tomorrow").
+    tagger = FakeTagger(
+        {
+            "het": [("het", PartOfSpeech.PRONOUN, "PRON")],
+            "is": [("zijn", PartOfSpeech.VERB, "VERB")],
+            "morgen": [("morgen", PartOfSpeech.ADVERB, "ADV")],
+        }
+    )
+
+    # Without an LLM, the default is spaCy's adverb sense.
+    default = annotate(text, vocab, tagger)
+    [d] = [t for t in _tokens(default) if t.w == "morgen"]
+    assert d.ref == "morgen|adverb" and d.gloss == "tomorrow"
+
+    # The picker is offered both cross-POS senses and can switch ref + pos + gloss.
+    seen: list[SenseQuery] = []
+
+    def picker(queries):
+        seen.extend(queries)
+        return {q.token_index: "morning" for q in queries}
+
+    stream = annotate(text, vocab, tagger, sense_picker=picker)
+    [m] = [t for t in _tokens(stream) if t.w == "morgen"]
+    assert m.ref == "morgen|noun" and m.pos == "noun" and m.gloss == "morning"
+    assert seen and set(seen[0].candidates) == {"tomorrow", "morning"}
+
+
+def test_function_word_homograph_is_not_sent_to_the_picker():
+    # "het" (DET "the" vs PRON "it") is a function word: trust spaCy, no LLM query.
+    text = "Het is het."
+    vocab = build_lesson_vocab(
+        [
+            _word("het", PartOfSpeech.DETERMINER, ["the"]),
+            _word("het", PartOfSpeech.PRONOUN, ["it"]),
+        ],
+        [_verb("zijn", ["be"], present={"hij": "is"})],
+    )
+    tagger = FakeTagger(
+        {
+            "het": [("het", PartOfSpeech.DETERMINER, "DET")],
+            "is": [("zijn", PartOfSpeech.VERB, "VERB")],
+        }
+    )
+    seen: list[SenseQuery] = []
+
+    def picker(queries):
+        seen.extend(queries)
+        return {}
+
+    annotate(text, vocab, tagger, sense_picker=picker)
+    assert seen == []  # function-word homographs are not disambiguated by the LLM

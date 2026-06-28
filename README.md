@@ -251,8 +251,11 @@ For each lesson this writes two fields back into the same JSON file:
   `article` and a stable `ref`.
 
 Requires a spaCy model (see Setup). How a word resolves uses
-spaCy POS first, a verb-form map as a deterministic fallback, and a batched,
-cached LLM call only for genuine same-POS ambiguity. Residual cases can be fixed
+spaCy POS first (trusting spaCy's part of speech when the lexicon has an entry for
+it), a verb-form map as a deterministic fallback, and a batched, cached LLM call
+for the genuinely ambiguous cases — same-POS (`bank`) and cross-POS content
+homographs (`morgen` *morning* vs *tomorrow*); without an LLM these keep spaCy's
+pick. Residual cases can be fixed
 with an optional `courses/<lang>/lessons/<CEFR>/<lessonId>.meta.yaml` sidecar
 (`linkAs` / `glossOverrides` / `separableVerbs`). The output contract for the
 frontend is documented in [`docs/frontend-integration.md`](docs/frontend-integration.md).

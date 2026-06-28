@@ -123,13 +123,20 @@ These shape every change — violating them is a bug:
 - **`generation/annotate.py`** — the **token annotator** (pure, I/O-free). Given a
   lesson's text, a `LessonVocab` (built from the lexicon: `(lemma,pos)` → ref,
   verb-form map from conjugation tables, separable maps) and a `PosTagger`, it
-  resolves each token to a ref/pos/gloss — spaCy first, the verb-form map as a
-  deterministic fallback (a conjugated form beats a homograph noun), and a
-  stem+particle override to recover separable verbs (`stelt … voor` →
-  `voorstellen`, both tokens sharing a `span`). Emits the `LessonToken | str`
-  stream and the `LessonWord` `vocabulary`. Same-POS ambiguity is deferred to an
-  optional `SensePicker`; an optional `LessonOverrides` (the `meta.yaml` escape
-  hatch: `linkAs`/`glossOverrides`/`separableVerbs`) wins over automatic resolution.
+  resolves each token to a ref/pos/gloss — **spaCy POS is trusted first**: a token
+  resolves to the lexicon entry at spaCy's POS, and the verb-form map only fires as
+  a fallback when there is no word entry at that POS (so a noun that happens to be a
+  verb form, e.g. `zon`, is not coerced into a verb), with closed-class tags
+  (DET/PRON/ADP/…) never coerced (so possessive `zijn` ≠ the verb `zijn`). A
+  stem+particle override recovers separable verbs (`stelt … voor` → `voorstellen`,
+  both tokens sharing a `span`); when the backend parsed the text, particle links
+  are authoritative (no scan-ahead). Emits the `LessonToken | str` stream and the
+  `LessonWord` `vocabulary`. **Both same-POS and cross-POS content-word ambiguity**
+  (e.g. `bank`; `morgen` noun *morning* vs adverb *tomorrow*) is deferred to an
+  optional `SensePicker` — for a cross-POS homograph the picker can change the
+  token's ref/pos, not just its gloss; the default (no LLM) keeps spaCy's pick. An
+  optional `LessonOverrides` (the `meta.yaml` escape hatch:
+  `linkAs`/`glossOverrides`/`separableVerbs`) wins over automatic resolution.
 - **`generation/sense.py`** — `make_llm_sense_picker`: one **batched, cached,
   fail-open** LLM call per lesson that resolves only the still-ambiguous tokens.
 - **`frequency.py`** — reader for wordfreq `cBpack` files (generic).
