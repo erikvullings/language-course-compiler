@@ -81,6 +81,35 @@ class _ErrorProvider(LLMProvider):
         raise LLMError("timed out")
 
 
+class _OneThenErrorProvider(LLMProvider):
+    def __init__(self, first_response: str) -> None:
+        self._first_response = first_response
+        self._used = False
+
+    def complete(
+        self,
+        prompt: PromptInput,
+        *,
+        model: str | None = None,
+        temperature: float | None = None,
+        **kwargs: object,
+    ) -> LLMResponse:
+        if not self._used:
+            self._used = True
+            return LLMResponse(content=self._first_response, model=model or "stub", raw={})
+        raise LLMError("timed out")
+
+    async def acomplete(
+        self,
+        prompt: PromptInput,
+        *,
+        model: str | None = None,
+        temperature: float | None = None,
+        **kwargs: object,
+    ) -> LLMResponse:
+        return self.complete(prompt, model=model, temperature=temperature, **kwargs)
+
+
 def _lemmatizer(words: list[str]) -> _MapLemmatizer:
     return _MapLemmatizer({w: w for w in words})
 
@@ -385,6 +414,22 @@ def test_generate_falls_back_after_validation_retries():
     assert len(result.diagnostics) == 3
 
 
+def test_generate_fallback_preserves_title_from_best_attempt():
+    provider = _StubProvider(
+        [
+            '{"title":"Eerste Titel","text":"huis xyz abc"}',
+            '{"title":"Tweede Titel","text":"huis xyz abc"}',
+            '{"title":"Beste Titel","text":"huis q"}',
+        ]
+    )
+    gen = LessonGenerator(provider, _lemmatizer(["huis"]), max_retries=3)
+    result = gen.generate(
+        "lesson006", ["huis"], {"huis"}, language="Dutch", model="stub"
+    )
+    assert result.fallback
+    assert result.title == "Beste Titel"
+
+
 def test_generate_uses_cache(tmp_path):
     from course_compiler.generation.cache import LLMCache
 
@@ -418,9 +463,19 @@ def test_generate_uses_cache_and_still_parses_json_title_and_text(tmp_path):
     assert len(provider._calls) == 1
 
 
-def test_generate_falls_back_on_llm_error():
+def test_generate_raises_on_first_llm_error_without_usable_draft():
     gen = LessonGenerator(_ErrorProvider(), _lemmatizer(["huis"]))
+    with pytest.raises(RuntimeError, match="before producing a usable draft"):
+        gen.generate("lesson005", ["huis"], {"huis"}, language="Dutch", model="stub")
+
+
+def test_generate_uses_best_attempt_when_later_llm_error_occurs():
+    provider = _OneThenErrorProvider('{"title":"Eerste Titel","text":"huis xyz"}')
+    gen = LessonGenerator(provider, _lemmatizer(["huis"]), max_retries=3)
     result = gen.generate(
         "lesson005", ["huis"], {"huis"}, language="Dutch", model="stub"
     )
-    assert result.content == "huis."
+    assert result.fallback
+    assert result.best_attempt == 1
+    assert result.title == "Eerste Titel"
+    assert result.content == "huis xyz"

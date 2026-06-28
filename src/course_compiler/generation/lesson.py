@@ -153,7 +153,7 @@ def _user_instructions(
     constraints = LEVEL_CONSTRAINTS.get(cefr, LEVEL_CONSTRAINTS["A1"])
     checklist = _language_specific_checklist(language)
     markdown_formatting_criteria = (
-        "   * Use italics (*text*) exclusively for spoken dialogue lines.\n"
+        "   * Format every spoken dialogue line as *\"text\"* (italicized text enclosed in double quotes).\n"
         "   * Use bold (**text**) exclusively for imperative verbs and strong command formats.\n"
         "   * Do not bold or italicize full narrative sentences or use formatting for general emphasis.\n"
     )
@@ -170,7 +170,7 @@ def _user_instructions(
         f"Do not wrap the JSON in markdown code fences (```json ... ```). No pre- or post-commentary.\n"
         f"5. Markdown inside JSON: Use plain paragraphs. No bold or italicized full sentences.\n"
         f"{markdown_formatting_criteria}"
-        f"6. Title Style: A noun phrase of exactly 2 to 6 words in {language}. "
+        f"6. Title Style: A noun phrase in {language}. "
         f"It must not be a question or a sentence fragment.\n\n"
         f"### Target Content Parameters\n"
         f"- Theme: {{theme}}\n"
@@ -261,14 +261,6 @@ def _feedback_message(result: ValidationResult, cefr_target: str) -> str:
             f"or outside the allowed vocabulary: {words}."
         )
     return " ".join(parts)
-
-
-def _fallback_content(new_words: list[str], *, lesson_id: str, reason: str) -> str:
-    """Return deterministic placeholder lesson content when the provider fails."""
-    words = " ".join(new_words).strip()
-    if words:
-        return f"{words}."
-    return f"{lesson_id}: lesson unavailable ({reason})."
 
 
 class LessonGenerator:
@@ -445,6 +437,7 @@ class LessonGenerator:
         diagnostics: list[AttemptDiagnostics] = []
         best_content: str | None = None
         best_result: ValidationResult | None = None
+        best_title: str | None = None
         best_attempt: int | None = None
 
         for attempt in range(1, self._max_retries + 1):
@@ -487,19 +480,28 @@ class LessonGenerator:
                 response = self._provider.complete(
                     messages, model=model, temperature=temperature
                 )
-            except LLMError:
+            except LLMError as exc:
                 if not self._fail_open_on_llm_error:
                     raise
-                return GeneratedLesson(
-                    lesson_id=lesson_id,
-                    content=_fallback_content(
-                        new_words, lesson_id=lesson_id, reason="llm-timeout"
-                    ),
-                    attempts=attempt,
-                    fallback=True,
-                    best_attempt=attempt,
-                    diagnostics=tuple(diagnostics),
-                )
+                if (
+                    best_content is not None
+                    and best_result is not None
+                    and best_attempt is not None
+                ):
+                    return GeneratedLesson(
+                        lesson_id=lesson_id,
+                        content=best_content,
+                        title=best_title,
+                        attempts=attempt,
+                        tolerated=best_result.tolerated,
+                        fallback=True,
+                        violations=best_result.violations,
+                        best_attempt=best_attempt,
+                        diagnostics=tuple(diagnostics),
+                    )
+                raise RuntimeError(
+                    f"LessonGenerator encountered LLM errors before producing a usable draft for lesson {lesson_id!r}."
+                ) from exc
 
             if self._cache is not None and attempt == 1:
                 self._cache.put(resolved_model, raw_messages, response)
@@ -536,6 +538,7 @@ class LessonGenerator:
             ):
                 best_content = parsed_text
                 best_result = result
+                best_title = parsed_title
                 best_attempt = attempt
 
             if result.is_valid:
@@ -567,6 +570,7 @@ class LessonGenerator:
                 return GeneratedLesson(
                     lesson_id=lesson_id,
                     content=best_content,
+                    title=best_title,
                     attempts=self._max_retries,
                     tolerated=best_result.tolerated,
                     fallback=True,
@@ -575,15 +579,8 @@ class LessonGenerator:
                     diagnostics=tuple(diagnostics),
                 )
 
-            return GeneratedLesson(
-                lesson_id=lesson_id,
-                content=_fallback_content(
-                    new_words, lesson_id=lesson_id, reason="validation-retries"
-                ),
-                attempts=self._max_retries,
-                fallback=True,
-                best_attempt=self._max_retries,
-                diagnostics=tuple(diagnostics),
+            raise RuntimeError(
+                f"LessonGenerator exceeded max_retries={self._max_retries} for lesson {lesson_id!r} without producing any usable draft."
             )
 
         raise RuntimeError(
