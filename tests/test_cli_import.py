@@ -52,7 +52,7 @@ def test_import_writes_word_and_verb_yaml(tmp_path):
     rc = main(["import", "--language", "nl", "--kaikki", str(jsonl), "--out", str(out)])
 
     assert rc == 0
-    word = yaml.safe_load((out / "words" / "kat.yaml").read_text())
+    word = yaml.safe_load((out / "words" / "kat.noun.yaml").read_text())
     assert word["translations"]["en"] == "cat"
     assert word["plural"]["regular"] == "katten"
     verb = yaml.safe_load((out / "verbs" / "zijn.yaml").read_text())
@@ -61,7 +61,7 @@ def test_import_writes_word_and_verb_yaml(tmp_path):
     words_json = json.loads((out / "words.json").read_text(encoding="utf-8"))
     verbs_json = json.loads((out / "verbs.json").read_text(encoding="utf-8"))
     audio_json = json.loads((out / "audio.json").read_text(encoding="utf-8"))
-    assert [entry["id"] for entry in words_json] == ["kat"]
+    assert [entry["id"] for entry in words_json] == ["kat|noun"]
     assert [entry["id"] for entry in verbs_json] == ["zijn"]
     # Compact aggregates omit per-entry language and empty arrays.
     assert "language" not in words_json[0]
@@ -118,9 +118,9 @@ def test_import_with_budgets_reassigns_cefr(tmp_path):
 
     assert rc == 0
     levels = {
-        yaml.safe_load((out / "words" / f"{name}.yaml").read_text())[
+        yaml.safe_load((out / "words" / f"{name}.noun.yaml").read_text())[
             "lemma"
-        ]: yaml.safe_load((out / "words" / f"{name}.yaml").read_text()).get("cefr")
+        ]: yaml.safe_load((out / "words" / f"{name}.noun.yaml").read_text()).get("cefr")
         for name in ["kat", "hond"]
     }
     # Two A1-floored items, one A1 slot then one A2 slot: tie-break is deterministic.

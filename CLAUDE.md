@@ -13,8 +13,8 @@ open lexical resources, using LLMs. Output feeds a separate free/open-source
 SPA/PWA. The full design lives in `INITIAL_INSTRUCTIONS.md`; the implementation
 roadmap is tracked as task files in `TASKS/`.
 
-Current state: initial scaffold — settings + the LLM module are implemented; the
-pipeline stages (import → generate → validate → export) are not yet built.
+Current state: the pipeline is implemented end to end — import → generate →
+validate → annotate (POS/sense) → audio → export.
 
 ## Commands
 
@@ -27,8 +27,16 @@ uv run ruff check .                      # lint (also `ruff format .`)
 uv run course ask "..."                  # exercise the configured LLM end-to-end
 ```
 
-Python ≥ 3.11 (uses `enum.StrEnum`). Dependencies are intentionally minimal:
-`httpx` + `python-dotenv` at runtime.
+Python ≥ 3.11 (uses `enum.StrEnum`). Keep runtime dependencies lean. spaCy
+powers `course annotate` POS tagging but is **imported lazily** (see
+`course_compiler.nlp.spacy_nl`), so importing the package and running the rest of
+the pipeline never requires spaCy or a downloaded model — `create_tagger` raises a
+clear `PosTaggerError` only when annotation actually needs it.
+
+```bash
+python -m spacy download nl_core_news_lg       # one-time, for `course annotate`
+uv run course annotate --lang nl --cefr A1     # add tokens[]/vocabulary[] to lessons
+```
 
 ## Non-negotiable design constraints (from INITIAL_INSTRUCTIONS.md)
 
@@ -56,16 +64,23 @@ These shape every change — violating them is a bug:
   (`register_provider` / `create_provider`). This registry pattern is the
   template for the other pluggable providers (TTS, importers, exporters).
 - **`models.py`** — the canonical, **language-agnostic** Pydantic schema (`Word`,
-  `Verb`, `Frequency`, ...). Serializes camelCase via `to_yaml`. Conjugation
-  tables are `{slot: form}` mappings, not fixed pronoun fields, so the schema
-  isn't tied to one language. This module must never gain language-specific logic.
+  `Verb`, `Frequency`, `Lesson`, `LessonWord`, `LessonToken`, ...). Serializes
+  camelCase via `to_yaml`. Conjugation tables are `{slot: form}` mappings, not
+  fixed pronoun fields, so the schema isn't tied to one language. `Word`/`Verb`
+  carry a `glosses` candidate list; `Lesson` carries `vocabulary` (resolved
+  `LessonWord`s) and `tokens` (a `LessonToken | str` stream — strings are gaps,
+  objects are linkable words). This module must never gain language-specific logic.
 - **`converters/`** — **language-dependent** importers that map source datasets
   onto `models`. `dutch.py` maps kaikki.org Wiktionary JSONL (primary: pos,
   gender, plural/diminutive, IPA, syllables, verb conjugations, English glosses →
-  `translations.en`) + Open Dutch WordNet XML (synonyms via shared synsets) +
-  wordfreq frequency + NT2Lex `.tsv` (CEFR level = earliest attested level per
-  lemma). Per-entry mappers (`word_from_kaikki`, `verb_from_kaikki`)
-  are pure; `convert` streams files, `convert_iterables` is the I/O-free variant.
+  `translations.en` + the cleaned `glosses` list) + Open Dutch WordNet XML
+  (synonyms via shared synsets) + wordfreq frequency + NT2Lex `.tsv` (CEFR level =
+  earliest attested level per lemma). Per-entry mappers (`word_from_kaikki`,
+  `verb_from_kaikki`) are pure; `convert` streams files, `convert_iterables` is the
+  I/O-free variant. Words are keyed by a **composite `lemma|pos` id** so homograph
+  POS both survive (the dedup is by `(lemma, pos)`, matching `leveling`'s counting
+  unit); `audio.json` stays lemma-keyed. `annotate_separable_verbs`/`detect_separable`
+  flag separable verbs and emit `separable-verbs.json` (`{lemma: {prefix, stem}}`).
 - **`generation/`** — the lesson pipeline (language-agnostic). `orchestrator.py`
   plans a CEFR level into a lesson sequence (filter → theme → select seed words →
   accumulate allowed vocabulary); `themes.py` proposes themes + vocabulary via
@@ -98,6 +113,25 @@ These shape every change — violating them is a bug:
   generation path validates leniently (`extra_tolerance=None` → only above-CEFR
   words are violations, every in-level word is allowed) so the text reads
   naturally instead of degrading into over-constrained filler.
+- **`nlp/`** — pluggable **POS taggers** (language-agnostic registry mirroring the
+  LLM factory). `base.py` defines `PosTagger` (text → `TaggedDoc` of `TokenTag`s +
+  separable-particle links), `register_tagger`/`create_tagger`, and an optional
+  `article_for_gender` hook. `spacy_nl.py` registers an `nl` factory that imports
+  spaCy **lazily** (raises `PosTaggerError` if the extra/model is missing), maps
+  UPOS → `PartOfSpeech`, reads `compound:prt` for separable particles, and supplies
+  Dutch de/het articles.
+- **`generation/annotate.py`** — the **token annotator** (pure, I/O-free). Given a
+  lesson's text, a `LessonVocab` (built from the lexicon: `(lemma,pos)` → ref,
+  verb-form map from conjugation tables, separable maps) and a `PosTagger`, it
+  resolves each token to a ref/pos/gloss — spaCy first, the verb-form map as a
+  deterministic fallback (a conjugated form beats a homograph noun), and a
+  stem+particle override to recover separable verbs (`stelt … voor` →
+  `voorstellen`, both tokens sharing a `span`). Emits the `LessonToken | str`
+  stream and the `LessonWord` `vocabulary`. Same-POS ambiguity is deferred to an
+  optional `SensePicker`; an optional `LessonOverrides` (the `meta.yaml` escape
+  hatch: `linkAs`/`glossOverrides`/`separableVerbs`) wins over automatic resolution.
+- **`generation/sense.py`** — `make_llm_sense_picker`: one **batched, cached,
+  fail-open** LLM call per lesson that resolves only the still-ambiguous tokens.
 - **`frequency.py`** — reader for wordfreq `cBpack` files (generic).
 - **`leveling.py`** — generic CEFR assignment by **cumulative frequency budget**
   (`assign_levels`): items fill levels most-frequent-first up to each level's
@@ -111,7 +145,13 @@ These shape every change — violating them is a bug:
   introduced without consuming budget; `opaque` words still count. The converter
   supplies Dutch linkers and levels transparent compounds to `max(level of parts)`.
 - **`settings.py`** — `Settings.load(env=...)` reads config via python-dotenv.
-- **`cli.py`** — `course` entry point (`ask`, `import`; grows per `TASKS/`).
+- **`cli.py`** — `course` entry point (`ask`, `import`, `generate-lessons`,
+  `plan-grammar`/`generate-grammar`, `generate-images`, `generate-audio`,
+  `annotate`, `export`). `annotate` is standalone and re-runnable: it loads the
+  lexicon + `separable-verbs.json`, rebuilds each lesson's cumulative allowed vocab
+  from prior lessons' `new_words`, runs the annotator (+ optional meta sidecar and
+  LLM sense fallback), and rewrites each lesson JSON in place with `tokens[]` +
+  `vocabulary[]`. The frontend output contract lives in `docs/frontend-integration.md`.
 
 The split between `models.py` (generic) and `converters/<lang>.py` (specific) is
 the load-bearing boundary: anything that knows Dutch (pronouns, gender mapping,

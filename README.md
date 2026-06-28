@@ -250,7 +250,7 @@ For each lesson this writes two fields back into the same JSON file:
 - `vocabulary` — the lesson's new words with resolved `pos`, `gloss`, `gender`,
   `article` and a stable `ref`.
 
-Requires the `nlp` extra and a spaCy model (see Setup). How a word resolves uses
+Requires a spaCy model (see Setup). How a word resolves uses
 spaCy POS first, a verb-form map as a deterministic fallback, and a batched,
 cached LLM call only for genuine same-POS ambiguity. Residual cases can be fixed
 with an optional `courses/<lang>/lessons/<CEFR>/<lessonId>.meta.yaml` sidecar

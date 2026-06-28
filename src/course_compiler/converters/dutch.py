@@ -218,14 +218,20 @@ def _is_form_pointer_gloss(gloss: str | None) -> bool:
     return bool(gloss) and _FORM_POINTER_RE.match(gloss.strip()) is not None
 
 
-def _english_translation(entry: dict) -> str | None:
-    """All English equivalents from all senses, joined by " ; ".
+# Gloss fragments that are usage notes / form references rather than real
+# translations. Filtered out of the candidate ``glosses`` list (but not from the
+# joined ``translations.en`` display string, which stays byte-compatible).
+_WEAK_GLOSS_RE = re.compile(
+    r"^(?:used to|note:|see\b|compare\b|usually\b|chiefly\b|expresses\b|"
+    r"indicates\b|abbreviation of|contraction of|synonym of|alternative form of|"
+    r"alternative spelling of|obsolete spelling|plural of|inflection of)\b",
+    re.IGNORECASE,
+)
 
-    Collects the first gloss fragment from each sense, removes article prefixes,
-    deduplicates, and joins with " ; ". This preserves all meanings from Wiktionary.
-    E.g., lopen → "to run; to walk; to stretch; to be current; to progress".
-    """
-    translations: list[str] = []
+
+def _gloss_fragments(entry: dict) -> list[str]:
+    """First English gloss fragment from each sense, article-stripped + deduped."""
+    fragments: list[str] = []
     seen: set[str] = set()
 
     for sense in entry.get("senses") or []:
@@ -242,9 +248,39 @@ def _english_translation(entry: dict) -> str | None:
             text = text.split(",")[0].split(";")[0].strip()
             if text and text not in seen:
                 seen.add(text)
-                translations.append(text)
+                fragments.append(text)
 
-    return " ; ".join(translations) if translations else None
+    return fragments
+
+
+def _is_weak_gloss(text: str) -> bool:
+    """True when a fragment is a usage note / form reference, not a translation."""
+    if _is_form_pointer_gloss(text):
+        return True
+    if _WEAK_GLOSS_RE.match(text.strip()):
+        return True
+    # A long "gloss" is really a usage note (the real senses are short fragments).
+    return len(text.split()) > 6
+
+
+def _english_translation(entry: dict) -> str | None:
+    """All English equivalents from all senses, joined by " ; ".
+
+    Collects the first gloss fragment from each sense, removes article prefixes,
+    deduplicates, and joins with " ; ". This preserves all meanings from Wiktionary.
+    E.g., lopen → "to run; to walk; to stretch; to be current; to progress".
+    """
+    fragments = _gloss_fragments(entry)
+    return " ; ".join(fragments) if fragments else None
+
+
+def _english_glosses(entry: dict) -> list[str]:
+    """Cleaned candidate sense fragments for per-token sense selection.
+
+    Like :func:`_english_translation` but as a list with usage-note / form-pointer
+    fragments removed, so each remaining entry is a usable English translation.
+    """
+    return [frag for frag in _gloss_fragments(entry) if not _is_weak_gloss(frag)]
 
 
 def _audio_url(entry: dict) -> str | None:
@@ -315,12 +351,15 @@ def word_from_kaikki(
     audio_url = _audio_url(entry)
 
     return Word(
-        id=normalize(lemma),
+        # Composite id keeps homograph POS distinct (e.g. ``morgen|noun`` vs
+        # ``morgen|adverb``), which the per-token resolver uses as a stable ref.
+        id=f"{normalize(lemma)}|{pos.value}",
         language=LANGUAGE,
         lemma=lemma,
         normalized=normalize(lemma),
         part_of_speech=pos,
         translations={"en": translation} if translation else {},
+        glosses=_english_glosses(entry),
         gender=_gender(entry) if pos is PartOfSpeech.NOUN else None,
         plural=(
             Plural(regular=plural_forms[0], alternatives=plural_forms[1:])
@@ -399,6 +438,10 @@ def verb_from_kaikki(
     irregular = any("class" in (f.get("tags") or ()) for f in forms)
 
     translation = _english_translation(entry)
+    reflexive = any(
+        "reflexive" in (sense.get("tags") or ())
+        for sense in entry.get("senses") or []
+    )
 
     return Verb(
         id=normalize(lemma),
@@ -406,6 +449,8 @@ def verb_from_kaikki(
         lemma=lemma,
         infinitive=infinitive,
         translations={"en": translation} if translation else {},
+        glosses=_english_glosses(entry),
+        reflexive=reflexive,
         present=present,
         past=past,
         perfect=perfect,
@@ -416,6 +461,60 @@ def verb_from_kaikki(
         cefr=cefr,
         tags=_extract_tags(entry),
     )
+
+
+# Dutch separable-verb particles (longest-first so "voor" wins over "vo"-style
+# prefixes; matched against the infinitive when its remainder is itself a verb).
+_SEPARABLE_PREFIXES: tuple[str, ...] = (
+    "achter", "binnen", "boven", "buiten", "langs", "onder", "samen", "tegen",
+    "terug", "tussen", "voort", "aan", "achter", "bij", "door", "mee", "neer",
+    "rond", "thuis", "voor", "weer", "af", "in", "na", "om", "op", "uit",
+    "vast", "weg", "toe", "over",
+)
+
+
+def detect_separable(
+    infinitive: str, known_infinitives: AbstractSet[str]
+) -> tuple[str, str] | None:
+    """Split a separable verb into ``(prefix, stem)`` when transparently derivable.
+
+    ``voorstellen`` → ``("voor", "stellen")`` when ``stellen`` is itself a known
+    verb. Returns ``None`` for inseparable or non-derivable verbs. The longest
+    matching prefix wins (``voor`` before ``vo``).
+    """
+    lemma = normalize(infinitive)
+    candidates = sorted(
+        (p for p in _SEPARABLE_PREFIXES if len(lemma) > len(p) and lemma.startswith(p)),
+        key=len,
+        reverse=True,
+    )
+    for prefix in candidates:
+        stem = lemma[len(prefix) :]
+        if stem in known_infinitives:
+            return prefix, stem
+    return None
+
+
+def annotate_separable_verbs(verbs: list[Verb]) -> dict[str, dict[str, str]]:
+    """Mark separable verbs in place and return a ``{lemma: {prefix, stem}}`` map.
+
+    A verb already tagged "separable" (from kaikki categories) is flagged even when
+    its prefix/stem cannot be split; the returned map only lists splittable verbs
+    (the annotator needs ``prefix``/``stem`` to fuse a detached particle).
+    """
+    known = {normalize(v.infinitive) for v in verbs}
+    separable_map: dict[str, dict[str, str]] = {}
+    for verb in verbs:
+        split = detect_separable(verb.infinitive, known)
+        tagged = any("separable" in tag for tag in verb.tags)
+        if split is not None:
+            prefix, stem = split
+            verb.separable = True
+            verb.prefix = prefix
+            separable_map[normalize(verb.infinitive)] = {"prefix": prefix, "stem": stem}
+        elif tagged:
+            verb.separable = True
+    return separable_map
 
 
 def iter_kaikki(path: str | Path) -> Iterator[dict]:
@@ -621,7 +720,7 @@ def convert(
             seen_verbs.add(verb.id)
             verbs.append(verb)
             if audio := _audio_url(entry):
-                audio_json[verb.id] = audio
+                audio_json[key] = audio
         else:
             word = word_from_kaikki(entry, frequency=freq, cefr=level)
             if word is None or word.id in seen_words:
@@ -631,7 +730,7 @@ def convert(
             seen_words.add(word.id)
             words.append(word)
             if audio := _audio_url(entry):
-                audio_json[word.id] = audio
+                audio_json[key] = audio
 
     if budgets:
         reassign_cefr_by_budget(
@@ -641,6 +740,8 @@ def convert(
             linkers=DUTCH_LINKERS if detect_compounds else (),
             opaque=opaque,
         )
+
+    separable_map = annotate_separable_verbs(verbs)
 
     words_json: list[dict] = []
     verbs_json: list[dict] = []
@@ -654,9 +755,10 @@ def convert(
             )
         )
     for word in words:
-        (words_dir / f"{_safe_name(word.id)}.yaml").write_text(
-            to_yaml(word), encoding="utf-8"
-        )
+        # Readable, collision-free per-entry filename; POS suffix keeps homograph
+        # entries (e.g. ``morgen.noun.yaml`` vs ``morgen.adverb.yaml``) distinct.
+        stem = f"{_safe_name(word.normalized)}.{word.part_of_speech.value}"
+        (words_dir / f"{stem}.yaml").write_text(to_yaml(word), encoding="utf-8")
         words_json.append(
             _compact_aggregate_row(
                 word.model_dump(by_alias=True, exclude_none=True, mode="json")
@@ -667,6 +769,10 @@ def convert(
     _write_json_array(out / "words.json", words_json)
     _write_json_array(out / "verbs.json", verbs_json)
     _write_json_object(out / "audio.json", audio_json)
+    (out / "separable-verbs.json").write_text(
+        json.dumps(separable_map, ensure_ascii=True, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
 
     return counts
 
@@ -768,4 +874,5 @@ def convert_iterables(
 
     if budgets:
         reassign_cefr_by_budget(words, verbs, budgets, linkers=linkers, opaque=opaque)
+    annotate_separable_verbs(verbs)
     return words, verbs
