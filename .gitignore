@@ -19,8 +19,18 @@ uv.lock
 .mypy_cache/
 
 # Generated course output
-/courses/
 /dist-course/
+/courses/img/
+/courses/**/.llm_cache/
+/courses/**/audio/
+/courses/**/audio.json
+/courses/**/lessons/
+/courses/**/words/
+/courses/**/words.json
+/courses/**/verbs/
+/courses/**/verbs.json
+
+# Authored course content (grammar lessons, toc.yaml) is tracked
 
 # Large source datasets (downloaded, not version-controlled)
 /data/

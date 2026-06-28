@@ -1,0 +1,199 @@
+# Table of contents for Dutch A1 grammar lessons.
+#
+# Mirrors grammar/nl/A1.yaml with the file path added per entry.
+# dependsOn and focus are retained: the GUI can use them to render
+# prerequisite links and topic summaries.
+
+- slug: personal-pronouns
+  title: Subject pronouns
+  file: personal-pronouns.md
+  introducedInLesson: 1
+  dependsOn: []
+  focus: >
+    The subject pronouns ik, jij/je, u, hij, zij/ze, het, wij/we, jullie, zij;
+    formal u vs informal jij.
+
+- slug: present-tense
+  title: Present tense
+  file: present-tense.md
+  introducedInLesson: 2
+  dependsOn: [personal-pronouns]
+  focus: >
+    Regular present tense: stem for ik, stem+t for jij/hij/zij/u, infinitive
+    for plural. Signal words: nu, vandaag, altijd, elke dag.
+
+- slug: zijn-en-hebben
+  title: zijn and hebben
+  file: zijn-en-hebben.md
+  introducedInLesson: 3
+  dependsOn: [present-tense]
+  focus: >
+    The two most common irregular verbs, zijn (to be) and hebben (to have),
+    and their present-tense forms.
+
+- slug: articles
+  title: Definite articles (de / het)
+  file: articles.md
+  introducedInLesson: 4
+  dependsOn: []
+  focus: >
+    The definite articles de (common gender) and het (neuter), and why the
+    article must be learned together with each noun.
+
+- slug: indefinite-article
+  title: Indefinite article (een)
+  file: indefinite-article.md
+  introducedInLesson: 5
+  dependsOn: [articles]
+  focus: The indefinite article een, used for both de- and het-words.
+
+- slug: cardinal-numbers
+  title: Numbers and counting
+  file: cardinal-numbers.md
+  introducedInLesson: 6
+  dependsOn: []
+  focus: Cardinal numbers and counting nouns (een, twee, drie ...).
+
+- slug: plural-nouns
+  title: Plural nouns
+  file: plural-nouns.md
+  introducedInLesson: 7
+  dependsOn: [articles]
+  focus: >
+    Forming plurals with -en or -s, and that all plural nouns take de.
+
+- slug: word-order
+  title: Main clause word order
+  file: word-order.md
+  introducedInLesson: 8
+  dependsOn: [present-tense]
+  focus: >
+    The finite verb stands in second position (V2) in a main clause; the
+    subject can come before or after it.
+
+- slug: yes-no-questions
+  title: Yes/no questions
+  file: yes-no-questions.md
+  introducedInLesson: 9
+  dependsOn: [word-order]
+  focus: Questions formed by putting the finite verb first.
+
+- slug: question-words
+  title: Question words
+  file: question-words.md
+  introducedInLesson: 10
+  dependsOn: [word-order]
+  focus: >
+    wh-questions with wie, wat, waar, wanneer, hoe, waarom and verb-second
+    order.
+
+- slug: negation
+  title: Negation (niet / geen)
+  file: negation.md
+  introducedInLesson: 11
+  dependsOn: [present-tense, indefinite-article]
+  focus: >
+    niet negates verbs/adjectives/definite phrases; geen negates indefinite
+    and uncountable nouns.
+
+- slug: possessive-pronouns
+  title: Possessive pronouns
+  file: possessive-pronouns.md
+  introducedInLesson: 12
+  dependsOn: [personal-pronouns]
+  focus: mijn, jouw/je, uw, zijn, haar, ons/onze, jullie, hun.
+
+- slug: demonstratives
+  title: Demonstratives (deze / die / dit / dat)
+  file: demonstratives.md
+  introducedInLesson: 12
+  dependsOn: [articles]
+  focus: >
+    deze/die for de-words and dit/dat for het-words; near (deze/dit) vs far
+    (die/dat).
+
+- slug: prepositions-of-place
+  title: Prepositions of place
+  file: prepositions-of-place.md
+  introducedInLesson: 13
+  dependsOn: [articles]
+  focus: in, op, onder, naast, achter, voor, tussen, boven.
+
+- slug: time-expressions
+  title: Time expressions
+  file: time-expressions.md
+  introducedInLesson: 13
+  dependsOn: [present-tense]
+  focus: >
+    Days, parts of the day and time adverbs. Signal words: vandaag, morgen,
+    gisteren, 's ochtends, om ... uur.
+
+- slug: adjectives
+  title: Attributive adjectives
+  file: adjectives.md
+  introducedInLesson: 14
+  dependsOn: [articles, indefinite-article]
+  focus: >
+    The -e ending on attributive adjectives, and the exception: no -e before a
+    singular het-word with een.
+
+- slug: diminutives
+  title: Diminutives (-je)
+  file: diminutives.md
+  introducedInLesson: 15
+  dependsOn: [articles]
+  focus: >
+    Forming diminutives with -je/-tje/-pje; diminutives are always het-words.
+
+- slug: comparative-superlative
+  title: Comparative and superlative
+  file: comparative-superlative.md
+  introducedInLesson: 15
+  dependsOn: [adjectives]
+  focus: >
+    -er / -st endings (groter, grootst) and the comparison words dan and even
+    ... als.
+
+- slug: imperative
+  title: Imperative
+  file: imperative.md
+  introducedInLesson: 16
+  dependsOn: [present-tense]
+  focus: Giving commands and instructions with the verb stem (Kom! Ga zitten!).
+
+- slug: modal-verbs
+  title: Modal verbs
+  file: modal-verbs.md
+  introducedInLesson: 16
+  dependsOn: [present-tense, word-order]
+  focus: >
+    kunnen, willen, moeten, mogen: conjugation and sending the second verb
+    (infinitive) to the end of the clause.
+
+- slug: future-with-gaan
+  title: Future with gaan
+  file: future-with-gaan.md
+  introducedInLesson: 17
+  dependsOn: [present-tense, word-order]
+  focus: >
+    Expressing future plans with gaan + infinitive. Signal words: morgen,
+    straks, volgende week, vanavond.
+
+- slug: separable-verbs
+  title: Separable verbs
+  file: separable-verbs.md
+  introducedInLesson: 17
+  dependsOn: [word-order]
+  focus: >
+    Prefixed verbs whose prefix detaches and moves to the end of a main clause
+    (e.g. opstaan -> ik sta op).
+
+- slug: perfect-tense
+  title: Perfect tense
+  file: perfect-tense.md
+  introducedInLesson: 18
+  dependsOn: [zijn-en-hebben, word-order]
+  focus: >
+    The perfect with hebben/zijn plus a past participle (ge-...-d/-t); the
+    participle goes to the end of the clause. Signal words: gisteren, vorige
+    week, net, al.
